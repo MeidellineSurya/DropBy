@@ -1,9 +1,15 @@
 from pydantic import BaseModel, EmailStr, Field
 
+from app.models.drops import DropCategory
+
 
 class BusinessRegisterRequest(BaseModel):
     name: str = Field(min_length=2, max_length=120)
-    category: str = Field(min_length=2, max_length=60)
+    # Same fixed set a business's own Drops are categorized under (the
+    # dashboard's registration form already only offers these); previously a
+    # free-text field, which let a business register with an arbitrary
+    # category that would never match anything real.
+    category: DropCategory
     owner_email: EmailStr
     password: str = Field(min_length=10, max_length=128)
     latitude: float = Field(ge=-90, le=90)

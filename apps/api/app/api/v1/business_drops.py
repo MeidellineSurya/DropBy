@@ -11,17 +11,9 @@ from app.models.groups import Group
 from app.schemas.business_drops import BusinessDropCreateRequest, BusinessDropResponse
 from app.services.drop_lifecycle import (
     cancel_drop as cancel_drop_lifecycle,
-)
-from app.services.drop_lifecycle import (
     create_drop as create_drop_lifecycle,
-)
-from app.services.drop_lifecycle import (
     pause_drop as pause_drop_lifecycle,
-)
-from app.services.drop_lifecycle import (
     publish_drop as publish_drop_lifecycle,
-)
-from app.services.drop_lifecycle import (
     resume_drop as resume_drop_lifecycle,
 )
 from app.services.squad_state import group_snapshot
