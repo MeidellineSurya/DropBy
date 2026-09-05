@@ -29,3 +29,5 @@ Charlie - DropBy (1).txt
 
 # Previous local prototype (kept only as a local reference)
 _archive_typescript_backend/
+
+.pytest_cache/
