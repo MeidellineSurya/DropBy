@@ -48,7 +48,9 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>DropBy Partner</h1>
+        <span className="login-card__brand-mark">D</span>
+        <span className="login-card__eyebrow">DROPBY</span>
+        <h1>Partner portal</h1>
         <div className="login-card__tabs">
           <button
             type="button"

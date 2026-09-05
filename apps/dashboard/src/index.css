@@ -1,5 +1,7 @@
+@import "./theme.css";
+
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 * {
@@ -8,12 +10,15 @@
 
 body {
   margin: 0;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 h1,
 h2,
 h3 {
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.3px;
 }
 
 p {

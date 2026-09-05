@@ -7,20 +7,20 @@
 .capacity-bar__track {
   flex: 1;
   height: 6px;
-  border-radius: 999px;
-  background: #eef0f3;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
   overflow: hidden;
 }
 
 .capacity-bar__fill {
   height: 100%;
-  background: #1c8a4d;
-  border-radius: 999px;
+  background: var(--color-lime);
+  border-radius: var(--radius-pill);
   transition: width 0.3s ease;
 }
 
 .capacity-bar__label {
   font-size: 0.75rem;
-  color: #5b6472;
+  color: var(--color-muted);
   white-space: nowrap;
 }

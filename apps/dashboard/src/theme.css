@@ -1,0 +1,22 @@
+/* Mirrors apps/mobile/src/theme.ts so the dashboard and mobile app read as
+   one product. Kept as plain CSS custom properties (no build-time sharing
+   with the RN StyleSheet) since the two run in different renderers. */
+
+:root {
+  --color-bg: #090b0f;
+  --color-surface: #131821;
+  --color-surface-raised: #1a202b;
+  --color-border: #2b3442;
+  --color-text: #f5f7fb;
+  --color-muted: #98a3b3;
+  --color-lime: #d9ff43;
+  --color-cyan: #52e6d8;
+  --color-violet: #9b87ff;
+  --color-danger: #ff786e;
+  --color-black: #0b0d09;
+
+  --radius-lg: 22px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+  --radius-pill: 999px;
+}
