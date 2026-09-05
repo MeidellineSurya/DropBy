@@ -28,6 +28,56 @@
   text-transform: capitalize;
 }
 
+.drop-card__details-toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--color-cyan);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.drop-card__details-toggle:hover {
+  text-decoration: underline;
+}
+
+.drop-card__details {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.drop-card__details-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.drop-card__details-row--full {
+  grid-column: 1 / -1;
+}
+
+.drop-card__details-row dt {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.drop-card__details-row dd {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
 .drop-card__actions {
   display: flex;
   gap: 0.5rem;
