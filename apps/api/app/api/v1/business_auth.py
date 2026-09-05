@@ -43,7 +43,7 @@ def register(
         raise HTTPException(status.HTTP_409_CONFLICT, "Email is already registered")
     business = Business(
         name=body.name.strip(),
-        category=body.category.strip(),
+        category=body.category.value,
         description=body.description,
         location=WKTElement(f"POINT({body.longitude} {body.latitude})", srid=4326),
         address=body.address,

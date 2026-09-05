@@ -4,8 +4,10 @@ from contextlib import asynccontextmanager, suppress
 from uuid import UUID
 
 from jose import JWTError
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
+from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.v1.router import api_router
@@ -38,6 +40,19 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse()
+
+
+@app.exception_handler(IntegrityError)
+@app.exception_handler(DataError)
+async def db_constraint_error_handler(
+    request: Request, exc: IntegrityError | DataError
+) -> JSONResponse:
+    """A safety net, not the primary defense: routes should validate before
+    writing (see e.g. services/drop_lifecycle.create_drop), but this keeps a
+    constraint an app check missed from leaking a raw 500 + DB traceback."""
+    return JSONResponse(
+        status_code=422, content={"detail": "The request could not be saved."}
+    )
 
 
 def _user_topics(db: Session, user_id: UUID) -> list[str] | None:
