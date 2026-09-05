@@ -5,12 +5,14 @@ from uuid import UUID
 
 from jose import JWTError
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.v1.router import api_router
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.session import SessionLocal
 from app.models.businesses import Business
@@ -33,6 +35,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="DropBy API", lifespan=lifespan)
+
+# Without this, every fetch() from the dashboard (a different origin —
+# a separate Vite dev server port, or a separate production domain) is
+# blocked by the browser before it even reaches a route.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_allowed_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(api_router, prefix="/api/v1")
 
