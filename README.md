@@ -23,9 +23,22 @@ demo.cmd
 ```
 
 The browser-only sandbox needs no Docker, database, Python, Node, or install.
-It simulates proximity reveals, protected response fields, squad formation, and
-the real-time event stream. It is a product demonstration, not an integration
-test of the server.
+It uses an interactive Melbourne street map with real metre-scaled proximity
+rings and five fictional Drops across food, entertainment, nightlife, and
+wellness. Each marker independently changes from hidden → detected → revealed
+→ discovered, and the page simulates protected response fields, squad
+formation, and the real-time event stream. An internet connection is only
+needed to load the map library and street tiles. It is a product demonstration,
+not an integration test of the server.
+
+Try the complete flow:
+
+1. Pan/zoom and click the map to move, or press **Detect · 500 m**.
+   Click any Drop marker to inspect what is currently revealed.
+2. Press **Reveal · 150 m** to expose the category and rarity.
+3. Press **Discover · 50 m** to expose the venue and full offer.
+4. Create a squad and add members to move through 2/4, 3/4, and 4/4.
+5. Compare the API response and real-time event stream after each action.
 
 On Windows, install and open Docker Desktop, then run one command from the
 repository root when you want to test the real backend:
@@ -61,3 +74,30 @@ seeded walkthrough.
 
 The business, redemption, gamification, notifications, mobile, and dashboard
 workstreams remain owned separately and still contain scaffold placeholders.
+
+## Workstream 1 sign-off
+
+Implemented for the real-time discovery owner:
+
+- authenticated WebSockets and Redis fan-out
+- PostGIS proximity and Detect → Reveal → Discover field gating
+- Drop activation, atomic capacity enforcement, countdowns, and expiry
+- live squad creation/join/leave and 2/4 → 3/4 → 4/4 broadcasts
+- Drops, Groups, GroupMembers, users/onboarding, and Alembic migration
+- JWT registration/login and protected discovery/group endpoints
+- Docker startup/migration wiring and repeatable demo seed
+
+Still required in this workstream before production sign-off:
+
+- add the Drop-creation lifecycle method that the business API can call
+- run the Docker stack end-to-end and test simultaneous squad joins against a
+  real PostgreSQL/Redis instance
+- choose a deployment provider, configure production secrets/domain, and run
+  the migration in that environment
+
+Cross-team integration still required, but not owned by this workstream:
+
+- connect the teammate-owned business Drop-creation route to the lifecycle
+  method
+- connect a mobile client to the REST/WebSocket contracts; the browser sandbox
+  intentionally uses simulated state

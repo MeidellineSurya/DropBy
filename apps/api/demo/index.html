@@ -8,6 +8,10 @@
       content="Local DropBy discovery-engine interaction sandbox"
     />
     <title>DropBy Discovery Sandbox</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
     <style>
       :root {
         color-scheme: dark;
@@ -124,48 +128,36 @@
         overflow: hidden;
         border-radius: 16px;
         background-color: #121821;
-        background-image:
-          linear-gradient(30deg, transparent 47%, #28303d 48% 51%, transparent 52%),
-          linear-gradient(118deg, transparent 45%, #202936 46% 50%, transparent 51%),
-          linear-gradient(90deg, transparent 49%, #252e3a 50% 52%, transparent 53%);
-        background-size: 180px 160px, 230px 210px, 280px 100%;
       }
 
-      .map::after {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        content: "";
-        background: linear-gradient(180deg, rgb(6 8 12 / 5%), rgb(6 8 12 / 55%));
+      .leaflet-tile-pane {
+        filter: saturate(0.82) contrast(1.06);
       }
 
-      .ring {
-        position: absolute;
-        z-index: 1;
-        top: 47%;
-        left: 50%;
-        border: 1px dashed rgb(217 255 67 / 35%);
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
+      .leaflet-control-attribution {
+        color: #697485 !important;
+        background: rgb(8 11 16 / 82%) !important;
       }
 
-      .ring.detect { width: 82%; aspect-ratio: 1; }
-      .ring.reveal { width: 48%; aspect-ratio: 1; border-color: rgb(155 135 255 / 55%); }
-      .ring.discover { width: 22%; aspect-ratio: 1; border-color: rgb(82 230 216 / 70%); }
+      .leaflet-control-attribution a { color: #aeb8c7 !important; }
+      .leaflet-control-zoom a {
+        border-color: #313a48 !important;
+        color: var(--text) !important;
+        background: #11161e !important;
+      }
 
-      .drop-pin, .user-pin {
-        position: absolute;
-        z-index: 4;
+      .drop-marker, .user-marker {
+        border: 0;
+        background: transparent;
+      }
+
+      .drop-marker-core, .user-marker-core {
         display: grid;
         place-items: center;
         border-radius: 50%;
-        transform: translate(-50%, -50%);
-        transition: left 420ms ease, top 420ms ease, opacity 220ms ease;
       }
 
-      .drop-pin {
-        top: 47%;
-        left: 50%;
+      .drop-marker-core {
         width: 50px;
         height: 50px;
         border: 8px solid rgb(217 255 67 / 15%);
@@ -176,11 +168,24 @@
         box-shadow: 0 0 0 12px rgb(217 255 67 / 8%), 0 0 40px rgb(217 255 67 / 25%);
       }
 
-      .drop-pin.hidden { opacity: 0.28; filter: grayscale(1); }
+      .drop-marker-core.hidden { opacity: 0.34; filter: grayscale(1); }
 
-      .user-pin {
-        top: 88%;
-        left: 50%;
+      .drop-marker-core.example {
+        width: 42px;
+        height: 42px;
+        border-width: 6px;
+        font-size: 0.72rem;
+      }
+
+      .drop-marker-core.detect { background: var(--violet); }
+      .drop-marker-core.reveal { background: var(--cyan); }
+      .drop-marker-core.discover { background: var(--lime); }
+
+      .drop-popup { min-width: 170px; color: #17202b; }
+      .drop-popup strong { display: block; margin-bottom: 3px; font-size: 0.9rem; }
+      .drop-popup span { display: block; color: #536071; font-size: 0.78rem; line-height: 1.4; }
+
+      .user-marker-core {
         width: 22px;
         height: 22px;
         border: 5px solid white;
@@ -190,7 +195,7 @@
 
       .stage-card {
         position: absolute;
-        z-index: 6;
+        z-index: 1000;
         top: 16px;
         right: 16px;
         left: 16px;
@@ -209,11 +214,26 @@
       .stage-copy { margin-top: 2px; color: var(--muted); font-size: 0.82rem; }
       .distance { color: var(--lime); font: 800 1.25rem/1 ui-monospace, monospace; }
 
+      .map-tip {
+        position: absolute;
+        z-index: 1000;
+        top: 96px;
+        left: 16px;
+        padding: 7px 10px;
+        border: 1px solid rgb(255 255 255 / 12%);
+        border-radius: 999px;
+        color: #d3dae4;
+        background: rgb(10 13 18 / 82%);
+        font-size: 0.75rem;
+        pointer-events: none;
+        backdrop-filter: blur(10px);
+      }
+
       .legend {
         position: absolute;
-        z-index: 6;
+        z-index: 1000;
         right: 16px;
-        bottom: 16px;
+        bottom: 44px;
         left: 16px;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -376,7 +396,7 @@
 
       <div class="layout">
         <section class="panel map-panel" aria-label="Proximity map simulation">
-          <div class="map">
+          <div class="map" id="map">
             <div class="stage-card">
               <div>
                 <div class="stage-name" id="stageName">Out of range</div>
@@ -384,11 +404,7 @@
               </div>
               <div class="distance" id="distanceReadout">850 m</div>
             </div>
-            <div class="ring detect"></div>
-            <div class="ring reveal"></div>
-            <div class="ring discover"></div>
-            <div class="drop-pin hidden" id="dropPin" aria-label="Hidden Drop">?</div>
-            <div class="user-pin" id="userPin" aria-label="Your simulated location"></div>
+            <div class="map-tip">5 demo Drops · click map to move</div>
             <div class="legend" aria-hidden="true">
               <span>Detect · 700 m</span>
               <span>Reveal · 180 m</span>
@@ -474,11 +490,212 @@
       </div>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      const state = { distance: 850, discovered: false, stage: "outside", squadCount: 0 };
+      const state = {
+        distance: 850,
+        discovered: false,
+        stage: "outside",
+        squadCount: 0,
+        userPoint: null,
+      };
       const stageOrder = ["outside", "detect", "reveal", "discover"];
       const $ = (selector) => document.querySelector(selector);
       const $$ = (selector) => [...document.querySelectorAll(selector)];
+      const dropLocation = [-37.8119, 144.9674];
+      const exampleDrops = [
+        {
+          id: "drop_mel_002",
+          coordinates: [-37.8097, 144.9648],
+          title: "Rooftop Cinema Drop",
+          offer: "Two-for-one twilight tickets",
+          business: "Skyline Cinema",
+          address: "Swanston Street, Melbourne",
+          category: "activity_entertainment",
+          rarity: "epic",
+          label: "2×",
+        },
+        {
+          id: "drop_mel_003",
+          coordinates: [-37.815, 144.97],
+          title: "Matcha Break Drop",
+          offer: "Free ceremonial matcha upgrade",
+          business: "Midori Corner",
+          address: "Russell Street, Melbourne",
+          category: "food_dining",
+          rarity: "common",
+          label: "+",
+        },
+        {
+          id: "drop_mel_004",
+          coordinates: [-37.813, 144.9605],
+          title: "Hidden Jazz Session",
+          offer: "Secret set with complimentary entry",
+          business: "Basement 27",
+          address: "Hardware Lane, Melbourne",
+          category: "nightlife",
+          rarity: "legendary",
+          label: "VIP",
+        },
+        {
+          id: "drop_mel_005",
+          coordinates: [-37.8078, 144.971],
+          title: "Recovery Sauna Drop",
+          offer: "30-minute recovery session",
+          business: "Reset Studio",
+          address: "Lonsdale Street, Melbourne",
+          category: "wellness_beauty",
+          rarity: "uncommon",
+          label: "30",
+        },
+      ];
+      const exampleUnlocks = new Set();
+      let map = null;
+      let dropMarker = null;
+      let userMarker = null;
+      let exampleMarkers = [];
+
+      function dropIcon(stage, discoveredLabel = "40%", compact = false) {
+        const label = stage === "discover" ? discoveredLabel : stage === "reveal" ? "R" : "?";
+        const hidden = stage === "outside" ? " hidden" : "";
+        const compactClass = compact ? " example" : "";
+        return L.divIcon({
+          className: "drop-marker",
+          html: `<div class="drop-marker-core ${stage}${compactClass}${hidden}" aria-label="Drop marker">${label}</div>`,
+          iconSize: compact ? [42, 42] : [50, 50],
+          iconAnchor: compact ? [21, 21] : [25, 25],
+        });
+      }
+
+      function userLocation(distance) {
+        return [dropLocation[0] + distance / 111320, dropLocation[1]];
+      }
+
+      function currentUserLocation() {
+        return state.userPoint
+          ? [state.userPoint.lat, state.userPoint.lng]
+          : userLocation(state.distance);
+      }
+
+      function distanceBetween(first, second) {
+        const earthRadius = 6371000;
+        const toRadians = (degrees) => (degrees * Math.PI) / 180;
+        const latitudeDelta = toRadians(second[0] - first[0]);
+        const longitudeDelta = toRadians(second[1] - first[1]);
+        const firstLatitude = toRadians(first[0]);
+        const secondLatitude = toRadians(second[0]);
+        const a =
+          Math.sin(latitudeDelta / 2) ** 2 +
+          Math.cos(firstLatitude) *
+            Math.cos(secondLatitude) *
+            Math.sin(longitudeDelta / 2) ** 2;
+        return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function exampleStage(drop) {
+        const distance = distanceBetween(currentUserLocation(), drop.coordinates);
+        if (distance <= 60) exampleUnlocks.add(drop.id);
+        if (exampleUnlocks.has(drop.id)) return "discover";
+        if (distance <= 180) return "reveal";
+        if (distance <= 700) return "detect";
+        return "outside";
+      }
+
+      function examplePopup(drop, stage, distance) {
+        if (stage === "outside") {
+          return `<div class="drop-popup"><strong>Out-of-range Drop</strong><span>${distance} m away</span></div>`;
+        }
+        if (stage === "detect") {
+          const signal = ["rare", "epic", "legendary"].includes(drop.rarity)
+            ? `${drop.rarity} signal`
+            : "mystery signal";
+          return `<div class="drop-popup"><strong>${signal}</strong><span>${distance} m away · move closer to reveal</span></div>`;
+        }
+        if (stage === "reveal") {
+          return `<div class="drop-popup"><strong>${drop.category.replaceAll("_", " ")}</strong><span>${drop.rarity} · ${distance} m away</span></div>`;
+        }
+        return `<div class="drop-popup"><strong>${drop.title}</strong><span>${drop.offer}</span><span>${drop.business} · ${distance} m away</span></div>`;
+      }
+
+      function initializeMap() {
+        if (typeof L === "undefined") {
+          $("#map").style.background = "#161d27";
+          $("#stageCopy").textContent = "Map tiles need an internet connection; the controls still work.";
+          return;
+        }
+
+        const initialCentre = [dropLocation[0] + 425 / 111320, dropLocation[1]];
+        map = L.map("map", { zoomControl: false }).setView(initialCentre, 15);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+          maxZoom: 19,
+          subdomains: "abcd",
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        }).addTo(map);
+        L.control.zoom({ position: "bottomleft" }).addTo(map);
+
+        L.circle(dropLocation, {
+          radius: 700,
+          color: "#d9ff43",
+          opacity: 0.44,
+          weight: 1.5,
+          dashArray: "7 8",
+          fillColor: "#d9ff43",
+          fillOpacity: 0.025,
+          interactive: false,
+        }).addTo(map);
+        L.circle(dropLocation, {
+          radius: 180,
+          color: "#9b87ff",
+          opacity: 0.72,
+          weight: 2,
+          fillColor: "#9b87ff",
+          fillOpacity: 0.045,
+          interactive: false,
+        }).addTo(map);
+        L.circle(dropLocation, {
+          radius: 60,
+          color: "#52e6d8",
+          opacity: 0.9,
+          weight: 2,
+          fillColor: "#52e6d8",
+          fillOpacity: 0.09,
+          interactive: false,
+        }).addTo(map);
+
+        dropMarker = L.marker(dropLocation, {
+          icon: dropIcon("outside"),
+          zIndexOffset: 500,
+        }).addTo(map);
+        userMarker = L.marker(userLocation(state.distance), {
+          icon: L.divIcon({
+            className: "user-marker",
+            html: '<div class="user-marker-core" aria-label="Your simulated location"></div>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+          }),
+          zIndexOffset: 600,
+        }).addTo(map);
+
+        exampleMarkers = exampleDrops.map((drop) => {
+          const stage = exampleStage(drop);
+          const distance = Math.round(
+            distanceBetween(currentUserLocation(), drop.coordinates),
+          );
+          return L.marker(drop.coordinates, {
+            icon: dropIcon(stage, drop.label, true),
+            zIndexOffset: 450,
+          })
+            .addTo(map)
+            .bindPopup(examplePopup(drop, stage, distance));
+        });
+
+        map.on("click", (event) => {
+          state.userPoint = event.latlng;
+          state.distance = Math.round(map.distance(event.latlng, dropLocation));
+          render();
+        });
+      }
 
       function currentStage() {
         if (state.discovered || state.distance <= 60) return "discover";
@@ -494,21 +711,21 @@
       }
 
       function responsePayload() {
-        if (state.stage === "outside") return { drops: [] };
-        const drop = {
+        const visibleDrops = [];
+        const primaryDrop = {
           id: "drop_mel_001",
           stage: state.stage,
           distance_m: roundedDistance(),
         };
         if (state.stage === "detect") {
-          drop.rarity = "rare";
+          primaryDrop.rarity = "rare";
         }
         if (state.stage === "reveal") {
-          drop.rarity = "rare";
-          drop.category = "food_dining";
+          primaryDrop.rarity = "rare";
+          primaryDrop.category = "food_dining";
         }
         if (state.stage === "discover") {
-          Object.assign(drop, {
+          Object.assign(primaryDrop, {
             rarity: "rare",
             category: "food_dining",
             title: "Rare Korean BBQ Drop",
@@ -521,7 +738,48 @@
             can_assemble: true,
           });
         }
-        return { drops: [drop] };
+        if (state.stage !== "outside") visibleDrops.push(primaryDrop);
+
+        exampleDrops.forEach((example) => {
+          const distance = Math.round(
+            distanceBetween(currentUserLocation(), example.coordinates),
+          );
+          const stage = exampleStage(example);
+          if (stage === "outside") return;
+          const payload = {
+            id: example.id,
+            stage,
+            distance_m: distance,
+          };
+          if (
+            stage === "detect" &&
+            ["rare", "epic", "legendary"].includes(example.rarity)
+          ) {
+            payload.rarity = example.rarity;
+          }
+          if (stage === "reveal") {
+            payload.rarity = example.rarity;
+            payload.category = example.category;
+          }
+          if (stage === "discover") {
+            Object.assign(payload, {
+              rarity: example.rarity,
+              category: example.category,
+              title: example.title,
+              description: example.offer,
+              business_name: example.business,
+              address: example.address,
+              drop_type: "squad",
+              min_group_size: 2,
+              max_group_size: 4,
+              can_assemble: true,
+            });
+          }
+          visibleDrops.push(payload);
+        });
+
+        visibleDrops.sort((first, second) => first.distance_m - second.distance_m);
+        return { drops: visibleDrops };
       }
 
       function addEvent(type, summary) {
@@ -552,13 +810,21 @@
         $("#distanceSlider").value = state.distance;
         $("#payload").textContent = JSON.stringify(responsePayload(), null, 2);
 
-        const dropPin = $("#dropPin");
-        dropPin.classList.toggle("hidden", state.stage === "outside");
-        dropPin.textContent = state.stage === "discover" ? "40%" : state.stage === "reveal" ? "R" : "?";
-
-        const ratio = Math.min(state.distance, 850) / 850;
-        $("#userPin").style.top = `${47 + ratio * 41}%`;
-        $("#userPin").style.left = `${50 + Math.sin(ratio * 4) * 16}%`;
+        if (dropMarker && userMarker) {
+          dropMarker.setIcon(dropIcon(state.stage));
+          userMarker.setLatLng(state.userPoint || userLocation(state.distance));
+          exampleMarkers.forEach((marker, index) => {
+            const example = exampleDrops[index];
+            const exampleDistance = Math.round(
+              distanceBetween(currentUserLocation(), example.coordinates),
+            );
+            const exampleRevealStage = exampleStage(example);
+            marker.setIcon(dropIcon(exampleRevealStage, example.label, true));
+            marker.setPopupContent(
+              examplePopup(example, exampleRevealStage, exampleDistance),
+            );
+          });
+        }
 
         const activeIndex = stageOrder.indexOf(state.stage);
         $$(".step").forEach((step, index) => {
@@ -606,17 +872,26 @@
       $$("[data-distance]").forEach((button) => {
         button.addEventListener("click", () => {
           state.distance = Number(button.dataset.distance);
+          state.userPoint = null;
           render();
         });
       });
 
       $("#distanceSlider").addEventListener("input", (event) => {
         state.distance = Number(event.target.value);
+        state.userPoint = null;
         render();
       });
 
       $("#resetDiscovery").addEventListener("click", () => {
-        Object.assign(state, { distance: 850, discovered: false, stage: "outside", squadCount: 0 });
+        exampleUnlocks.clear();
+        Object.assign(state, {
+          distance: 850,
+          discovered: false,
+          stage: "outside",
+          squadCount: 0,
+          userPoint: null,
+        });
         renderSquad();
         addEvent("simulation.reset", "Discovery and squad state cleared");
       });
@@ -640,6 +915,7 @@
         $("#eventList").innerHTML = '<li class="empty">Event stream cleared.</li>';
       });
 
+      initializeMap();
       renderSquad();
     </script>
   </body>
