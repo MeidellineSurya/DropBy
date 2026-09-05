@@ -28,7 +28,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new ApiError(response.status, body.detail ?? `Request to ${path} failed`);
+    // FastAPI's validation errors (422s) send `detail` as an array of
+    // {msg, loc, ...} objects, not a string — rendering that array
+    // directly showed the literal text "[object Object]".
+    const detail = body?.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((item) => item.msg ?? JSON.stringify(item)).join(", ")
+      : (detail ?? `Request to ${path} failed`);
+    throw new ApiError(response.status, message);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
