@@ -36,7 +36,7 @@ if errorlevel 1 (
 
 echo.
 echo DropBy is ready at http://localhost:8000/docs
-echo Login: explorer@dropby.test / dropby12345
+echo Login: explorer@dropbyapp.com / dropby12345
 echo.
 echo Useful commands:
 echo   dev.cmd verify

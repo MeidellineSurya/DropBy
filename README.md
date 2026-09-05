@@ -7,7 +7,7 @@ Location-based social deal discovery — "Pokémon GO, but you catch experiences
 ## Structure
 
 - `apps/api` — FastAPI backend (modular monolith: discovery/real-time, business/supply, redemption+gamification+notifications modules), PostgreSQL+PostGIS, Redis, Celery.
-- `apps/mobile` — React Native consumer app (JS-layer skeleton; native `ios`/`android` projects not yet generated — see `apps/mobile/README.md`).
+- `apps/mobile` — working Expo/React Native demo client for the discovery backend.
 - `apps/dashboard` — React + Vite business dashboard.
 - `packages/ws-contracts` — frozen Pydantic WebSocket event/DTO contracts, the source of truth for `packages/shared-types`.
 - `packages/shared-types` — TypeScript types mirroring `ws-contracts`, for both frontends.
@@ -23,22 +23,26 @@ demo.cmd
 ```
 
 The browser-only sandbox needs no Docker, database, Python, Node, or install.
-It uses an interactive Melbourne street map with real metre-scaled proximity
-rings and five fictional Drops across food, entertainment, nightlife, and
-wellness. Each marker independently changes from hidden → detected → revealed
-→ discovered, and the page simulates protected response fields, squad
-formation, and the real-time event stream. An internet connection is only
-needed to load the map library and street tiles. It is a product demonstration,
-not an integration test of the server.
+It mirrors the Expo app as separate mobile screens for sign-in, onboarding,
+map discovery, Drop details, squad assembly, profile, and an engine lab. The
+Melbourne map includes five fictional Drops that independently progress from
+Detect → Reveal. Every active Drop is detectable: Detect shows its rarity,
+specific type, and people needed. Reveal unlocks the restaurant, full offer,
+and exact location at 100 m. The map displays anonymous signal points and a
+100 m Reveal zone around each Drop. The separate engine-lab screen
+preserves protected-response, lifecycle, capacity, and real-time event tools
+without crowding the product screens. An internet connection is only needed
+for the map library and street tiles. It is a product demonstration, not an
+integration test of the server.
 
 Try the complete flow:
 
-1. Pan/zoom and click the map to move, or press **Detect · 500 m**.
-   Click any Drop marker to inspect what is currently revealed.
-2. Press **Reveal · 150 m** to expose the category and rarity.
-3. Press **Discover · 50 m** to expose the venue and full offer.
+1. Sign in with the filled demo account, or create an account to see onboarding.
+2. On **Nearby Drops**, press **Detect** and **Reveal**.
+3. Open a signal card to see the progressive Drop-details screen.
 4. Create a squad and add members to move through 2/4, 3/4, and 4/4.
-5. Compare the API response and real-time event stream after each action.
+5. Open **Profile** from the avatar, then open **Discovery engine lab** for the
+   lifecycle, capacity, protected payload, and real-time event tools.
 
 On Windows, install and open Docker Desktop, then run one command from the
 repository root when you want to test the real backend:
@@ -68,12 +72,29 @@ development dependencies in `apps/api/requirements-dev.txt`; Docker installs
 them during the first build. Manual and non-Docker setup is documented in
 [`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md).
 
-Mobile app native scaffolding still needs to be generated — see `apps/mobile/README.md`.
+To run the real client on a phone, start the backend in one Command Prompt and
+Expo in another:
+
+```bat
+dev.cmd
+mobile.cmd
+```
+
+Install Expo Go on the phone, keep it on the same Wi-Fi network, then scan the
+QR code shown by `mobile.cmd`. The launcher detects this computer's LAN address
+and creates the mobile `.env` automatically. See
+[`apps/mobile/README.md`](apps/mobile/README.md) for troubleshooting and the
+two-phone live squad walkthrough.
+
+While the discovery screen is open, the mobile client continuously watches the
+device location and refreshes nearby Drops after roughly 10 metres of movement
+or every few seconds on supported platforms. Selecting a Melbourne demo
+position pauses live GPS until continuous tracking is enabled again.
 
 ## Status
 
 The real-time discovery workstream is implemented: JWT/onboarding, PostGIS
-Detect/Reveal/Discover, authenticated WebSockets, Drop lifecycle jobs, squad
+Detect/Reveal, authenticated WebSockets, Drop lifecycle jobs, squad
 formation, capacity enforcement, migrations, and Docker wiring. See
 [`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md) for setup and a
 seeded walkthrough.
@@ -86,7 +107,7 @@ workstreams remain owned separately and still contain scaffold placeholders.
 Implemented for the real-time discovery owner:
 
 - authenticated WebSockets and Redis fan-out
-- PostGIS proximity and Detect → Reveal → Discover field gating
+- PostGIS proximity and Detect → Reveal field gating
 - Drop activation, atomic capacity enforcement, countdowns, and expiry
 - validated Drop creation with draft/scheduled/active lifecycle staging
 - live squad creation/join/leave and 2/4 → 3/4 → 4/4 broadcasts
@@ -126,5 +147,6 @@ Cross-team integration still required, but not owned by this workstream:
 
 - connect the teammate-owned business Drop-creation route to the lifecycle
   method
-- connect a mobile client to the REST/WebSocket contracts; the browser sandbox
-  intentionally uses simulated state
+- the included Expo client now exercises the REST and authenticated WebSocket
+  contracts; teammate-owned production mobile polish and redemption remain
+  separate workstreams

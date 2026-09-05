@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="DropBy mobile product demo" />
+    <title>DropBy Mobile Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #090b0f;
+        --surface: #131821;
+        --raised: #1a202b;
+        --border: #2b3442;
+        --text: #f5f7fb;
+        --muted: #98a3b3;
+        --lime: #d9ff43;
+        --cyan: #52e6d8;
+        --violet: #9b87ff;
+        --danger: #ff786e;
+        --black: #0b0d09;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { min-width: 320px; min-height: 100%; }
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        padding: 22px;
+        place-items: start center;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 18% 8%, rgb(155 135 255 / 20%), transparent 28%),
+          radial-gradient(circle at 85% 88%, rgb(217 255 67 / 10%), transparent 25%),
+          #05070a;
+        overflow: hidden;
+      }
+
+      button, input { font: inherit; }
+      button { color: inherit; }
+      button:focus-visible, input:focus-visible { outline: 3px solid rgb(82 230 216 / 45%); outline-offset: 2px; }
+      button:disabled { cursor: not-allowed; opacity: 0.42; }
+
+      .phone {
+        position: relative;
+        width: min(430px, 100%);
+        height: min(900px, calc(100vh - 44px));
+        overflow: hidden;
+        border: 1px solid #303846;
+        border-radius: 38px;
+        background: var(--bg);
+        box-shadow: 0 40px 100px rgb(0 0 0 / 65%), 0 0 0 8px #0e1218;
+      }
+
+      .screen {
+        display: none;
+        height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: var(--bg);
+        scrollbar-width: none;
+      }
+
+      .screen::-webkit-scrollbar { display: none; }
+      .screen.active { display: block; animation: screen-in 180ms ease-out; }
+      @keyframes screen-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+
+      .auth-screen, .onboarding-screen {
+        padding: max(30px, env(safe-area-inset-top)) 24px 34px;
+      }
+
+      .auth-screen { align-content: center; }
+      .auth-screen.active { display: grid; }
+      .brand-mark {
+        display: grid;
+        width: 54px;
+        height: 54px;
+        margin-bottom: 24px;
+        place-items: center;
+        border-radius: 16px;
+        color: var(--black);
+        background: var(--lime);
+        font-size: 1.75rem;
+        font-weight: 900;
+        transform: rotate(-5deg);
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--violet);
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1, h2, h3, p { margin-top: 0; }
+      .auth-title { margin: 8px 0 10px; font-size: 2.25rem; line-height: 1.04; letter-spacing: -0.04em; }
+      .subtitle { margin-bottom: 26px; color: var(--muted); font-size: 1rem; line-height: 1.5; }
+      .card { border: 1px solid var(--border); border-radius: 22px; background: var(--surface); }
+      .auth-card { padding: 18px; }
+      .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 12px; background: var(--bg); }
+      .tab { min-height: 42px; border: 0; border-radius: 9px; color: var(--muted); background: transparent; cursor: pointer; font-size: 0.9rem; font-weight: 700; }
+      .tab.active { color: var(--text); background: var(--raised); }
+      .input {
+        width: 100%;
+        min-height: 50px;
+        margin-bottom: 10px;
+        padding: 0 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        background: var(--bg);
+        font-size: 1rem;
+      }
+
+      .primary, .secondary, .danger-button {
+        width: 100%;
+        min-height: 50px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 900;
+      }
+
+      .primary { border: 1px solid var(--lime); color: var(--black); background: var(--lime); }
+      .secondary { border: 1px solid var(--border); color: var(--text); background: var(--surface); }
+      .danger-button { border: 1px solid var(--danger); color: var(--danger); background: transparent; }
+      .quiet-button { border: 0; color: var(--muted); background: transparent; cursor: pointer; }
+      .auth-error { min-height: 20px; margin: 2px 0 8px; color: var(--danger); font-size: 0.85rem; }
+      .guided { margin-top: 14px; color: var(--muted); font-size: 0.82rem; text-align: center; }
+      .guided button { color: var(--lime); }
+
+      .onboarding-title { margin: 8px 0 10px; font-size: 2.1rem; line-height: 1.08; letter-spacing: -0.04em; }
+      .field-label { display: block; margin: 18px 0 9px; color: var(--text); font-size: 0.9rem; font-weight: 800; }
+      .interest-group { margin-top: 15px; }
+      .group-title { margin-bottom: 8px; color: var(--muted); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .chip { min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--surface); cursor: pointer; }
+      .chip[aria-pressed="true"] { border-color: var(--violet); color: var(--text); background: #28233e; }
+      .permission-card { display: flex; gap: 13px; margin: 25px 0 16px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+      .permission-icon { color: var(--lime); font-size: 0.8rem; font-weight: 900; }
+      .permission-title { margin-bottom: 4px; font-weight: 800; }
+      .permission-copy { color: var(--muted); font-size: 0.86rem; line-height: 1.45; }
+
+      .app-header {
+        position: sticky;
+        z-index: 1200;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 76px;
+        padding: max(17px, env(safe-area-inset-top)) 20px 13px;
+        background: linear-gradient(180deg, #090b0f 78%, rgb(9 11 15 / 88%) 90%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .header-title { margin: 3px 0 0; font-size: 1.85rem; line-height: 1; letter-spacing: -0.04em; }
+      .greeting { margin: 5px 0 0; color: var(--muted); font-size: 0.85rem; }
+      .avatar { display: grid; width: 42px; height: 42px; place-items: center; border: 0; border-radius: 50%; color: var(--black); background: var(--lime); cursor: pointer; font-weight: 900; }
+      .back { min-width: 40px; min-height: 40px; border: 0; color: var(--text); background: transparent; cursor: pointer; font-size: 1.75rem; text-align: left; }
+      .nav-title { margin: 0; font-size: 1rem; }
+      .header-spacer { width: 40px; }
+      .content { padding: 0 20px 36px; }
+
+      .connection { display: flex; align-items: center; gap: 7px; margin: 2px 0 13px; color: var(--muted); font-size: 0.79rem; }
+      .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 11px rgb(82 230 216 / 65%); }
+      .host { margin-left: auto; font-size: 0.7rem; }
+      .map-frame { position: relative; height: 300px; margin: 0 -6px; overflow: hidden; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); }
+      #mobileMap { width: 100%; height: 100%; }
+      .map-legend { position: absolute; z-index: 500; right: 9px; bottom: 9px; display: grid; gap: 5px; padding: 8px 10px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 10px; color: var(--text); background: rgb(8 11 16 / 88%); font-size: 0.66rem; pointer-events: none; }
+      .legend-row { display: flex; align-items: center; gap: 6px; }
+      .legend-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--violet); }
+      .legend-dot.revealed { background: var(--lime); }
+      .legend-ring { width: 12px; height: 12px; border: 1px solid var(--violet); border-radius: 50%; background: rgb(155 135 255 / 12%); }
+      .leaflet-tile-pane { filter: saturate(0.82) contrast(1.06); }
+      .leaflet-control-attribution { color: #687383 !important; background: rgb(8 11 16 / 82%) !important; }
+      .leaflet-control-attribution a { color: #aeb8c7 !important; }
+      .drop-pin, .user-pin { border: 0; background: transparent; }
+      .drop-pin-core, .user-pin-core { display: grid; place-items: center; }
+      .drop-pin-core { display: flex; width: max-content; max-width: 138px; min-height: 34px; align-items: center; gap: 6px; padding: 4px 9px 4px 5px; overflow: hidden; border: 2px solid rgb(255 255 255 / 35%); border-radius: 999px; color: var(--black); background: var(--lime); box-shadow: 0 5px 18px rgb(0 0 0 / 50%); font-size: 0.68rem; font-weight: 900; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+      .pin-symbol { display: grid; width: 23px; height: 23px; flex: 0 0 23px; place-items: center; border-radius: 50%; background: rgb(0 0 0 / 16%); font-size: 0.9rem; }
+      .pin-symbol.store-logo { color: white; background: #111722; font: 900 0.57rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.02em; }
+      .pin-type { overflow: hidden; text-overflow: ellipsis; text-transform: capitalize; }
+      .drop-pin-core.detect { background: var(--violet); }
+      .drop-pin-core.reveal { background: var(--lime); }
+      .drop-pin-core.outside { opacity: 0.28; filter: grayscale(1); }
+      .user-pin-core { width: 21px; height: 21px; border: 5px solid white; border-radius: 50%; background: #367dff; box-shadow: 0 4px 16px #000; }
+      .location-button { margin-top: 14px; }
+      .demo-label { margin: 20px 0 9px; color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.11em; }
+      .demo-positions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .demo-positions button { min-height: 43px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: var(--surface); cursor: pointer; font-size: 0.82rem; font-weight: 700; }
+      .demo-positions button.active { border-color: var(--lime); color: var(--lime); }
+      .join-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 14px; padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+      .join-row .input { min-width: 0; margin: 0; min-height: 42px; }
+      .join-row button { min-width: 94px; border: 0; border-radius: 9px; color: var(--black); background: var(--lime); font-size: 0.82rem; font-weight: 900; cursor: pointer; }
+      .section-row { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin: 23px 0 10px; }
+      .section-row h2 { margin: 0; font-size: 1.25rem; }
+      .section-hint { color: var(--muted); font-size: 0.75rem; }
+      .signal-list { display: grid; gap: 9px; }
+      .empty { padding: 17px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; text-align: center; }
+      .signal-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; align-items: center; width: 100%; padding: 13px; border: 1px solid var(--border); border-radius: 16px; color: var(--text); background: var(--surface); cursor: pointer; text-align: left; }
+      .signal-copy { display: grid; min-width: 0; }
+      .signal-orb { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; color: var(--black); background: var(--violet); font-size: 0.76rem; font-weight: 900; }
+      .signal-card[data-stage="reveal"] .signal-orb { background: var(--lime); }
+      .signal-stage { display: block; color: var(--muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+      .signal-title { display: block; margin-top: 3px; overflow: hidden; font-size: 0.98rem; font-weight: 800; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
+      .signal-meta { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 0.77rem; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
+      .signal-distance { color: var(--lime); font: 800 0.72rem/1 ui-monospace, monospace; }
+
+      .detail-content { padding: 12px 20px 40px; }
+      .stage-badge { display: inline-flex; min-height: 30px; align-items: center; padding: 0 13px; border-radius: 999px; color: var(--black); background: var(--violet); font-size: 0.7rem; font-weight: 900; letter-spacing: 0.08em; }
+      .stage-badge.reveal { background: var(--lime); }
+      .detail-distance { margin: 18px 0 0; color: var(--muted); font-size: 0.84rem; }
+      .detail-title { margin: 5px 0 9px; font-size: 2rem; line-height: 1.08; letter-spacing: -0.04em; text-transform: capitalize; }
+      .detail-explanation { color: var(--muted); font-size: 1rem; line-height: 1.5; }
+      .detail-card { margin-top: 23px; padding: 0 16px; }
+      .detail-row { padding: 14px 0; border-bottom: 1px solid var(--border); }
+      .detail-label { color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+      .detail-value { margin-top: 5px; font-size: 0.95rem; line-height: 1.4; text-transform: capitalize; }
+      .detail-value.hidden { color: var(--violet); font-style: italic; }
+      .assemble-card { margin-top: 18px; padding: 18px; border-color: var(--lime); background: var(--raised); }
+      .assemble-card h3 { margin: 6px 0 7px; font-size: 1.25rem; }
+      .assemble-card p { color: var(--muted); font-size: 0.88rem; line-height: 1.45; }
+
+      .squad-content, .profile-content, .engine-content { padding: 10px 20px 40px; }
+      .squad-title { margin: 23px 0 5px; font-size: 2.4rem; letter-spacing: -0.05em; }
+      .progress { height: 10px; margin: 21px 0; overflow: hidden; border-radius: 99px; background: var(--raised); }
+      .progress-fill { width: 0; height: 100%; border-radius: inherit; background: var(--lime); transition: width 180ms ease; }
+      .member-card { padding: 16px; }
+      .member-card h3 { margin-bottom: 8px; }
+      .member { display: flex; min-height: 60px; align-items: center; gap: 11px; border-bottom: 1px solid var(--border); }
+      .member-avatar { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; color: var(--black); background: var(--violet); font-weight: 900; }
+      .member-avatar.open { border: 1px dashed var(--border); color: var(--muted); background: transparent; }
+      .member-copy { flex: 1; }
+      .member-name { font-size: 0.93rem; font-weight: 700; }
+      .member-role { margin-top: 2px; color: var(--muted); font-size: 0.74rem; text-transform: capitalize; }
+      .joined { color: var(--cyan); font-size: 0.72rem; font-weight: 700; }
+      .squad-code { margin-top: 15px; padding: 16px; border-radius: 16px; background: var(--raised); }
+      .code { margin: 7px 0 15px; overflow-wrap: anywhere; font: 0.8rem/1.4 ui-monospace, monospace; }
+      .button-gap { display: grid; gap: 10px; margin-top: 15px; }
+
+      .profile-content { text-align: center; }
+      .profile-avatar { display: grid; width: 76px; height: 76px; margin: 15px auto 12px; place-items: center; border-radius: 50%; color: var(--black); background: var(--lime); font-size: 1.8rem; font-weight: 900; }
+      .profile-name { margin-bottom: 4px; font-size: 1.55rem; }
+      .profile-email { color: var(--muted); font-size: 0.88rem; }
+      .profile-card { margin-top: 24px; padding: 0 16px; text-align: left; }
+      .profile-row { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); }
+      .profile-key { color: var(--muted); font-size: 0.82rem; }
+      .profile-value { max-width: 60%; font-size: 0.82rem; font-weight: 700; text-align: right; text-transform: capitalize; }
+      .profile-section-title { margin: 24px 0 11px; text-align: left; }
+      .profile-content .chips { justify-content: flex-start; }
+
+      .engine-summary { margin-bottom: 14px; padding: 14px; }
+      .engine-summary p { margin: 4px 0 0; color: var(--muted); font-size: 0.83rem; line-height: 1.45; }
+      .engine-card { margin-bottom: 13px; padding: 17px; }
+      .engine-card h3 { margin-bottom: 5px; font-size: 1.05rem; }
+      .engine-card > p { color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
+      .payload { max-height: 260px; margin: 0; padding: 13px; overflow: auto; border: 1px solid #222a36; border-radius: 12px; color: #bceee7; background: #080b10; font: 0.72rem/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+      .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 13px 0; }
+      .metric { padding: 13px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+      .metric-label { color: var(--muted); font-size: 0.72rem; }
+      .metric-value { margin-top: 5px; font-size: 1rem; font-weight: 850; }
+      .capacity-track { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: #252c37; }
+      .capacity-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--lime)); }
+      .engine-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .engine-actions button { min-height: 43px; border: 1px solid var(--border); border-radius: 10px; background: var(--raised); cursor: pointer; font-size: 0.8rem; }
+      .engine-actions .primary { border-color: var(--lime); background: var(--lime); }
+      .event-list { display: grid; gap: 7px; max-height: 280px; margin: 0; padding: 0; overflow: auto; list-style: none; }
+      .event-list li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 10px 11px; border-radius: 10px; background: var(--bg); font: 0.7rem/1.35 ui-monospace, monospace; }
+      .event-type { color: var(--violet); }
+      .event-message { grid-column: 1 / -1; color: #c8d0dc; }
+      .event-time { color: #687383; }
+
+      .toast { position: absolute; z-index: 3000; right: 20px; bottom: 20px; left: 20px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 12px; color: var(--text); background: rgb(26 32 43 / 96%); box-shadow: 0 12px 40px #000; font-size: 0.85rem; text-align: center; transform: translateY(20px); opacity: 0; pointer-events: none; transition: 180ms ease; }
+      .toast.show { transform: none; opacity: 1; }
+
+      @media (max-width: 520px) {
+        body { display: block; padding: 0; }
+        .phone { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="phone" aria-label="DropBy mobile demo">
+      <section class="screen auth-screen active" data-screen="auth" aria-labelledby="authTitle">
+        <div>
+          <div class="brand-mark" aria-hidden="true">D</div>
+          <p class="eyebrow">DropBy</p>
+          <h1 class="auth-title" id="authTitle">Catch experiences nearby.</h1>
+          <p class="subtitle">Sign in to discover live Drops and assemble a squad.</p>
+          <div class="card auth-card">
+            <div class="tabs" aria-label="Account mode">
+              <button class="tab active" data-auth-mode="signin" type="button">Sign in</button>
+              <button class="tab" data-auth-mode="create" type="button">Create account</button>
+            </div>
+            <input class="input" id="authName" aria-label="Display name" placeholder="Display name" value="Melbourne Explorer" hidden />
+            <input class="input" id="authEmail" aria-label="Email" type="email" value="explorer@dropbyapp.com" />
+            <input class="input" id="authPassword" aria-label="Password" type="password" value="dropby12345" />
+            <div class="auth-error" id="authError" aria-live="polite"></div>
+            <button class="primary" id="authSubmit" type="button">Sign in</button>
+          </div>
+          <p class="guided"><button class="quiet-button" id="guidedDemo" type="button">Run the guided product demo</button></p>
+        </div>
+      </section>
+
+      <section class="screen onboarding-screen" data-screen="onboarding" aria-labelledby="onboardingTitle">
+        <p class="eyebrow">Step 1 of 2</p>
+        <h1 class="onboarding-title" id="onboardingTitle">Make discovery yours.</h1>
+        <p class="subtitle">Choose the experiences you would actually leave home for.</p>
+        <label class="field-label" for="onboardingName">Display name</label>
+        <input class="input" id="onboardingName" value="Melbourne Explorer" />
+
+        <div class="interest-group">
+          <div class="group-title">Food &amp; drink</div>
+          <div class="chips">
+            <button class="chip" data-interest="korean_bbq" aria-pressed="true">Korean BBQ</button>
+            <button class="chip" data-interest="japanese_cuisine" aria-pressed="true">Japanese cuisine</button>
+            <button class="chip" data-interest="brunch_cafes" aria-pressed="false">Brunch &amp; cafes</button>
+            <button class="chip" data-interest="desserts" aria-pressed="false">Desserts</button>
+            <button class="chip" data-interest="vegetarian_food" aria-pressed="false">Vegetarian food</button>
+          </div>
+        </div>
+        <div class="interest-group">
+          <div class="group-title">Activities</div>
+          <div class="chips">
+            <button class="chip" data-interest="laser_tag" aria-pressed="true">Laser tag</button>
+            <button class="chip" data-interest="escape_rooms" aria-pressed="false">Escape rooms</button>
+            <button class="chip" data-interest="bowling" aria-pressed="false">Bowling</button>
+            <button class="chip" data-interest="mini_golf" aria-pressed="false">Mini golf</button>
+            <button class="chip" data-interest="arcades" aria-pressed="false">Arcades</button>
+          </div>
+        </div>
+        <div class="interest-group">
+          <div class="group-title">Going out &amp; wellness</div>
+          <div class="chips">
+            <button class="chip" data-interest="live_music" aria-pressed="false">Live music</button>
+            <button class="chip" data-interest="cocktail_bars" aria-pressed="false">Cocktail bars</button>
+            <button class="chip" data-interest="fitness_classes" aria-pressed="false">Fitness classes</button>
+            <button class="chip" data-interest="spa_massage" aria-pressed="false">Spa &amp; massage</button>
+          </div>
+        </div>
+        <div class="permission-card">
+          <span class="permission-icon">GPS</span>
+          <div>
+            <div class="permission-title">Location reveals Drops</div>
+            <div class="permission-copy">DropBy only uses your position while you are actively exploring.</div>
+          </div>
+        </div>
+        <button class="primary" id="finishOnboarding" type="button">Allow location &amp; continue</button>
+      </section>
+
+      <section class="screen" data-screen="discover" aria-labelledby="discoverTitle">
+        <header class="app-header">
+          <div>
+            <p class="eyebrow">Live discovery</p>
+            <h1 class="header-title" id="discoverTitle">Nearby Drops</h1>
+            <p class="greeting" id="greeting">Hey Explorer</p>
+          </div>
+          <button class="avatar" id="openProfile" type="button" aria-label="Open profile">M</button>
+        </header>
+        <div class="content">
+          <div class="connection"><span class="live-dot"></span>Live updates connected <span class="host">demo engine</span></div>
+          <div class="map-frame">
+            <div id="mobileMap" aria-label="Map of nearby Drops"></div>
+            <div class="map-legend" aria-hidden="true">
+              <span class="legend-row"><span class="legend-dot"></span>Detected signal</span>
+              <span class="legend-row"><span class="legend-dot revealed"></span>Revealed Drop</span>
+              <span class="legend-row"><span class="legend-ring"></span>100 m Reveal zone</span>
+            </div>
+          </div>
+          <button class="primary location-button" id="useLocation" type="button">Start continuous walk demo</button>
+          <div class="demo-label">MELBOURNE DEMO POSITIONS</div>
+          <div class="demo-positions">
+            <button data-distance="500" type="button">Detect</button>
+            <button data-distance="100" type="button">Reveal</button>
+          </div>
+          <div class="join-row">
+            <input class="input" id="joinCode" placeholder="Paste a squad ID" />
+            <button id="joinSquad" type="button">Join squad</button>
+          </div>
+          <div class="section-row">
+            <h2 id="signalHeading">No signals yet</h2>
+            <span class="section-hint">Move closer to reveal more</span>
+          </div>
+          <div class="signal-list" id="signalList" aria-live="polite"></div>
+          <div class="button-gap">
+            <button class="secondary" id="openEngine" type="button">Open discovery engine lab</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="detail" aria-labelledby="detailTitle">
+        <header class="app-header">
+          <button class="back" data-back="discover" type="button" aria-label="Back">‹</button>
+          <h1 class="nav-title">Drop</h1>
+          <span class="header-spacer"></span>
+        </header>
+        <div class="detail-content">
+          <span class="stage-badge" id="detailStage">DETECT</span>
+          <p class="detail-distance" id="detailDistance">500 metres away</p>
+          <h2 class="detail-title" id="detailTitle">Mystery Drop</h2>
+          <p class="detail-explanation" id="detailExplanation"></p>
+          <div class="card detail-card" id="detailRows"></div>
+          <div class="card assemble-card" id="assembleCard" hidden>
+            <p class="eyebrow">Assemble</p>
+            <h3>Build a squad of 2–4</h3>
+            <p>Create a live squad, then share its ID so friends can join.</p>
+            <button class="primary" id="createSquad" type="button">Create squad</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="squad" aria-labelledby="squadTitle">
+        <header class="app-header">
+          <button class="back" data-back="discover" type="button" aria-label="Back">‹</button>
+          <h1 class="nav-title">Squad</h1>
+          <span class="header-spacer"></span>
+        </header>
+        <div class="squad-content">
+          <div class="connection"><span class="live-dot"></span>Live squad updates</div>
+          <p class="eyebrow" id="squadEyebrow">Assembling</p>
+          <h2 class="squad-title" id="squadTitle">1/4 explorers</h2>
+          <p class="subtitle" id="squadSubtitle">1 more needed to unlock the Drop.</p>
+          <div class="progress"><div class="progress-fill" id="squadProgress"></div></div>
+          <div class="card member-card">
+            <h3>Members</h3>
+            <div id="memberList"></div>
+          </div>
+          <div class="squad-code">
+            <p class="eyebrow">Squad ID</p>
+            <div class="code" id="squadCode">dropby-demo-squad</div>
+            <button class="primary" id="shareSquad" type="button">Share squad invite</button>
+          </div>
+          <div class="button-gap">
+            <button class="secondary" id="addDemoMember" type="button">Add demo member</button>
+            <button class="danger-button" id="leaveSquad" type="button">Leave squad</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="profile" aria-labelledby="profileTitle">
+        <header class="app-header">
+          <button class="back" data-back="discover" type="button" aria-label="Back">‹</button>
+          <h1 class="nav-title">Profile</h1>
+          <span class="header-spacer"></span>
+        </header>
+        <div class="profile-content">
+          <div class="profile-avatar" id="profileAvatar">M</div>
+          <h2 class="profile-name" id="profileTitle">Melbourne Explorer</h2>
+          <div class="profile-email" id="profileEmail">explorer@dropbyapp.com</div>
+          <div class="card profile-card">
+            <div class="profile-row"><span class="profile-key">Onboarding</span><span class="profile-value">Complete</span></div>
+            <div class="profile-row"><span class="profile-key">Location</span><span class="profile-value">While using</span></div>
+            <div class="profile-row"><span class="profile-key">Backend</span><span class="profile-value">Demo engine</span></div>
+          </div>
+          <h3 class="profile-section-title">Your interests</h3>
+          <div class="chips" id="profileInterests"></div>
+          <div class="button-gap">
+            <button class="secondary" id="profileEngine" type="button">Discovery engine lab</button>
+            <button class="danger-button" id="signOut" type="button">Sign out</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="engine" aria-labelledby="engineTitle">
+        <header class="app-header">
+          <button class="back" data-back="discover" type="button" aria-label="Back">‹</button>
+          <h1 class="nav-title" id="engineTitle">Discovery engine lab</h1>
+          <span class="header-spacer"></span>
+        </header>
+        <div class="engine-content">
+          <div class="card engine-summary">
+            <p class="eyebrow">Backend demonstration</p>
+            <p>This separate screen keeps the product UI clean while preserving lifecycle, payload, capacity, and event diagnostics.</p>
+          </div>
+          <div class="card engine-card">
+            <h3>Protected API response</h3>
+            <p>Detect shows rarity and type. The exact offer and location remain absent until Reveal.</p>
+            <pre class="payload" id="enginePayload"></pre>
+          </div>
+          <div class="card engine-card">
+            <h3>Drop lifecycle</h3>
+            <p id="lifecycleStatus">Active</p>
+            <div class="metrics">
+              <div class="metric"><div class="metric-label">Time remaining</div><div class="metric-value" id="lifecycleTime">01:30:00</div></div>
+              <div class="metric"><div class="metric-label">Capacity</div><div class="metric-value" id="lifecycleCapacity">0 / 8</div><div class="capacity-track"><div class="capacity-fill" id="capacityFill"></div></div></div>
+            </div>
+            <div class="engine-actions">
+              <button id="newDraft" type="button">New draft</button>
+              <button id="scheduleDrop" type="button">Schedule</button>
+              <button class="primary" id="activateDrop" type="button">Activate</button>
+              <button id="reserveCapacity" type="button">Reserve 2</button>
+              <button id="expireDrop" type="button">Expire</button>
+              <button id="runEngineDemo" type="button">Run full demo</button>
+            </div>
+          </div>
+          <div class="card engine-card">
+            <h3>Real-time events</h3>
+            <ul class="event-list" id="eventList" aria-live="polite"><li class="empty">No events yet.</li></ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const $ = (selector) => document.querySelector(selector);
+      const $$ = (selector) => [...document.querySelectorAll(selector)];
+      const interestLabels = {
+        korean_bbq: "Korean BBQ", japanese_cuisine: "Japanese cuisine", brunch_cafes: "Brunch & cafes",
+        desserts: "Desserts", vegetarian_food: "Vegetarian food", laser_tag: "Laser tag",
+        escape_rooms: "Escape rooms", bowling: "Bowling", mini_golf: "Mini golf", arcades: "Arcades",
+        live_music: "Live music", cocktail_bars: "Cocktail bars", fitness_classes: "Fitness classes",
+        spa_massage: "Spa & massage",
+      };
+      const state = {
+        screen: "auth", authMode: "signin", email: "explorer@dropbyapp.com", name: "Melbourne Explorer",
+        preferences: new Set(["korean_bbq", "japanese_cuisine", "laser_tag"]), distance: 850,
+        revealed: new Set(), selectedDropId: null, squadCount: 0, squadCode: "dropby-demo-squad",
+        lifecycleStatus: "active", lifecycleReserved: 0, lifecycleCapacity: 8, lifecycleSeconds: 5400,
+        demoRunning: false, tracking: false,
+      };
+      const primaryLocation = [-37.8119, 144.9674];
+      const drops = [
+        { id: "drop_mel_001", coordinates: primaryLocation, title: "Rare Korean BBQ Drop", offer: "40% off the group dining menu", business: "Seoul Table", address: "200 Little Bourke Street, Melbourne", category: "food_dining", interest: "korean_bbq", icon: "🥩", logo: "ST", rarity: "rare", minPeople: 2, maxPeople: 4, label: "40%" },
+        { id: "drop_mel_002", coordinates: [-37.8097, 144.9648], title: "Rooftop Cinema Drop", offer: "Two-for-one twilight tickets", business: "Skyline Cinema", address: "Swanston Street, Melbourne", category: "activity_entertainment", interest: "rooftop_cinema", icon: "🎬", logo: "SC", rarity: "epic", minPeople: 2, maxPeople: 4, label: "2X" },
+        { id: "drop_mel_003", coordinates: [-37.815, 144.97], title: "Matcha Break Drop", offer: "Free ceremonial matcha upgrade", business: "Midori Corner", address: "Russell Street, Melbourne", category: "food_dining", interest: "japanese_cuisine", icon: "🍵", logo: "MC", rarity: "common", minPeople: 1, maxPeople: 1, label: "+" },
+        { id: "drop_mel_004", coordinates: [-37.813, 144.9605], title: "Hidden Jazz Session", offer: "Secret set with complimentary entry", business: "Basement 27", address: "Hardware Lane, Melbourne", category: "nightlife", interest: "live_jazz", icon: "🎷", logo: "B27", rarity: "legendary", minPeople: 2, maxPeople: 4, label: "VIP" },
+        { id: "drop_mel_005", coordinates: [-37.8078, 144.971], title: "Recovery Sauna Drop", offer: "30-minute recovery session", business: "Reset Studio", address: "Lonsdale Street, Melbourne", category: "wellness_beauty", interest: "recovery_sauna", icon: "♨️", logo: "RS", rarity: "uncommon", minPeople: 2, maxPeople: 2, label: "30" },
+      ];
+      let map = null;
+      let userMarker = null;
+      let dropMarkers = [];
+      let dropRevealZones = [];
+      let toastTimer = null;
+      let trackingTimer = null;
+
+      function showScreen(name) {
+        state.screen = name;
+        $$("[data-screen]").forEach((screen) => screen.classList.toggle("active", screen.dataset.screen === name));
+        const current = $(`[data-screen="${name}"]`);
+        if (current) current.scrollTop = 0;
+        if (name === "discover") {
+          window.setTimeout(() => {
+            if (!map) initializeMap();
+            else map.invalidateSize();
+            renderDiscover();
+          }, 30);
+        }
+        if (name === "profile") renderProfile();
+        if (name === "squad") renderSquad();
+        if (name === "engine") renderEngine();
+      }
+
+      function toast(message) {
+        const element = $("#toast");
+        element.textContent = message;
+        element.classList.add("show");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => element.classList.remove("show"), 2200);
+      }
+
+      function distanceBetween(first, second) {
+        const radius = 6371000;
+        const radians = (value) => value * Math.PI / 180;
+        const latitudeDelta = radians(second[0] - first[0]);
+        const longitudeDelta = radians(second[1] - first[1]);
+        const a = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(radians(first[0])) * Math.cos(radians(second[0])) * Math.sin(longitudeDelta / 2) ** 2;
+        return radius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function userLocation() { return [primaryLocation[0] + state.distance / 111320, primaryLocation[1]]; }
+      function stageFor(drop) {
+        const distance = Math.round(distanceBetween(userLocation(), drop.coordinates));
+        if (distance <= 100) state.revealed.add(drop.id);
+        if (state.revealed.has(drop.id)) return "reveal";
+        return "detect";
+      }
+
+      function snapshot(drop) {
+        const stage = stageFor(drop);
+        const rawDistance = Math.round(distanceBetween(userLocation(), drop.coordinates));
+        const distance = stage === "detect" ? Math.max(50, Math.round(rawDistance / 50) * 50) : rawDistance;
+        const result = { id: drop.id, stage, distance_m: distance };
+        if (stage === "detect") Object.assign(result, { rarity: drop.rarity, category: drop.category, interest_tag: drop.interest, min_group_size: drop.minPeople, max_group_size: drop.maxPeople });
+        if (stage === "reveal") Object.assign(result, { rarity: drop.rarity, category: drop.category, interest_tag: drop.interest, title: drop.title, description: drop.offer, business_name: drop.business, address: drop.address, drop_type: drop.maxPeople > 1 ? "squad" : "solo", min_group_size: drop.minPeople, max_group_size: drop.maxPeople, can_assemble: drop.maxPeople > 1 });
+        return result;
+      }
+
+      function visibleSnapshots() { return drops.map(snapshot).filter((drop) => drop.stage !== "outside").sort((a, b) => a.distance_m - b.distance_m); }
+      function addEvent(type, message) {
+        const list = $("#eventList");
+        list.querySelector(".empty")?.remove();
+        const item = document.createElement("li");
+        const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        item.innerHTML = `<span class="event-type">${type}</span><span class="event-time">${time}</span><span class="event-message">${message}</span>`;
+        list.prepend(item);
+      }
+
+      function markerIcon(stage, drop) {
+        const revealed = stage === "reveal";
+        const label = revealed ? drop.business : drop.interest.replaceAll("_", " ");
+        const symbol = revealed ? drop.logo : drop.icon;
+        return L.divIcon({ className: "drop-pin", html: `<div class="drop-pin-core ${stage}"><span class="pin-symbol ${revealed ? "store-logo" : ""}">${symbol}</span><span class="pin-type">${label}</span></div>`, iconSize: [138, 38], iconAnchor: [69, 19] });
+      }
+
+      function initializeMap() {
+        if (typeof L === "undefined") {
+          $("#mobileMap").innerHTML = '<div class="empty" style="margin:20px">Map tiles need an internet connection. Demo position buttons still work.</div>';
+          return;
+        }
+        map = L.map("mobileMap", { zoomControl: false }).setView([-37.8119, 144.9674], 15);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO' }).addTo(map);
+        dropRevealZones = drops.map((drop) => L.circle(drop.coordinates, { radius: 100, color: "#9b87ff", opacity: 0.75, weight: 1.5, dashArray: "6 6", fillColor: "#9b87ff", fillOpacity: 0.08, interactive: false }).addTo(map));
+        userMarker = L.marker(userLocation(), { icon: L.divIcon({ className: "user-pin", html: '<div class="user-pin-core"></div>', iconSize: [21, 21], iconAnchor: [10, 10] }), zIndexOffset: 600 }).addTo(map);
+        dropMarkers = drops.map((drop) => { const stage = stageFor(drop); return L.marker(drop.coordinates, { icon: markerIcon(stage, drop), opacity: 1, zIndexOffset: 500 }).addTo(map).on("click", () => openDrop(drop.id)); });
+        map.fitBounds([...drops.map((drop) => drop.coordinates), userLocation()], { padding: [28, 28], maxZoom: 15 });
+      }
+
+      function renderDiscover() {
+        $("#greeting").textContent = `Hey ${state.name.split(" ")[0]}`;
+        $("#openProfile").textContent = state.name.slice(0, 1).toUpperCase();
+        $$('[data-distance]').forEach((button) => button.classList.toggle("active", Number(button.dataset.distance) === state.distance));
+        const snapshots = visibleSnapshots();
+        $("#signalHeading").textContent = snapshots.length ? `${snapshots.length} signal${snapshots.length === 1 ? "" : "s"}` : "No signals yet";
+        const list = $("#signalList");
+        list.replaceChildren();
+        if (!snapshots.length) list.innerHTML = '<div class="empty">Nothing is in range yet. Choose a demo position to start exploring.</div>';
+        snapshots.forEach((drop) => {
+          const source = drops.find((item) => item.id === drop.id);
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "signal-card";
+          button.dataset.stage = drop.stage;
+          const title = drop.title || drop.interest_tag?.replaceAll("_", " ") || "Mystery Drop";
+          const people = `${drop.min_group_size} needed${drop.max_group_size !== drop.min_group_size ? ` · up to ${drop.max_group_size}` : ""}`;
+          const meta = drop.business_name || `${drop.rarity} · ${people}`;
+          button.innerHTML = `<span class="signal-orb">${drop.stage === "reveal" ? source.logo : source.icon}</span><span class="signal-copy"><span class="signal-stage">${drop.stage}</span><span class="signal-title">${title}</span><span class="signal-meta">${meta}</span></span><span class="signal-distance">${drop.distance_m} m</span>`;
+          button.addEventListener("click", () => openDrop(drop.id));
+          list.append(button);
+        });
+        if (map && userMarker) {
+          userMarker.setLatLng(userLocation());
+          dropMarkers.forEach((marker, index) => { const stage = stageFor(drops[index]); marker.setIcon(markerIcon(stage, drops[index])); marker.setOpacity(1); dropRevealZones[index].setStyle({ color: stage === "reveal" ? "#d9ff43" : "#9b87ff", fillColor: stage === "reveal" ? "#d9ff43" : "#9b87ff", fillOpacity: stage === "reveal" ? 0.14 : 0.08 }); });
+          map.fitBounds([...drops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [28, 28], maxZoom: 15 });
+        }
+        renderEngine();
+      }
+
+      function openDrop(id) {
+        state.selectedDropId = id;
+        const drop = drops.find((item) => item.id === id);
+        const data = snapshot(drop);
+        const copy = { detect: "This signal is always visible. Its type, rarity, and group requirement are known; move closer to reveal the venue.", reveal: "You found it. The location, full offer, and squad details are now unlocked." };
+        $("#detailStage").textContent = data.stage.toUpperCase();
+        $("#detailStage").className = `stage-badge ${data.stage}`;
+        $("#detailDistance").textContent = `${data.distance_m} metres away`;
+        $("#detailTitle").textContent = data.title || data.interest_tag?.replaceAll("_", " ") || "Mystery Drop";
+        $("#detailExplanation").textContent = copy[data.stage];
+        const people = `${data.min_group_size} needed${data.max_group_size !== data.min_group_size ? ` · up to ${data.max_group_size}` : ""}`;
+        const rows = [["Rarity", data.rarity, false], ["Type", data.interest_tag?.replaceAll("_", " "), false], ["People needed", people, false], ["Business", data.business_name, true], ["Address", data.address, true], ["Offer", data.description, true]];
+        $("#detailRows").innerHTML = rows.map(([label, value, hiddenUntilReveal]) => `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value ${!value && hiddenUntilReveal ? "hidden" : ""}">${value || (hiddenUntilReveal ? "Move closer to unlock" : "Not provided")}</div></div>`).join("");
+        $("#assembleCard").hidden = data.stage !== "reveal";
+        showScreen("detail");
+      }
+
+      function renderSquad() {
+        const count = state.squadCount;
+        $("#squadEyebrow").textContent = count >= 2 ? "Squad ready" : "Assembling";
+        $("#squadTitle").textContent = `${count}/4 explorers`;
+        $("#squadSubtitle").textContent = count >= 2 ? "Your minimum squad is ready. You can still fill the remaining spaces." : `${2 - count} more needed to unlock the Drop.`;
+        $("#squadProgress").style.width = `${count / 4 * 100}%`;
+        $("#squadCode").textContent = state.squadCode;
+        const names = [state.name, "Jordan Lee", "Sam Rivera", "Casey Chen"];
+        $("#memberList").innerHTML = Array.from({ length: 4 }, (_, index) => index < count
+          ? `<div class="member"><span class="member-avatar">${names[index].slice(0, 1)}</span><span class="member-copy"><span class="member-name">${names[index]}</span><span class="member-role">${index === 0 ? "leader" : "member"}</span></span><span class="joined">Joined</span></div>`
+          : '<div class="member"><span class="member-avatar open">+</span><span class="member-copy"><span class="member-name" style="color:var(--muted)">Open spot</span></span></div>').join("");
+        $("#addDemoMember").disabled = count >= 4;
+      }
+
+      function renderProfile() {
+        $("#profileAvatar").textContent = state.name.slice(0, 1).toUpperCase();
+        $("#profileTitle").textContent = state.name;
+        $("#profileEmail").textContent = state.email;
+        $("#profileInterests").innerHTML = [...state.preferences].map((interest) => `<span class="chip" aria-pressed="true">${interestLabels[interest]}</span>`).join("");
+      }
+
+      function formatTime(seconds) { return [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60].map((value) => String(value).padStart(2, "0")).join(":"); }
+      function renderEngine() {
+        if (!$("#enginePayload")) return;
+        $("#enginePayload").textContent = JSON.stringify({ drops: visibleSnapshots() }, null, 2);
+        $("#lifecycleStatus").textContent = state.lifecycleStatus.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+        $("#lifecycleTime").textContent = formatTime(state.lifecycleSeconds);
+        $("#lifecycleCapacity").textContent = `${state.lifecycleReserved} / ${state.lifecycleCapacity}`;
+        $("#capacityFill").style.width = `${state.lifecycleReserved / state.lifecycleCapacity * 100}%`;
+        $("#scheduleDrop").disabled = state.lifecycleStatus !== "draft";
+        $("#activateDrop").disabled = state.lifecycleStatus !== "scheduled";
+        $("#reserveCapacity").disabled = state.lifecycleStatus !== "active" || state.lifecycleReserved >= state.lifecycleCapacity;
+        $("#expireDrop").disabled = !["scheduled", "active", "capacity_reached"].includes(state.lifecycleStatus);
+      }
+
+      function setDistance(distance) {
+        const before = stageFor(drops[0]);
+        state.distance = distance;
+        const after = stageFor(drops[0]);
+        if (after !== before && after !== "outside") addEvent("drop.stage_update", `${after} · ${distance} m`);
+        renderDiscover();
+      }
+
+      function stopTrackingDemo() {
+        state.tracking = false;
+        window.clearInterval(trackingTimer);
+        trackingTimer = null;
+        $("#useLocation").textContent = "Start continuous walk demo";
+      }
+
+      function toggleTrackingDemo() {
+        if (state.tracking) {
+          stopTrackingDemo();
+          toast("Continuous demo tracking paused.");
+          return;
+        }
+        if (state.distance <= 100) {
+          state.distance = 850;
+          state.revealed.clear();
+        }
+        state.tracking = true;
+        $("#useLocation").textContent = "Pause continuous tracking";
+        toast("Continuously updating location as you move.");
+        trackingTimer = window.setInterval(() => {
+          setDistance(Math.max(0, state.distance - 45));
+          if (state.distance === 0) stopTrackingDemo();
+        }, 900);
+      }
+
+      $$('[data-auth-mode]').forEach((button) => button.addEventListener("click", () => {
+        state.authMode = button.dataset.authMode;
+        $$('[data-auth-mode]').forEach((tab) => tab.classList.toggle("active", tab === button));
+        $("#authName").hidden = state.authMode !== "create";
+        $("#authSubmit").textContent = state.authMode === "create" ? "Create account" : "Sign in";
+        $("#authError").textContent = "";
+      }));
+
+      $("#authSubmit").addEventListener("click", () => {
+        const email = $("#authEmail").value.trim();
+        const password = $("#authPassword").value;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("#authError").textContent = "Enter a valid email address."; return; }
+        if (password.length < 10) { $("#authError").textContent = "Password must contain at least 10 characters."; return; }
+        state.email = email;
+        $("#authError").textContent = "";
+        addEvent("auth.jwt_issued", `${email} signed in`);
+        if (state.authMode === "create") {
+          state.name = $("#authName").value.trim() || "Explorer";
+          $("#onboardingName").value = state.name;
+          showScreen("onboarding");
+        } else {
+          state.name = email === "explorer@dropbyapp.com" ? "Test Explorer" : "Melbourne Explorer";
+          showScreen("discover");
+        }
+      });
+
+      $$('[data-interest]').forEach((button) => button.addEventListener("click", () => {
+        const interest = button.dataset.interest;
+        if (state.preferences.has(interest)) state.preferences.delete(interest); else state.preferences.add(interest);
+        button.setAttribute("aria-pressed", String(state.preferences.has(interest)));
+      }));
+
+      $("#finishOnboarding").addEventListener("click", () => {
+        state.name = $("#onboardingName").value.trim() || "Explorer";
+        if (!state.preferences.size) { toast("Choose at least one interest."); return; }
+        addEvent("onboarding.completed", `${state.preferences.size} interests and location saved`);
+        showScreen("discover");
+      });
+
+      $$('[data-distance]').forEach((button) => button.addEventListener("click", () => { stopTrackingDemo(); setDistance(Number(button.dataset.distance)); }));
+      $("#openProfile").addEventListener("click", () => showScreen("profile"));
+      $("#openEngine").addEventListener("click", () => showScreen("engine"));
+      $("#profileEngine").addEventListener("click", () => showScreen("engine"));
+      $$('[data-back]').forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.back)));
+      $("#useLocation").addEventListener("click", toggleTrackingDemo);
+      $("#createSquad").addEventListener("click", () => { state.squadCount = 1; state.squadCode = `dropby-${Math.random().toString(36).slice(2, 10)}`; addEvent("group.state_update", "forming · 1/4"); showScreen("squad"); });
+      $("#joinSquad").addEventListener("click", () => { const code = $("#joinCode").value.trim(); if (!code) { toast("Paste a squad ID first."); return; } state.squadCode = code; state.squadCount = Math.max(2, state.squadCount); addEvent("group.member_joined", `${state.squadCount}/4 members`); showScreen("squad"); });
+      $("#addDemoMember").addEventListener("click", () => { if (state.squadCount >= 4) return; state.squadCount += 1; addEvent("group.member_joined", `${state.squadCount}/4 members`); if (state.squadCount === 2) addEvent("group.ready", "minimum squad size reached"); if (state.squadCount === 4) addEvent("drop.capacity_reached", "squad is full"); renderSquad(); });
+      $("#leaveSquad").addEventListener("click", () => { state.squadCount = 0; addEvent("group.state_update", "cancelled · 0/4"); showScreen("discover"); });
+      $("#shareSquad").addEventListener("click", async () => { const text = `Join my DropBy squad: ${state.squadCode}`; if (navigator.share) await navigator.share({ title: "DropBy squad", text }).catch(() => {}); else if (navigator.clipboard) await navigator.clipboard.writeText(state.squadCode).catch(() => {}); toast("Squad invite ready to share."); });
+      $("#signOut").addEventListener("click", () => { stopTrackingDemo(); state.distance = 850; state.revealed.clear(); state.squadCount = 0; showScreen("auth"); });
+
+      $("#newDraft").addEventListener("click", () => { state.lifecycleStatus = "draft"; state.lifecycleReserved = 0; addEvent("drop.created", "draft created"); renderEngine(); });
+      $("#scheduleDrop").addEventListener("click", () => { state.lifecycleStatus = "scheduled"; addEvent("drop.scheduled", "starts at 6:00 pm"); renderEngine(); });
+      $("#activateDrop").addEventListener("click", () => { state.lifecycleStatus = "active"; addEvent("drop.activated", "nearby explorers can detect it"); renderEngine(); });
+      $("#reserveCapacity").addEventListener("click", () => { state.lifecycleReserved = Math.min(state.lifecycleCapacity, state.lifecycleReserved + 2); addEvent("drop.capacity_reserved", `${state.lifecycleReserved}/${state.lifecycleCapacity}`); if (state.lifecycleReserved === state.lifecycleCapacity) { state.lifecycleStatus = "capacity_reached"; addEvent("drop.capacity_reached", "reservations blocked"); } renderEngine(); });
+      $("#expireDrop").addEventListener("click", () => { state.lifecycleStatus = "expired"; state.lifecycleSeconds = 0; addEvent("drop.expired", "active squads notified"); renderEngine(); });
+
+      const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+      async function guidedDemo() {
+        if (state.demoRunning) return;
+        stopTrackingDemo();
+        state.demoRunning = true;
+        state.email = "explorer@dropbyapp.com"; state.name = "Test Explorer"; state.distance = 850; state.revealed.clear(); state.squadCount = 0;
+        addEvent("auth.jwt_issued", "protected demo session started");
+        showScreen("discover");
+        for (const distance of [500, 100]) { await wait(650); setDistance(distance); }
+        await wait(700); openDrop("drop_mel_001");
+        await wait(800); $("#createSquad").click();
+        for (let index = 0; index < 3; index += 1) { await wait(550); $("#addDemoMember").click(); }
+        await wait(750); showScreen("engine");
+        state.demoRunning = false;
+      }
+      $("#guidedDemo").addEventListener("click", guidedDemo);
+      $("#runEngineDemo").addEventListener("click", guidedDemo);
+      renderProfile(); renderSquad(); renderEngine();
+    </script>
+  </body>
+</html>

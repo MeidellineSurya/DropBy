@@ -1,4 +1,25 @@
 {
-  "name": "DropBy",
-  "displayName": "DropBy"
+  "expo": {
+    "name": "DropBy",
+    "slug": "dropby-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "dropby",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.dropby.mobile"
+    },
+    "android": {
+      "package": "app.dropby.mobile"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DropBy uses your location to reveal nearby Drops."
+        }
+      ]
+    ]
+  }
 }

@@ -2,7 +2,7 @@
 // once a generation step exists. For now this is a hand-mirrored placeholder
 // so both frontends have a single import path to start against.
 
-export type Stage = "detect" | "reveal" | "discover";
+export type Stage = "detect" | "reveal";
 
 export interface DropStageUpdate {
   type: "drop.stage_update";
