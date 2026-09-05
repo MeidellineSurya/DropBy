@@ -103,6 +103,7 @@ def _verify_postgres(records: VerificationRecords) -> None:
             min_group_size=2,
             max_group_size=4,
             max_capacity_participants=2,
+            discount_percent=25,
             starts_at=now - timedelta(minutes=1),
             ends_at=now + timedelta(minutes=10),
             publish=True,

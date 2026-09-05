@@ -17,6 +17,7 @@ def _valid_drop(**overrides) -> dict:
         "max_capacity_participants": 10,
         "starts_at": now + timedelta(hours=1),
         "ends_at": now + timedelta(hours=4),
+        "discount_percent": 30,
     }
     values.update(overrides)
     return values
@@ -36,8 +37,18 @@ def test_accepts_reasonable_values() -> None:
         {"discovery_radius_m": 500_000},
         {"discover_radius_m": 500_000},
         {"xp_reward_base": 1_000_000},
+        {"discount_percent": 0},
+        {"discount_percent": 101},
     ],
 )
 def test_rejects_unreasonably_large_values(overrides: dict) -> None:
     with pytest.raises(ValidationError):
         BusinessDropCreateRequest(**_valid_drop(**overrides))
+
+
+def test_rarity_is_not_a_field_on_the_create_request() -> None:
+    # Rarity used to be a free-text-adjacent enum a business picked directly;
+    # it's now always computed (see compute_rarity), so accepting one here
+    # at all would silently do nothing useful and confuse API consumers.
+    request = BusinessDropCreateRequest(**_valid_drop())
+    assert not hasattr(request, "rarity")

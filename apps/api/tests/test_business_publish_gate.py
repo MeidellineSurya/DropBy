@@ -48,5 +48,6 @@ def test_create_request_defaults_to_not_publishing() -> None:
         max_capacity_participants=10,
         starts_at=now + timedelta(hours=1),
         ends_at=now + timedelta(hours=4),
+        discount_percent=30,
     )
     assert request.publish is False

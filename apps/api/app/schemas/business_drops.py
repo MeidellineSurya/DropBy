@@ -22,7 +22,11 @@ class BusinessDropCreateRequest(BaseModel):
     # Shown even at Detect (see services/proximity.py); falls back to the
     # category label if omitted.
     interest_tag: str | None = Field(default=None, max_length=60)
-    rarity: DropRarity = DropRarity.common
+    # The only value signal a business provides — rarity is computed from
+    # this (plus group size/capacity) in services/drop_lifecycle.compute_rarity,
+    # never picked directly, so it can't be a marketing label with no
+    # backing offer.
+    discount_percent: int = Field(ge=1, le=100)
     min_group_size: int = Field(default=1, gt=0, le=100)
     max_group_size: int = Field(default=1, gt=0, le=100)
     discovery_radius_m: int = Field(default=settings.default_detect_radius_m, gt=0, le=50_000)
@@ -43,6 +47,7 @@ class BusinessDropResponse(BaseModel):
     category: DropCategory
     interest_tag: str
     rarity: DropRarity
+    discount_percent: int
     drop_type: DropType
     min_group_size: int
     max_group_size: int
