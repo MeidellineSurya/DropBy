@@ -46,6 +46,7 @@ def _valid_registration(**overrides) -> dict:
         "password": "dropby12345",
         "latitude": -37.8119,
         "longitude": 144.9674,
+        "venue_capacity": 50,
     }
     values.update(overrides)
     return values
@@ -61,3 +62,11 @@ def test_business_register_rejects_an_arbitrary_category() -> None:
     # ever offers the fixed DropCategory set, so the backend should too.
     with pytest.raises(ValidationError):
         BusinessRegisterRequest(**_valid_registration(category="not_a_real_category"))
+
+
+@pytest.mark.parametrize("venue_capacity", [0, -1, 10_001])
+def test_business_register_rejects_an_out_of_range_venue_capacity(
+    venue_capacity: int,
+) -> None:
+    with pytest.raises(ValidationError):
+        BusinessRegisterRequest(**_valid_registration(venue_capacity=venue_capacity))

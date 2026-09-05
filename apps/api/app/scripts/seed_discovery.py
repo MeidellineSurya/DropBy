@@ -50,6 +50,7 @@ def seed() -> None:
                 address="200 Little Bourke Street, Melbourne VIC",
                 owner_email="venue@dropbyapp.com",
                 password_hash=hash_password("dropby12345"),
+                venue_capacity=60,
                 verified=True,
                 status=BusinessStatus.active,
             )
