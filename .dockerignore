@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+**/dist
+**/.env
+_archive_typescript_backend
+apps/mobile/ios
+apps/mobile/android
