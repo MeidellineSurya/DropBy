@@ -19,10 +19,16 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
-      context: ../apps/api
+      context: ..
+      dockerfile: apps/api/Dockerfile
     env_file:
       - ../apps/api/.env
     environment:
@@ -34,14 +40,32 @@ services:
       - ../apps/api:/app
       - ../packages/ws-contracts:/packages/ws-contracts
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    command: alembic upgrade head
+    env_file:
+      - ../apps/api/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://dropby:dropby@postgres:5432/dropby
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ../apps/api:/app
+      - ../packages/ws-contracts:/packages/ws-contracts
+    depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
 
   worker:
     build:
-      context: ../apps/api
+      context: ..
+      dockerfile: apps/api/Dockerfile
     command: celery -A app.workers.celery_app worker --loglevel=info
     env_file:
       - ../apps/api/.env
@@ -52,12 +76,15 @@ services:
       - ../apps/api:/app
       - ../packages/ws-contracts:/packages/ws-contracts
     depends_on:
-      - postgres
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
   beat:
     build:
-      context: ../apps/api
+      context: ..
+      dockerfile: apps/api/Dockerfile
     command: celery -A app.workers.celery_app beat --loglevel=info
     env_file:
       - ../apps/api/.env
@@ -68,8 +95,10 @@ services:
       - ../apps/api:/app
       - ../packages/ws-contracts:/packages/ws-contracts
     depends_on:
-      - postgres
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
 
   dashboard:
     image: node:20-slim
