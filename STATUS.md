@@ -47,6 +47,8 @@ polish (wiring the newer gamification endpoints into the UI) is what's left.
 | Dashboard UI to display/print a Drop's venue QR | Not built (backend endpoint exists, nothing renders it) |
 | Mobile app redemption/QR-scan screen | Not built |
 | Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
+| Mobile UI for a cancelled/expired/completed squad | Not built — `SquadScreen` always renders the assembling/ready layout regardless of status, and the mobile `GroupSnapshot` type is missing `cancelled_reason` (the backend has carried it since the capacity-race fix; `packages/shared-types` already models it as `reason`) |
+| `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
 **Verified (2026-09-06):** 177/177 backend tests pass (`pytest -q`) after the
 merge; a single linear Alembic head (`0011_business_venue_capacity`).
@@ -175,8 +177,16 @@ accordingly.
 4. Mobile: register a real FCM token via `POST /devices` and subscribe to the
    `territory.bonus_awarded` WS event, so push notifications and territory
    popups actually reach the phone.
-5. Run `python -m app.scripts.seed_badges` once against a fresh database so
+5. Mobile: add `cancelled_reason` to `GroupSnapshot` and give `SquadScreen` an
+   actual cancelled/expired/completed layout — right now a squad that loses a
+   capacity race just looks stuck in the assembling/ready view with no
+   explanation, even though the backend has carried the reason since the
+   capacity-race fix.
+6. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
+   drop the package — right now it's a hand-mirrored placeholder nothing
+   actually imports.
+7. Run `python -m app.scripts.seed_badges` once against a fresh database so
    badge criteria have real `Badge` rows to unlock against.
-6. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
+8. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
    secrets, domain, and TLS configuration, then start the supplied production
    Compose stack.
