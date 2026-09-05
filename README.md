@@ -15,8 +15,20 @@ Location-based social deal discovery — "Pokémon GO, but you catch experiences
 
 ## Getting started
 
+To see and interact with the discovery mechanic immediately, double-click
+`demo.cmd` or run:
+
+```bat
+demo.cmd
+```
+
+The browser-only sandbox needs no Docker, database, Python, Node, or install.
+It simulates proximity reveals, protected response fields, squad formation, and
+the real-time event stream. It is a product demonstration, not an integration
+test of the server.
+
 On Windows, install and open Docker Desktop, then run one command from the
-repository root:
+repository root when you want to test the real backend:
 
 ```bat
 dev.cmd

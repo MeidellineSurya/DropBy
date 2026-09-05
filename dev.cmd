@@ -65,10 +65,14 @@ exit /b %errorlevel%
 :require_docker
 where docker >nul 2>&1
 if errorlevel 1 (
-    echo Docker Desktop is not installed or is not available in PATH.
-    echo Install it from https://docs.docker.com/desktop/setup/install/windows-install/
-    echo Then open Docker Desktop and run dev.cmd again.
-    exit /b 1
+    if exist "%LOCALAPPDATA%\Programs\DockerDesktop\resources\bin\docker.exe" (
+        set "PATH=%LOCALAPPDATA%\Programs\DockerDesktop\resources\bin;%PATH%"
+    ) else (
+        echo Docker Desktop is not installed or is not available in PATH.
+        echo Install it from https://docs.docker.com/desktop/setup/install/windows-install/
+        echo Then open Docker Desktop and run dev.cmd again.
+        exit /b 1
+    )
 )
 
 docker info >nul 2>&1
