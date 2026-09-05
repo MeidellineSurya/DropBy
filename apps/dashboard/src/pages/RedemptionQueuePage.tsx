@@ -61,8 +61,9 @@ export function RedemptionQueuePage() {
   return (
     <div>
       <h1>Live Queue</h1>
-      {error && <p className="page-error">{error}</p>}
-      {redemptions.length === 0 ? (
+      {error ? (
+        <p className="page-error">{error}</p>
+      ) : redemptions.length === 0 ? (
         <p>No squads checked in right now — they'll show up here the moment someone scans your Drop's QR.</p>
       ) : (
         <div className="redemption-list">
