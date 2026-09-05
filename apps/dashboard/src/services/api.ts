@@ -55,6 +55,7 @@ export const api = {
     password: string;
     latitude: number;
     longitude: number;
+    venue_capacity: number;
     description?: string;
     address?: string;
     phone?: string;

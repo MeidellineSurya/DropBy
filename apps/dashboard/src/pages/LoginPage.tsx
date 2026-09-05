@@ -18,6 +18,7 @@ export function LoginPage() {
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState("-37.8119");
   const [longitude, setLongitude] = useState("144.9674");
+  const [venueCapacity, setVenueCapacity] = useState("50");
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -35,6 +36,7 @@ export function LoginPage() {
               address,
               latitude: Number(latitude),
               longitude: Number(longitude),
+              venue_capacity: Number(venueCapacity),
             });
       setToken(response.access_token);
       navigate("/");
@@ -99,6 +101,21 @@ export function LoginPage() {
                 <input value={longitude} onChange={(e) => setLongitude(e.target.value)} />
               </label>
             </div>
+            <label>
+              Venue capacity (total seats/spots)
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                value={venueCapacity}
+                onChange={(e) => setVenueCapacity(e.target.value)}
+                required
+              />
+            </label>
+            <p className="login-card__hint">
+              Declared once — every Drop you create is capped at this, and it's what decides
+              whether a Drop counts as genuinely scarce for rarity.
+            </p>
           </>
         )}
 

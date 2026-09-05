@@ -29,6 +29,9 @@ export interface Business {
   description: string | null;
   address: string | null;
   owner_email: string;
+  // Declared once at registration — see Business.venue_capacity in the API.
+  // Feeds the rarity scarcity check for every Drop this business creates.
+  venue_capacity: number;
   verified: boolean;
   status: string;
 }
