@@ -1,4 +1,4 @@
-import { getToken } from "./auth";
+import { clearToken, getToken } from "./auth";
 import type {
   Business,
   BusinessDrop,
@@ -28,6 +28,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  if (response.status === 401 && token) {
+    // We sent a bearer token and the API still rejected it — almost always
+    // because the JWT expired (there's no refresh flow yet, see auth.ts).
+    // Clear it and bounce to login instead of leaving a dead-end
+    // "Could not validate credentials" error sitting on whatever page was
+    // open. A 401 with no token attached (e.g. a bad login attempt) is a
+    // real credentials error, not an expired session, so it falls through
+    // to the normal error handling below and stays on the page.
+    clearToken();
+    if (!window.location.pathname.startsWith("/login")) {
+      window.location.assign("/login");
+    }
+    throw new ApiError(401, "Your session expired — please log in again.");
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     // FastAPI's validation errors (422s) send `detail` as an array of

@@ -31,8 +31,9 @@ export function AnalyticsPage() {
   return (
     <div>
       <h1>Drop analytics</h1>
-      {error && <p className="page-error">{error}</p>}
-      {drops.length === 0 ? (
+      {error ? (
+        <p className="page-error">{error}</p>
+      ) : drops.length === 0 ? (
         <p>Create a Drop to see performance data.</p>
       ) : (
         <>
