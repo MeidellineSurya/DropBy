@@ -1,0 +1,92 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f6f8;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(16, 24, 32, 0.08);
+  padding: 2rem;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.login-card h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.login-card__tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.login-card__tabs button {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #d7dce3;
+  background: #f7f8fa;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.login-card__tabs button.active {
+  background: #12181f;
+  color: #fff;
+  border-color: #12181f;
+}
+
+.login-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #3a4149;
+}
+
+.login-card input,
+.login-card select {
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #d7dce3;
+  font-size: 0.9rem;
+}
+
+.login-card__row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.login-card__row label {
+  flex: 1;
+}
+
+.login-card__error {
+  color: #b3261e;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.login-card__submit {
+  margin-top: 0.5rem;
+  background: #2a6df5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.login-card__submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

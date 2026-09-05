@@ -1,0 +1,39 @@
+.funnel {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.funnel h2 {
+  font-size: 0.95rem;
+  color: #3a4149;
+  margin: 0.5rem 0 0;
+}
+
+.funnel__stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.funnel-stage {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.funnel-stage__bar-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: #eef0f3;
+  overflow: hidden;
+}
+
+.funnel-stage__bar-fill {
+  height: 100%;
+  background: #2a6df5;
+  border-radius: 999px;
+}
