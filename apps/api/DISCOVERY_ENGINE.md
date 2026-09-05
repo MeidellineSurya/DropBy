@@ -23,11 +23,16 @@ From the repository root:
 demo.cmd
 ```
 
-This opens a self-contained discovery sandbox in your browser. Move through
-850 m → 500 m → 150 m → 50 m to see the exact Detect, Reveal, and Discover
-payloads, then create a squad and advance it through 2/4, 3/4, and 4/4. It uses
-simulated local state and does not claim to test the database or WebSocket
-transport.
+This opens a self-contained discovery sandbox with a pannable, zoomable
+OpenStreetMap view centred on five fictional Melbourne Drops. The distance
+control moves the user marker against real 700 m, 180 m, and 60 m map circles,
+while every Drop independently applies the reveal rules. Click any marker to
+inspect its currently permitted details, or click the map to calculate that
+location's distance from the primary Drop. Move
+through 850 m → 500 m → 150 m → 50 m to see the exact Detect, Reveal, and
+Discover payloads, then create a squad and advance it through 2/4, 3/4, and
+4/4. Internet is needed for the map library/tiles. The sandbox uses simulated
+local state and does not claim to test the database or WebSocket transport.
 
 ## Run the real backend
 
