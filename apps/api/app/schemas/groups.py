@@ -11,6 +11,10 @@ class GroupCreateRequest(BaseModel):
     open_to_nearby: bool = True
 
 
+class GroupCheckinRequest(BaseModel):
+    qr_token: str
+
+
 class GroupMemberResponse(BaseModel):
     user_id: str
     display_name: str
@@ -33,3 +37,8 @@ class GroupResponse(BaseModel):
     # this squad, so members see the real reason instead of an unexplained
     # cancellation (see services/drop_lifecycle.describe_capacity_failure).
     cancelled_reason: str | None = None
+
+
+class CheckinResponse(BaseModel):
+    redemption_id: str
+    group: GroupResponse
