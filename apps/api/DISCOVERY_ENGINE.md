@@ -15,7 +15,21 @@ This is the implemented scope for the real-time discovery owner. Other API modul
 - scheduled activation, countdown, expiry, and squad-expiry Celery tasks
 - initial Alembic migration for discovery tables and their user/business prerequisites
 
-## Run
+## Open the zero-install UI demo
+
+From the repository root:
+
+```bat
+demo.cmd
+```
+
+This opens a self-contained discovery sandbox in your browser. Move through
+850 m → 500 m → 150 m → 50 m to see the exact Detect, Reveal, and Discover
+payloads, then create a squad and advance it through 2/4, 3/4, and 4/4. It uses
+simulated local state and does not claim to test the database or WebSocket
+transport.
+
+## Run the real backend
 
 Install and open Docker Desktop. From the repository root, run:
 
