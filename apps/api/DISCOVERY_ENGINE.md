@@ -1,0 +1,102 @@
+# Discovery engine (workstream 1)
+
+This is the implemented scope for the real-time discovery owner. Other API modules remain owned by their respective teammates.
+
+## Included
+
+- JWT registration/login and protected routes
+- onboarding preferences and location permission state
+- PostGIS `POST /api/v1/drops/location/ping`
+- server-side Detect (700 m), Reveal (180 m), and Discover (60 m) field gating
+- Redis-backed persistent Discover unlock until the Drop expires
+- authenticated raw WebSocket endpoint at `/ws/live?token=...`
+- squad create/read/join/leave with live 2/4 -> 3/4 -> 4/4 count/state events
+- atomic Drop capacity reservation when a squad reaches ready and as it fills
+- scheduled activation, countdown, expiry, and squad-expiry Celery tasks
+- initial Alembic migration for discovery tables and their user/business prerequisites
+
+## Run
+
+From the repository root:
+
+```bat
+copy apps\api\.env.example apps\api\.env
+docker compose -f infra/docker-compose.yml up --build
+```
+
+Seed a user, business, and active Drop:
+
+```bash
+docker compose -f infra/docker-compose.yml exec api python -m app.scripts.seed_discovery
+```
+
+Open <http://localhost:8000/docs>.
+
+### Run without Docker
+
+Install PostgreSQL with PostGIS locally first. Redis is optional for this mode:
+REST discovery still works without it, but WebSocket fan-out and Celery jobs wait
+until Redis is available.
+
+In Windows Command Prompt:
+
+```bat
+cd apps\api
+py -3.12 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+copy .env.example .env
+```
+
+Change `DATABASE_URL` in `.env` so its host is `localhost`, then run:
+
+```bat
+.venv\Scripts\alembic.exe upgrade head
+.venv\Scripts\python.exe -m app.scripts.seed_discovery
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+Open <http://127.0.0.1:8000/docs>.
+
+Use these login credentials:
+
+```json
+{
+  "email": "explorer@dropby.test",
+  "password": "dropby12345"
+}
+```
+
+Copy the returned token into Swagger's **Authorize** dialog. Then call the location-ping endpoint with:
+
+```json
+{ "latitude": -37.8074, "longitude": 144.9674 }
+```
+
+That is roughly 500 m away and returns Detect data only. Repeat with approximately 150 m and 50 m:
+
+```json
+{ "latitude": -37.81055, "longitude": 144.9674 }
+{ "latitude": -37.81145, "longitude": 144.9674 }
+```
+
+Only the final response includes the venue, address, offer, group sizes, countdown, and Assemble flag.
+
+## WebSocket contract
+
+Connect to:
+
+```text
+ws://localhost:8000/ws/live?token=YOUR_JWT
+```
+
+All mutations remain REST operations. The socket pushes the existing shared contract events:
+
+- `drop.stage_update`
+- `drop.capacity_reached`
+- `drop.expired`
+- `drop.countdown_warning`
+- `group.state_update`
+- `group.member_joined`
+- `group.ready`
+
+Reconnects re-subscribe the user's active squad topics; clients re-fetch REST snapshots rather than replaying missed events. Redis fan-out reconnects automatically, while REST discovery continues from PostgreSQL if Redis is temporarily unavailable.
