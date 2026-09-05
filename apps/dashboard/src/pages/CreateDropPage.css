@@ -78,6 +78,11 @@
   color: var(--color-muted);
 }
 
+.rarity-preview {
+  color: var(--color-lime);
+  text-transform: capitalize;
+}
+
 .form-checkbox {
   flex-direction: row !important;
   align-items: center;

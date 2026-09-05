@@ -78,6 +78,11 @@
   word-break: break-word;
 }
 
+.drop-card__rarity {
+  color: var(--color-lime);
+  text-transform: capitalize;
+}
+
 .drop-card__actions {
   display: flex;
   gap: 0.5rem;
