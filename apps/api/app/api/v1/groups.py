@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,7 +8,8 @@ from app.core.deps import get_current_user, get_db
 from app.models.drops import Drop, DropStatus, DropViewEvent
 from app.models.groups import GroupStatus
 from app.models.users import User
-from app.schemas.groups import GroupCreateRequest, GroupResponse
+from app.schemas.groups import CheckinResponse, GroupCheckinRequest, GroupCreateRequest, GroupResponse
+from app.services.redemption import check_in_group
 from app.services.squad_state import (
     create_group as create_group_state,
 )
@@ -23,6 +24,7 @@ from ws_contracts.events import (
     GroupMemberJoined,
     GroupReady,
     GroupStateUpdate,
+    RedemptionCheckedIn,
 )
 
 router = APIRouter()
@@ -165,7 +167,28 @@ async def leave_group(
     return group
 
 
-@router.post("/{group_id}/checkin")
-def checkin_group(group_id: str):
-    """Owned by the redemption workstream; intentionally left as its existing boundary."""
-    raise NotImplementedError
+@router.post("/{group_id}/checkin", response_model=CheckinResponse)
+async def checkin_group(
+    group_id: UUID,
+    body: GroupCheckinRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CheckinResponse:
+    try:
+        redemption = check_in_group(db, group_id, body.qr_token, user.id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    group = get_group_for_member(db, group_id, user.id)
+    event = RedemptionCheckedIn(
+        group_id=str(group_id),
+        redemption_id=str(redemption.id),
+        checked_in_at=redemption.checked_in_at,
+    ).model_dump(mode="json")
+    topics = {
+        f"ws:group:{group_id}",
+        f"ws:business:{redemption.business_id}",
+        *(f"ws:user:{member.user_id}" for member in group.members),
+    }
+    for topic in topics:
+        await publish(topic, event)
+    return CheckinResponse(redemption_id=str(redemption.id), group=group)
