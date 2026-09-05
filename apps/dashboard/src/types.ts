@@ -40,7 +40,10 @@ export interface BusinessDrop {
   category: DropCategory;
   // Shown even at Detect range — see apps/api/app/services/proximity.py.
   interest_tag: string;
+  // Read-only — computed server-side from discount_percent/group size/
+  // capacity (see compute_rarity in the API). Never sent when creating a Drop.
   rarity: DropRarity;
+  discount_percent: number;
   drop_type: DropType;
   min_group_size: number;
   max_group_size: number;

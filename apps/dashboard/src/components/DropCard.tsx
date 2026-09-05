@@ -65,6 +65,14 @@ export function DropCard({ drop, onPublish, onPause, onResume, onCancel, busy }:
             <dd>{drop.interest_tag}</dd>
           </div>
           <div className="drop-card__details-row">
+            <dt>Discount</dt>
+            <dd>{drop.discount_percent}%</dd>
+          </div>
+          <div className="drop-card__details-row">
+            <dt>Rarity (computed)</dt>
+            <dd className="drop-card__rarity">{drop.rarity}</dd>
+          </div>
+          <div className="drop-card__details-row">
             <dt>Detect radius</dt>
             <dd>{drop.discovery_radius_m} m</dd>
           </div>

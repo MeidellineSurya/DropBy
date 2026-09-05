@@ -9,6 +9,28 @@ function toIso(localDateTime: string): string {
   return new Date(localDateTime).toISOString();
 }
 
+// Mirrors app/services/drop_lifecycle.compute_rarity on the backend — this
+// is a preview only, so a business can see roughly what tier their offer
+// will land in before submitting. The server always computes the real
+// value; there is no rarity field sent to the API at all.
+const DISCOUNT_TIER_THRESHOLDS: [number, DropRarity][] = [
+  [80, "legendary"],
+  [60, "epic"],
+  [40, "rare"],
+  [20, "uncommon"],
+  [0, "common"],
+];
+const RARITY_ORDER: DropRarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
+
+function previewRarity(discountPercent: number, minGroupSize: number, maxCapacity: number): DropRarity {
+  const match = DISCOUNT_TIER_THRESHOLDS.find(([threshold]) => discountPercent >= threshold);
+  const base = match ? match[1] : "common";
+  const scarceOrDemanding = maxCapacity <= 6 || minGroupSize >= 6;
+  if (!scarceOrDemanding) return base;
+  const nextIndex = Math.min(RARITY_ORDER.indexOf(base) + 1, RARITY_ORDER.length - 1);
+  return RARITY_ORDER[nextIndex];
+}
+
 export function CreateDropPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +40,7 @@ export function CreateDropPage() {
   const [description, setDescription] = useState("");
   const [interestTag, setInterestTag] = useState("");
   const [category, setCategory] = useState<DropCategory>("food_dining");
-  const [rarity, setRarity] = useState<DropRarity>("common");
+  const [discountPercent, setDiscountPercent] = useState(20);
   const [dropType, setDropType] = useState<DropType>("solo");
   const [minGroupSize, setMinGroupSize] = useState(1);
   const [maxGroupSize, setMaxGroupSize] = useState(1);
@@ -40,7 +62,7 @@ export function CreateDropPage() {
         description: description || undefined,
         interest_tag: interestTag || undefined,
         category,
-        rarity,
+        discount_percent: discountPercent,
         drop_type: dropType,
         min_group_size: dropType === "solo" ? 1 : minGroupSize,
         max_group_size: dropType === "solo" ? 1 : maxGroupSize,
@@ -99,16 +121,28 @@ export function CreateDropPage() {
               </select>
             </label>
             <label>
-              Rarity
-              <select value={rarity} onChange={(e) => setRarity(e.target.value as DropRarity)}>
-                <option value="common">Common</option>
-                <option value="uncommon">Uncommon</option>
-                <option value="rare">Rare</option>
-                <option value="epic">Epic</option>
-                <option value="legendary">Legendary</option>
-              </select>
+              Discount (%)
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(Number(e.target.value))}
+                required
+              />
             </label>
           </div>
+          <p className="form-hint">
+            Rarity is computed automatically from your discount and group size/capacity — it's
+            not something you pick directly, so it stays an honest signal. Estimated tier:{" "}
+            <strong className="rarity-preview">
+              {previewRarity(
+                discountPercent,
+                dropType === "solo" ? 1 : minGroupSize,
+                maxCapacity,
+              )}
+            </strong>
+          </p>
         </section>
 
         <section>
