@@ -83,6 +83,7 @@
 
 .login-card input,
 .login-card select {
+  width: 100%;
   padding: 0.55rem 0.7rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);

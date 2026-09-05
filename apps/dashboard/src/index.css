@@ -24,3 +24,15 @@ h3 {
 p {
   margin: 0;
 }
+
+/* Flex items default to min-width: auto, so an <input> inside a
+   flex-direction:column label falls back to its own intrinsic content
+   width instead of shrinking to fit a narrowed sibling column (e.g. two
+   inputs side by side in a row) — this is what let the Longitude field
+   overflow its card. min-width: 0 here is the general-purpose fix; each
+   page's own CSS still opts individual inputs into width: 100%. */
+input,
+select,
+textarea {
+  min-width: 0;
+}
