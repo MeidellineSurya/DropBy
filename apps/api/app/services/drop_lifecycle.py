@@ -99,6 +99,59 @@ def create_drop(
     return drop
 
 
+def publish_drop(db: Session, drop_id: UUID, business_id: UUID) -> Drop | None:
+    """Move a business's own draft Drop live, using the same scheduled-vs-active
+    staging rule as create_drop(..., publish=True)."""
+    drop = db.scalar(
+        select(Drop)
+        .where(Drop.id == drop_id, Drop.business_id == business_id)
+        .with_for_update()
+    )
+    if drop is None or drop.status != DropStatus.draft:
+        return None
+    now = datetime.now(timezone.utc)
+    if drop.ends_at <= now:
+        raise ValueError("an expired Drop cannot be published")
+    drop.status = DropStatus.scheduled if drop.starts_at > now else DropStatus.active
+    db.commit()
+    return drop
+
+
+def pause_drop(db: Session, drop_id: UUID, business_id: UUID) -> Drop | None:
+    """Temporarily hide an active Drop from discovery without cancelling it or
+    releasing its reserved capacity; forming/ready squads are left alone."""
+    changed = db.execute(
+        update(Drop)
+        .where(
+            Drop.id == drop_id,
+            Drop.business_id == business_id,
+            Drop.status == DropStatus.active,
+        )
+        .values(status=DropStatus.paused)
+    ).rowcount
+    if not changed:
+        return None
+    db.commit()
+    return db.get(Drop, drop_id)
+
+
+def resume_drop(db: Session, drop_id: UUID, business_id: UUID) -> Drop | None:
+    changed = db.execute(
+        update(Drop)
+        .where(
+            Drop.id == drop_id,
+            Drop.business_id == business_id,
+            Drop.status == DropStatus.paused,
+            Drop.ends_at > func.now(),
+        )
+        .values(status=DropStatus.active)
+    ).rowcount
+    if not changed:
+        return None
+    db.commit()
+    return db.get(Drop, drop_id)
+
+
 def activate_drop(db: Session, drop_id: UUID) -> Drop | None:
     drop = db.scalar(select(Drop).where(Drop.id == drop_id).with_for_update())
     if drop is None or drop.status != DropStatus.scheduled:
@@ -157,29 +210,43 @@ def release_capacity(db: Session, drop_id: UUID, count: int) -> None:
     )
 
 
-def cancel_drop(db: Session, drop_id: UUID) -> bool:
+def cancel_drop(
+    db: Session, drop_id: UUID, business_id: UUID | None = None
+) -> list[UUID] | None:
+    """`business_id` scopes cancellation to a business's own Drop when provided
+    (the business-facing route always passes it); left optional so an eventual
+    admin/moderation caller can cancel across businesses.
+
+    Returns None if the Drop couldn't be cancelled (not found, not owned, or
+    already in a terminal state), otherwise the ids of any forming/ready
+    Groups that were cascaded to cancelled — callers use this list to notify
+    affected squads (see api/v1/business_drops.py)."""
+    conditions = [
+        Drop.id == drop_id,
+        Drop.status.not_in(
+            [DropStatus.completed, DropStatus.cancelled, DropStatus.expired]
+        ),
+    ]
+    if business_id is not None:
+        conditions.append(Drop.business_id == business_id)
     changed = db.execute(
-        update(Drop)
-        .where(
-            Drop.id == drop_id,
-            Drop.status.not_in(
-                [DropStatus.completed, DropStatus.cancelled, DropStatus.expired]
-            ),
-        )
-        .values(status=DropStatus.cancelled)
+        update(Drop).where(*conditions).values(status=DropStatus.cancelled)
     ).rowcount
     if not changed:
-        return False
-    db.execute(
-        update(Group)
-        .where(
-            Group.drop_id == drop_id,
-            Group.status.in_([GroupStatus.forming, GroupStatus.ready]),
-        )
-        .values(status=GroupStatus.cancelled)
+        return None
+    group_ids = list(
+        db.scalars(
+            update(Group)
+            .where(
+                Group.drop_id == drop_id,
+                Group.status.in_([GroupStatus.forming, GroupStatus.ready]),
+            )
+            .values(status=GroupStatus.cancelled)
+            .returning(Group.id)
+        ).all()
     )
     db.commit()
-    return True
+    return group_ids
 
 
 def activate_scheduled(db: Session) -> list[UUID]:
