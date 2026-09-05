@@ -49,36 +49,57 @@ def sample_business() -> Business:
 def test_detect_hides_sensitive_fields() -> None:
     drop = sample_drop()
     stage = stage_for_distance(500, drop)
-    payload = snapshot_for(drop, sample_business(), 500, stage).model_dump(
-        exclude_none=True
-    )
+    payload = snapshot_for(
+        drop,
+        sample_business(),
+        500,
+        stage,
+        latitude=-37.8119,
+        longitude=144.9674,
+    ).model_dump(exclude_none=True)
     assert stage == DropViewStage.detect
     assert payload["distance_m"] == 500
     assert "business_name" not in payload
     assert "description" not in payload
     assert "address" not in payload
+    assert "latitude" not in payload
+    assert "longitude" not in payload
 
 
 def test_reveal_adds_category_but_not_business() -> None:
     drop = sample_drop()
     stage = stage_for_distance(150, drop)
-    payload = snapshot_for(drop, sample_business(), 150, stage).model_dump(
-        exclude_none=True
-    )
+    payload = snapshot_for(
+        drop,
+        sample_business(),
+        150,
+        stage,
+        latitude=-37.8119,
+        longitude=144.9674,
+    ).model_dump(exclude_none=True)
     assert stage == DropViewStage.reveal
     assert payload["category"] == DropCategory.food_dining
     assert "business_name" not in payload
+    assert "latitude" not in payload
+    assert "longitude" not in payload
 
 
 def test_discover_reveals_offer_and_assemble_action() -> None:
     drop = sample_drop()
     stage = stage_for_distance(50, drop)
-    payload = snapshot_for(drop, sample_business(), 50, stage).model_dump(
-        exclude_none=True
-    )
+    payload = snapshot_for(
+        drop,
+        sample_business(),
+        50,
+        stage,
+        latitude=-37.8119,
+        longitude=144.9674,
+    ).model_dump(exclude_none=True)
     assert stage == DropViewStage.discover
     assert payload["business_name"] == "Secret Restaurant"
     assert payload["description"] == "40% off dinner"
+    assert payload["latitude"] == -37.8119
+    assert payload["longitude"] == 144.9674
     assert payload["can_assemble"] is True
 
 

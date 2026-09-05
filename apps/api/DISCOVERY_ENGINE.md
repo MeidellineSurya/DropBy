@@ -89,7 +89,7 @@ Use these login credentials:
 
 ```json
 {
-  "email": "explorer@dropby.test",
+  "email": "explorer@dropbyapp.com",
   "password": "dropby12345"
 }
 ```
