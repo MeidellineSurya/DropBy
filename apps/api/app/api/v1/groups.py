@@ -38,6 +38,7 @@ def _state_event(group: GroupResponse) -> GroupStateUpdate:
         max_allowed=group.max_allowed,
         members=[member.model_dump(mode="json") for member in group.members],
         expires_at=group.expires_at,
+        reason=group.cancelled_reason,
     )
 
 

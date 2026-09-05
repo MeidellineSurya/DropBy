@@ -29,3 +29,7 @@ class GroupResponse(BaseModel):
     open_to_nearby: bool
     expires_at: datetime | None
     members: list[GroupMemberResponse]
+    # Set by services/squad_state.py when a reserve_capacity() race cancels
+    # this squad, so members see the real reason instead of an unexplained
+    # cancellation (see services/drop_lifecycle.describe_capacity_failure).
+    cancelled_reason: str | None = None

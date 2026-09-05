@@ -6,7 +6,13 @@ import pytest
 from sqlalchemy.orm import Session
 
 from app.models.drops import Drop, DropStatus
-from app.services.drop_lifecycle import cancel_drop, pause_drop, publish_drop, resume_drop
+from app.services.drop_lifecycle import (
+    cancel_drop,
+    describe_capacity_failure,
+    pause_drop,
+    publish_drop,
+    resume_drop,
+)
 
 
 def make_drop(**overrides) -> Drop:
@@ -105,3 +111,47 @@ def test_cancel_drop_returns_cascaded_group_ids() -> None:
 
     assert result == cascaded_ids
     db.commit.assert_called_once_with()
+
+
+def test_describe_capacity_failure_distinguishes_paused_from_full() -> None:
+    """The race this covers: reserve_capacity() only matches status ==
+    active, so a squad that crosses min_required the instant a business
+    pauses the Drop fails the same way a genuinely sold-out Drop would.
+    Members deserve to be told which one actually happened."""
+    db = MagicMock(spec=Session)
+    paused_drop = make_drop(status=DropStatus.paused)
+    db.get.return_value = paused_drop
+
+    assert describe_capacity_failure(db, paused_drop.id) == (
+        "This Drop is temporarily paused by the business."
+    )
+
+
+def test_describe_capacity_failure_reports_genuinely_full() -> None:
+    db = MagicMock(spec=Session)
+    active_drop = make_drop(status=DropStatus.active)
+    db.get.return_value = active_drop
+
+    assert describe_capacity_failure(db, active_drop.id) == (
+        "This Drop has reached full capacity."
+    )
+
+
+def test_describe_capacity_failure_reports_ended_drop() -> None:
+    db = MagicMock(spec=Session)
+    now = datetime.now(timezone.utc)
+    ended_drop = make_drop(
+        status=DropStatus.active,
+        starts_at=now - timedelta(hours=2),
+        ends_at=now - timedelta(minutes=1),
+    )
+    db.get.return_value = ended_drop
+
+    assert describe_capacity_failure(db, ended_drop.id) == "This Drop has ended."
+
+
+def test_describe_capacity_failure_handles_missing_drop() -> None:
+    db = MagicMock(spec=Session)
+    db.get.return_value = None
+
+    assert describe_capacity_failure(db, uuid4()) == "This Drop no longer exists."
