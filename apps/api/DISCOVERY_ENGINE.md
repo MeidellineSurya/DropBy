@@ -17,17 +17,19 @@ This is the implemented scope for the real-time discovery owner. Other API modul
 
 ## Run
 
-From the repository root:
+Install and open Docker Desktop. From the repository root, run:
 
 ```bat
-copy apps\api\.env.example apps\api\.env
-docker compose -f infra/docker-compose.yml up --build
+dev.cmd
 ```
 
-Seed a user, business, and active Drop:
+That single command creates the environment file, builds the backend services,
+runs the migration, seeds a user/business/active Drop, and opens Swagger. Use:
 
-```bash
-docker compose -f infra/docker-compose.yml exec api python -m app.scripts.seed_discovery
+```bat
+dev.cmd logs
+dev.cmd status
+dev.cmd stop
 ```
 
 Open <http://localhost:8000/docs>.
