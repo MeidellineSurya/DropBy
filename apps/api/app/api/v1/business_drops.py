@@ -98,6 +98,7 @@ def create_drop(
             description=body.description,
             interest_tag=body.interest_tag,
             discount_percent=body.discount_percent,
+            venue_capacity=business.venue_capacity,
             min_group_size=body.min_group_size,
             max_group_size=body.max_group_size,
             discovery_radius_m=body.discovery_radius_m,

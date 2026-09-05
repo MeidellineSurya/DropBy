@@ -14,6 +14,9 @@ class BusinessRegisterRequest(BaseModel):
     password: str = Field(min_length=10, max_length=128)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
+    # Declared once, here, not per Drop — see Business.venue_capacity and
+    # services/drop_lifecycle.compute_rarity for why.
+    venue_capacity: int = Field(gt=0, le=10_000)
     description: str | None = Field(default=None, max_length=2000)
     address: str | None = Field(default=None, max_length=250)
     phone: str | None = Field(default=None, max_length=40)
@@ -31,6 +34,7 @@ class BusinessResponse(BaseModel):
     description: str | None
     address: str | None
     owner_email: str
+    venue_capacity: int
     verified: bool
     status: str
 

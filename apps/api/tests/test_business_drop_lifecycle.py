@@ -177,27 +177,37 @@ def test_describe_capacity_failure_handles_missing_drop() -> None:
 def test_compute_rarity_tiers_by_discount_depth(
     discount_percent: int, expected: DropRarity
 ) -> None:
-    # A large, unlimited-capacity, solo-friendly Drop — discount alone
-    # should decide the tier with no scarcity/commitment bump.
-    assert compute_rarity(discount_percent, min_group_size=1, max_capacity_participants=100) == expected
+    # A large-venue, solo-friendly Drop — discount alone should decide the
+    # tier with no scarcity/commitment bump.
+    assert compute_rarity(discount_percent, min_group_size=1, venue_capacity=100) == expected
 
 
-def test_compute_rarity_bumps_a_tier_for_a_small_capacity() -> None:
-    # 30% off would normally be uncommon, but a 4-spot Drop is genuinely
-    # scarce — matches the brief's "Epic: very limited" framing.
-    assert compute_rarity(30, min_group_size=1, max_capacity_participants=4) == DropRarity.rare
+def test_compute_rarity_bumps_a_tier_for_a_small_venue() -> None:
+    # 30% off would normally be uncommon, but a business with only 4
+    # registered seats total is genuinely scarce — matches the brief's
+    # "Epic: very limited" framing.
+    assert compute_rarity(30, min_group_size=1, venue_capacity=4) == DropRarity.rare
 
 
 def test_compute_rarity_bumps_a_tier_for_a_large_required_group() -> None:
     # A raid-sized commitment reads as a bigger ask than the discount alone.
-    assert compute_rarity(30, min_group_size=8, max_capacity_participants=100) == DropRarity.rare
+    assert compute_rarity(30, min_group_size=8, venue_capacity=100) == DropRarity.rare
 
 
 def test_compute_rarity_never_bumps_past_legendary() -> None:
     assert (
-        compute_rarity(90, min_group_size=10, max_capacity_participants=2)
-        == DropRarity.legendary
+        compute_rarity(90, min_group_size=10, venue_capacity=2) == DropRarity.legendary
     )
+
+
+def test_compute_rarity_is_not_gameable_by_a_small_per_drop_capacity() -> None:
+    # The loophole this closes: previously, scarcity was judged from the
+    # freely-editable per-Drop max_capacity_participants, so a business
+    # could declare an artificially small Drop capacity for a free rarity
+    # bump at zero real cost, regardless of their actual venue size. Now
+    # scarcity is judged from venue_capacity (declared once at registration),
+    # so a large-venue business gets no bump just by capping one Drop small.
+    assert compute_rarity(30, min_group_size=1, venue_capacity=200) == DropRarity.uncommon
 
 
 def test_compute_rarity_is_never_business_declared() -> None:

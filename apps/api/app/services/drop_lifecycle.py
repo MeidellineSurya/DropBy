@@ -32,21 +32,27 @@ _RARITY_ORDER = [
     DropRarity.epic,
     DropRarity.legendary,
 ]
-# A Drop this scarce (few total spots) or this demanding (a large required
-# group) reads as more special than its discount alone suggests — matching
-# the brief's own language ("Epic: very limited", "Legendary: extremely rare").
+# A business this small (few total seats) or a Drop this demanding (a large
+# required group) reads as more special than the discount alone suggests —
+# matching the brief's own language ("Epic: very limited", "Legendary:
+# extremely rare").
 _SCARCITY_CAPACITY_MAX = 6
 _COMMITMENT_GROUP_MIN = 6
 
 
 def compute_rarity(
-    discount_percent: int, min_group_size: int, max_capacity_participants: int
+    discount_percent: int, min_group_size: int, venue_capacity: int
 ) -> DropRarity:
     """Rarity is never business-declared (see api/v1/business_drops.py — the
     create schema has no rarity field at all) — it's derived here from the
     offer's actual terms, so a business can't just label a 5%-off coffee
     upgrade "Legendary". This is the only place that produces a rarity value;
     keep it that way rather than accepting an override anywhere upstream.
+
+    Scarcity is judged against the business's registered venue_capacity
+    (declared once at registration — see Business.venue_capacity), not the
+    per-Drop max_capacity_participants a business could otherwise lowball
+    for free on every single Drop with zero real cost to themselves.
     """
     tier = next(
         rarity
@@ -54,8 +60,7 @@ def compute_rarity(
         if discount_percent >= threshold
     )
     is_scarce_or_demanding = (
-        max_capacity_participants <= _SCARCITY_CAPACITY_MAX
-        or min_group_size >= _COMMITMENT_GROUP_MIN
+        venue_capacity <= _SCARCITY_CAPACITY_MAX or min_group_size >= _COMMITMENT_GROUP_MIN
     )
     if is_scarce_or_demanding:
         bumped_index = min(_RARITY_ORDER.index(tier) + 1, len(_RARITY_ORDER) - 1)
@@ -96,6 +101,7 @@ def create_drop(
     starts_at: datetime,
     ends_at: datetime,
     discount_percent: int,
+    venue_capacity: int,
     description: str | None = None,
     interest_tag: str | None = None,
     min_group_size: int = 1,
@@ -134,6 +140,10 @@ def create_drop(
         raise ValueError("capacity must fit at least one minimum-size group")
     if not 1 <= discount_percent <= 100:
         raise ValueError("discount_percent must be between 1 and 100")
+    if max_capacity_participants > venue_capacity:
+        raise ValueError(
+            "max_capacity_participants cannot exceed your registered venue_capacity"
+        )
 
     now = datetime.now(timezone.utc)
     lifecycle_status = DropStatus.draft
@@ -142,7 +152,7 @@ def create_drop(
             DropStatus.scheduled if starts_at > now else DropStatus.active
         )
 
-    rarity = compute_rarity(discount_percent, min_group_size, max_capacity_participants)
+    rarity = compute_rarity(discount_percent, min_group_size, venue_capacity)
     drop = Drop(
         business_id=business_id,
         title=clean_title,

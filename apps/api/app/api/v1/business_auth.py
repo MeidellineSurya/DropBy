@@ -25,6 +25,7 @@ def _business_response(business: Business) -> BusinessResponse:
         description=business.description,
         address=business.address,
         owner_email=business.owner_email,
+        venue_capacity=business.venue_capacity,
         verified=business.verified,
         status=business.status.value,
     )
@@ -49,6 +50,7 @@ def register(
         address=body.address,
         owner_email=owner_email,
         password_hash=hash_password(body.password),
+        venue_capacity=body.venue_capacity,
         phone=body.phone,
         verified=False,
         status=BusinessStatus.pending,

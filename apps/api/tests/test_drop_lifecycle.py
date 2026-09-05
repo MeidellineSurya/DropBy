@@ -24,6 +24,7 @@ def valid_values() -> dict:
         "min_group_size": 2,
         "max_group_size": 4,
         "discount_percent": 40,
+        "venue_capacity": 50,
     }
 
 
@@ -61,6 +62,7 @@ def test_create_drop_can_create_draft_without_publishing() -> None:
         ({"latitude": -91}, "invalid latitude"),
         ({"discount_percent": 0}, "discount_percent must be"),
         ({"discount_percent": 101}, "discount_percent must be"),
+        ({"venue_capacity": 5}, "cannot exceed your registered venue_capacity"),
     ],
 )
 def test_create_drop_rejects_invalid_lifecycle_input(
