@@ -1,6 +1,6 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-05 (verified after pulling the discovery-engine merge)_
 
 ## Status
 
@@ -35,6 +35,9 @@ the Alembic upgrade renders valid PostgreSQL/PostGIS SQL; and the Docker API,
 migration, Celery worker, and scheduler start cleanly. The live integration
 verifier confirmed PostGIS 3.4, atomic capacity under simultaneous squad joins,
 Redis pub/sub, and authenticated WebSocket delivery through Redis.
+
+**Re-verified locally after pull (2026-09-05):** fresh venv, `pip install -r
+requirements-dev.txt`, `pytest -q` — all 15 tests pass with no changes needed.
 
 ## Key decisions
 
