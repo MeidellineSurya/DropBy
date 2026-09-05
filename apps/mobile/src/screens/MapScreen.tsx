@@ -1,6 +1,6 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as Location from "expo-location";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -22,6 +22,7 @@ import type { DropSnapshot, DropStageEvent } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Discover">;
 type Coordinate = { latitude: number; longitude: number };
+type LocationMode = "off" | "live" | "demo";
 
 const MELBOURNE: Region = {
   latitude: -37.8119,
@@ -51,6 +52,11 @@ export function MapScreen({ navigation }: Props) {
   const [socketConnected, setSocketConnected] = useState(false);
   const [groupId, setGroupId] = useState("");
   const [joining, setJoining] = useState(false);
+  const [locationMode, setLocationMode] = useState<LocationMode>("off");
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
+  const watchPingRunning = useRef(false);
+  const pingSequence = useRef(0);
+  const loadingSequence = useRef(0);
 
   const discoveredDrops = useMemo(
     () => drops.filter((drop) => drop.latitude != null && drop.longitude != null),
@@ -74,33 +80,97 @@ export function MapScreen({ navigation }: Props) {
     return () => socket.close();
   }, [token]);
 
-  async function ping(position: Coordinate) {
-    setLoading(true);
+  useEffect(() => {
+    let mounted = true;
+    void Location.getForegroundPermissionsAsync().then((permission) => {
+      if (mounted && permission.status === "granted") setLocationMode("live");
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (locationMode !== "live") return;
+    let mounted = true;
+    let subscription: Location.LocationSubscription | null = null;
+
+    void (async () => {
+      const permission = await Location.getForegroundPermissionsAsync();
+      if (!mounted) return;
+      if (permission.status !== "granted") {
+        setLocationMode("off");
+        setError("Location permission is required to discover nearby Drops.");
+        return;
+      }
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 10,
+          timeInterval: 5000,
+          mayShowUserSettingsDialog: true,
+        },
+        (location) => {
+          if (!mounted || watchPingRunning.current) return;
+          watchPingRunning.current = true;
+          void ping(
+            {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            },
+            false,
+          ).finally(() => {
+            watchPingRunning.current = false;
+          });
+        },
+        (message) => {
+          if (mounted) setError(message);
+        },
+      );
+    })();
+
+    return () => {
+      mounted = false;
+      subscription?.remove();
+      watchPingRunning.current = false;
+    };
+  }, [locationMode]);
+
+  async function ping(position: Coordinate, showLoading = true) {
+    const sequence = ++pingSequence.current;
+    if (showLoading) {
+      loadingSequence.current = sequence;
+      setLoading(true);
+    }
     setError(null);
     setCoordinate(position);
     try {
       const response = await api.locationPing(position.latitude, position.longitude);
+      if (sequence !== pingSequence.current) return;
       setDrops(response.drops);
+      setLastLocationUpdate(new Date());
     } catch (reason) {
+      if (sequence !== pingSequence.current) return;
       setError(reason instanceof Error ? reason.message : "Could not load nearby Drops");
     } finally {
-      setLoading(false);
+      if (showLoading && sequence === loadingSequence.current) setLoading(false);
     }
   }
 
-  async function useCurrentLocation() {
+  async function enableLiveTracking() {
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== "granted") {
       setError("Location permission is required to discover nearby Drops.");
       return;
     }
     const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+      accuracy: Location.Accuracy.High,
     });
     await ping({
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
     });
+    setLocationMode("live");
   }
 
   async function joinSquad() {
@@ -142,6 +212,22 @@ export function MapScreen({ navigation }: Props) {
           </Text>
         </View>
 
+        <View style={styles.trackingRow}>
+          <View style={[styles.trackingDot, locationMode === "live" && styles.trackingDotLive]} />
+          <Text style={styles.trackingText}>
+            {locationMode === "live"
+              ? "Continuous location tracking active"
+              : locationMode === "demo"
+                ? "Demo location active · live GPS paused"
+                : "Continuous location tracking is off"}
+          </Text>
+          {lastLocationUpdate && (
+            <Text style={styles.trackingTime}>
+              {lastLocationUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </Text>
+          )}
+        </View>
+
         <View style={styles.mapFrame}>
           <MapView
             initialRegion={MELBOURNE}
@@ -178,8 +264,16 @@ export function MapScreen({ navigation }: Props) {
           )}
         </View>
 
-        <Pressable onPress={() => void useCurrentLocation()} style={styles.locationButton}>
-          <Text style={styles.locationButtonText}>Use my current location</Text>
+        <Pressable
+          onPress={() => {
+            if (locationMode === "live") setLocationMode("off");
+            else void enableLiveTracking();
+          }}
+          style={[styles.locationButton, locationMode === "live" && styles.locationButtonActive]}
+        >
+          <Text style={styles.locationButtonText}>
+            {locationMode === "live" ? "Pause continuous tracking" : "Enable continuous location"}
+          </Text>
         </Pressable>
 
         <Text style={styles.testLabel}>MELBOURNE DEMO POSITIONS</Text>
@@ -187,7 +281,10 @@ export function MapScreen({ navigation }: Props) {
           {TEST_POSITIONS.map(([label, latitude, longitude]) => (
             <Pressable
               key={label}
-              onPress={() => void ping({ latitude, longitude })}
+              onPress={() => {
+                setLocationMode("demo");
+                void ping({ latitude, longitude });
+              }}
               style={styles.testButton}
             >
               <Text style={styles.testButtonText}>{label}</Text>
@@ -271,10 +368,16 @@ const styles = StyleSheet.create({
   dotLive: { backgroundColor: colors.cyan },
   connectionText: { color: colors.muted, fontSize: 13 },
   host: { color: colors.muted, flex: 1, fontSize: 11, marginLeft: 8, textAlign: "right" },
+  trackingRow: { alignItems: "center", flexDirection: "row", marginHorizontal: 20, marginBottom: 12, marginTop: -5 },
+  trackingDot: { backgroundColor: colors.muted, borderRadius: 4, height: 8, marginRight: 7, width: 8 },
+  trackingDotLive: { backgroundColor: colors.lime },
+  trackingText: { color: colors.muted, flex: 1, fontSize: 12 },
+  trackingTime: { color: colors.muted, fontSize: 11, marginLeft: 8 },
   mapFrame: { borderColor: colors.border, borderRadius: 22, borderWidth: 1, marginHorizontal: 14, overflow: "hidden" },
   map: { height: 300, width: "100%" },
   mapLoading: { alignItems: "center", backgroundColor: "#090B0FAA", bottom: 0, justifyContent: "center", left: 0, position: "absolute", right: 0, top: 0 },
   locationButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 13, marginHorizontal: 20, marginTop: 14, paddingVertical: 14 },
+  locationButtonActive: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderWidth: 1 },
   locationButtonText: { color: colors.black, fontSize: 15, fontWeight: "900" },
   testLabel: { color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 1.2, marginHorizontal: 20, marginTop: 20 },
   testRow: { flexDirection: "row", gap: 8, marginHorizontal: 20, marginTop: 9 },
