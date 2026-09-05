@@ -1,0 +1,39 @@
+.status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.status-pill--draft {
+  background: #eef0f3;
+  color: #5b6472;
+}
+.status-pill--scheduled {
+  background: #e6f0ff;
+  color: #1c5ad1;
+}
+.status-pill--active {
+  background: #e3f8ec;
+  color: #1c8a4d;
+}
+.status-pill--paused {
+  background: #fff4e0;
+  color: #a8620a;
+}
+.status-pill--capacity_reached {
+  background: #f1e9ff;
+  color: #6a35c9;
+}
+.status-pill--expired,
+.status-pill--cancelled {
+  background: #fdeaea;
+  color: #b3261e;
+}
+.status-pill--completed {
+  background: #e6f0ff;
+  color: #1c5ad1;
+}

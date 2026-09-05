@@ -1,26 +1,93 @@
+import { getToken } from "./auth";
+import type {
+  Business,
+  BusinessDrop,
+  BusinessOverview,
+  DropFunnel,
+} from "../types";
+
 const API_BASE_URL = "http://localhost:8000/api/v1";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, options);
-  if (!response.ok) {
-    throw new Error(`Request to ${path} failed: ${response.status}`);
+class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
   }
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new ApiError(response.status, body.detail ?? `Request to ${path} failed`);
+  }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
+export interface TokenResponse<TAccount> {
+  access_token: string;
+  token_type: string;
+  business: TAccount;
+}
+
 export const api = {
-  createDrop: (payload: Record<string, unknown>) =>
-    request("/business/drops", {
+  register: (payload: {
+    name: string;
+    category: string;
+    owner_email: string;
+    password: string;
+    latitude: number;
+    longitude: number;
+    description?: string;
+    address?: string;
+    phone?: string;
+  }) =>
+    request<TokenResponse<Business>>("/business/auth/register", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  listDrops: () => request("/business/drops"),
-  confirmRedemption: (redemptionId: string, participantCount: number) =>
-    request(`/redemptions/${redemptionId}/confirm`, {
+
+  login: (owner_email: string, password: string) =>
+    request<TokenResponse<Business>>("/business/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ participant_count: participantCount }),
+      body: JSON.stringify({ owner_email, password }),
     }),
-  dropFunnel: (dropId: string) => request(`/business/analytics/drops/${dropId}`),
+
+  me: () => request<Business>("/business/auth/me"),
+
+  createDrop: (payload: Record<string, unknown>) =>
+    request<BusinessDrop>("/business/drops", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  listDrops: (status?: string) =>
+    request<BusinessDrop[]>(
+      `/business/drops${status ? `?drop_status=${status}` : ""}`,
+    ),
+
+  publishDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/publish`, { method: "POST" }),
+  pauseDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/pause`, { method: "POST" }),
+  resumeDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/resume`, { method: "POST" }),
+  cancelDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/cancel`, { method: "POST" }),
+
+  overview: () => request<BusinessOverview>("/business/analytics/overview"),
+  dropFunnel: (dropId: string) =>
+    request<DropFunnel>(`/business/analytics/drops/${dropId}`),
 };
+
+export { ApiError };

@@ -1,0 +1,53 @@
+.drop-card {
+  background: #fff;
+  border: 1px solid #e6e9ee;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.drop-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.drop-card__header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.drop-card__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #5b6472;
+  text-transform: capitalize;
+}
+
+.drop-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.drop-card__actions button {
+  border: 1px solid #d7dce3;
+  background: #f7f8fa;
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.drop-card__actions button:hover {
+  background: #eef0f3;
+}
+
+.drop-card__actions .drop-card__cancel {
+  color: #b3261e;
+  border-color: #f3d3d1;
+  background: #fdeaea;
+}
