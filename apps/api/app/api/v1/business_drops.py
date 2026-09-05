@@ -1,21 +1,205 @@
-from fastapi import APIRouter
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.deps import get_current_business, get_db
+from app.models.businesses import Business
+from app.models.drops import Drop, DropStatus, DropViewEvent
+from app.models.groups import Group
+from app.schemas.business_drops import BusinessDropCreateRequest, BusinessDropResponse
+from app.services.drop_lifecycle import (
+    cancel_drop as cancel_drop_lifecycle,
+)
+from app.services.drop_lifecycle import (
+    create_drop as create_drop_lifecycle,
+)
+from app.services.drop_lifecycle import (
+    pause_drop as pause_drop_lifecycle,
+)
+from app.services.drop_lifecycle import (
+    publish_drop as publish_drop_lifecycle,
+)
+from app.services.drop_lifecycle import (
+    resume_drop as resume_drop_lifecycle,
+)
+from app.services.squad_state import group_snapshot
+from app.ws.manager import publish
+from ws_contracts.events import DropExpired, GroupStateUpdate
 
 router = APIRouter()
 
 
-@router.post("")
-def create_drop():
-    """TODO: business creates a Drop (draft/scheduled) — offer, capacity, radius, timing, rarity."""
-    raise NotImplementedError
+def _drop_response(drop: Drop) -> BusinessDropResponse:
+    return BusinessDropResponse(
+        id=str(drop.id),
+        title=drop.title,
+        description=drop.description,
+        category=drop.category,
+        rarity=drop.rarity,
+        drop_type=drop.drop_type,
+        min_group_size=drop.min_group_size,
+        max_group_size=drop.max_group_size,
+        discovery_radius_m=drop.discovery_radius_m,
+        reveal_radius_m=drop.reveal_radius_m,
+        discover_radius_m=drop.discover_radius_m,
+        max_capacity_participants=drop.max_capacity_participants,
+        reserved_count=drop.reserved_count,
+        starts_at=drop.starts_at,
+        ends_at=drop.ends_at,
+        status=drop.status,
+        xp_reward_base=drop.xp_reward_base,
+    )
 
 
-@router.get("")
-def list_business_drops():
-    """TODO: list this business's Drops with status."""
-    raise NotImplementedError
+def _owned_drop_or_404(db: Session, drop_id: UUID, business: Business) -> Drop:
+    drop = db.scalar(
+        select(Drop).where(Drop.id == drop_id, Drop.business_id == business.id)
+    )
+    if drop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Drop not found")
+    return drop
 
 
-@router.post("/{drop_id}/cancel")
-def cancel_drop(drop_id: str):
-    """TODO: app/services/drop_lifecycle.py — cancel, cascade to in-flight groups."""
-    raise NotImplementedError
+@router.post("", response_model=BusinessDropResponse, status_code=status.HTTP_201_CREATED)
+def create_drop(
+    body: BusinessDropCreateRequest,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessDropResponse:
+    try:
+        drop = create_drop_lifecycle(
+            db,
+            business_id=business.id,
+            title=body.title,
+            category=body.category,
+            drop_type=body.drop_type,
+            latitude=body.latitude,
+            longitude=body.longitude,
+            max_capacity_participants=body.max_capacity_participants,
+            starts_at=body.starts_at,
+            ends_at=body.ends_at,
+            description=body.description,
+            rarity=body.rarity,
+            min_group_size=body.min_group_size,
+            max_group_size=body.max_group_size,
+            discovery_radius_m=body.discovery_radius_m,
+            reveal_radius_m=body.reveal_radius_m,
+            discover_radius_m=body.discover_radius_m,
+            xp_reward_base=body.xp_reward_base,
+            publish=body.publish,
+        )
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    db.commit()
+    db.refresh(drop)
+    return _drop_response(drop)
+
+
+@router.get("", response_model=list[BusinessDropResponse])
+def list_business_drops(
+    drop_status: DropStatus | None = None,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> list[BusinessDropResponse]:
+    query = select(Drop).where(Drop.business_id == business.id)
+    if drop_status is not None:
+        query = query.where(Drop.status == drop_status)
+    drops = db.scalars(query.order_by(Drop.created_at.desc())).all()
+    return [_drop_response(drop) for drop in drops]
+
+
+@router.get("/{drop_id}", response_model=BusinessDropResponse)
+def get_business_drop(
+    drop_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessDropResponse:
+    return _drop_response(_owned_drop_or_404(db, drop_id, business))
+
+
+@router.post("/{drop_id}/publish", response_model=BusinessDropResponse)
+def publish_drop(
+    drop_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessDropResponse:
+    try:
+        drop = publish_drop_lifecycle(db, drop_id, business.id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    if drop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Draft Drop not found")
+    return _drop_response(drop)
+
+
+@router.post("/{drop_id}/pause", response_model=BusinessDropResponse)
+def pause_drop(
+    drop_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessDropResponse:
+    drop = pause_drop_lifecycle(db, drop_id, business.id)
+    if drop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Active Drop not found")
+    return _drop_response(drop)
+
+
+@router.post("/{drop_id}/resume", response_model=BusinessDropResponse)
+def resume_drop(
+    drop_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessDropResponse:
+    drop = resume_drop_lifecycle(db, drop_id, business.id)
+    if drop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paused Drop not found")
+    return _drop_response(drop)
+
+
+@router.post("/{drop_id}/cancel", response_model=BusinessDropResponse)
+async def cancel_drop(
+    drop_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessDropResponse:
+    cancelled_group_ids = cancel_drop_lifecycle(db, drop_id, business.id)
+    if cancelled_group_ids is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Cancellable Drop not found")
+
+    # Mirror workers/tasks/drops.py's expiry-sweep broadcast so cancellation
+    # notifies affected users/squads the same way a natural expiry does.
+    viewer_ids = set(
+        db.scalars(
+            select(DropViewEvent.user_id).where(DropViewEvent.drop_id == drop_id)
+        ).all()
+    )
+    drop_expired_event = DropExpired(
+        drop_id=str(drop_id), reason="cancelled"
+    ).model_dump(mode="json")
+    for topic in {f"ws:drop:{drop_id}", *(f"ws:user:{uid}" for uid in viewer_ids)}:
+        await publish(topic, drop_expired_event)
+
+    for group_id in cancelled_group_ids:
+        group = db.get(Group, group_id)
+        if group is None:
+            continue
+        snapshot = group_snapshot(db, group)
+        event = GroupStateUpdate(
+            group_id=snapshot.id,
+            drop_id=snapshot.drop_id,
+            status=snapshot.status.value,
+            current_count=snapshot.current_count,
+            min_required=snapshot.min_required,
+            max_allowed=snapshot.max_allowed,
+            members=[member.model_dump(mode="json") for member in snapshot.members],
+            expires_at=snapshot.expires_at,
+        ).model_dump(mode="json")
+        for topic in {
+            f"ws:group:{group_id}",
+            *(f"ws:user:{member.user_id}" for member in snapshot.members),
+        }:
+            await publish(topic, event)
+
+    return _drop_response(_owned_drop_or_404(db, drop_id, business))
