@@ -91,6 +91,25 @@ device location and refreshes nearby Drops after roughly 10 metres of movement
 or every few seconds on supported platforms. Selecting a Melbourne demo
 position pauses live GPS until continuous tracking is enabled again.
 
+### Business dashboard
+
+With the Docker stack running (`dev.cmd`, or `docker compose up -d` from
+`infra/`), the dashboard is served at <http://localhost:5173>. A seeded demo
+business is created by the same seed step as the mobile demo data:
+
+- Email: `venue@dropbyapp.com`
+- Password: `dropby12345`
+
+Log in to see the Overview, Drops, Create Drop, Analytics, and Live Queue
+pages. Creating a Drop only asks for a discount percentage and group-size
+requirements — rarity and the resulting XP reward are computed by the
+platform from those inputs plus the business's registered venue capacity, not
+entered directly, so they can't be inflated. A squad checks in by scanning the
+Drop's venue QR (signed server-side; there's no dashboard UI to render it yet,
+see `STATUS.md`), which appears on the **Live Queue** page for the business to
+confirm or reject. Sessions last one hour and there's no refresh flow yet — an
+expired session bounces back to the login screen automatically.
+
 ## Status
 
 The real-time discovery workstream is implemented: JWT/onboarding, PostGIS
@@ -99,8 +118,15 @@ formation, capacity enforcement, migrations, and Docker wiring. See
 [`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md) for setup and a
 seeded walkthrough.
 
-The business, redemption, gamification, notifications, mobile, and dashboard
-workstreams remain owned separately and still contain scaffold placeholders.
+The business/supply-side workstream is also implemented end to end: business
+auth, Drop creation/management, platform-computed rarity and XP (not
+business-declared, to keep both honest), analytics, and a full redemption
+flow — a squad scans the venue's QR, the business confirms or rejects it from
+a live queue on the dashboard, and XP is awarded. See
+[`STATUS.md`](STATUS.md) for the detailed progress table and open gaps.
+
+Gamification depth (XP ledger, badges, leveling), notifications, business
+moderation UI, and mobile-side QR scanning remain unbuilt.
 
 ## Workstream 1 sign-off
 
@@ -120,6 +146,40 @@ Implemented for the real-time discovery owner:
 The workstream implementation and local integration sign-off are complete.
 The live Docker verification passes against PostgreSQL/PostGIS and Redis,
 including a real simultaneous-join capacity race and WebSocket delivery.
+
+## Workstream 2 sign-off
+
+Implemented for the business/supply-side owner:
+
+- business registration/login on a separate JWT audience from consumer auth
+- Drop CRUD (create/list/publish/pause/resume/cancel), gated on the owning
+  business being active before a Drop can go live
+- platform-computed rarity (from discount depth, with a scarcity bump from
+  venue capacity or minimum group size) and platform-computed XP reward from
+  that same rarity — a business can't declare either directly
+- venue capacity captured once at registration as a hard ceiling on a Drop's
+  capacity, not left as a freely-editable per-Drop field
+- business Drop performance and account overview analytics
+- venue QR sign/verify and the full check-in → confirm/reject → XP-award
+  redemption flow, with capacity correctly released on a reject
+- the business dashboard: login/register, Overview, Drops, Create Drop,
+  Analytics, and a live redemption queue, all on the shared WebSocket/Redis
+  fan-out from workstream 1
+- CORS, a global validation-error handler, and session-expiry handling in the
+  dashboard
+- 101 backend tests and a single linear Alembic migration head
+
+The workstream implementation and local integration sign-off are complete.
+Live Docker verification passed end to end: a real business registering,
+creating a Drop with a computed rarity/XP preview, a squad reaching that
+Drop, a real venue-QR check-in, a confirm with an actual XP database
+mutation, and a reject with capacity released back to the Drop.
+
+Still open, not part of this sign-off: gamification depth beyond a flat XP
+total (ledger, badges, leveling), notifications, business moderation
+UI/endpoints to approve pending registrations, a dashboard view to display or
+print a Drop's venue QR, and the mobile-side QR scan screen. See
+[`STATUS.md`](STATUS.md) for the full list.
 
 ## Production deployment
 
@@ -143,10 +203,14 @@ External release step still required:
 - choose a deployment provider, configure production secrets/domain, and run
   the supplied production stack in that account
 
-Cross-team integration still required, but not owned by this workstream:
+Cross-team integration still required, but not owned by either completed
+workstream:
 
-- connect the teammate-owned business Drop-creation route to the lifecycle
-  method
-- the included Expo client now exercises the REST and authenticated WebSocket
-  contracts; teammate-owned production mobile polish and redemption remain
-  separate workstreams
+- the included Expo client exercises the REST and authenticated WebSocket
+  discovery contracts, but has no redemption/QR-scan screen yet — a squad
+  currently checks in via the business's venue QR through the API directly,
+  with no mobile UI for a customer to scan it
+- notifications (push, countdown warnings, new-Drop alerts) are unbuilt
+  across every workstream
+- business moderation (approving a pending registration so it can publish
+  Drops) has no UI or endpoint yet — only direct DB/seed access sets it
