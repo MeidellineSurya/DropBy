@@ -102,3 +102,15 @@ class BadgeUnlocked(BaseModel):
     badge_code: str
     name: str
     icon_url: str | None = None
+
+
+class PowerupGranted(BaseModel):
+    type: Literal["powerup.granted"] = "powerup.granted"
+    powerup_type: str
+    count: int
+
+
+class TerritoryBonusAwarded(BaseModel):
+    type: Literal["territory.bonus_awarded"] = "territory.bonus_awarded"
+    cell: str
+    xp_awarded: int

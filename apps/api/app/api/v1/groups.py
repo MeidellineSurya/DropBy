@@ -9,6 +9,8 @@ from app.models.drops import Drop, DropStatus, DropViewEvent
 from app.models.groups import GroupStatus
 from app.models.users import User
 from app.schemas.groups import GroupCreateRequest, GroupResponse
+from app.schemas.redemption import CheckInRequest, RedemptionResponse
+from app.services.redemption import check_in_group
 from app.services.squad_state import (
     create_group as create_group_state,
 )
@@ -17,12 +19,14 @@ from app.services.squad_state import (
     join_group as join_group_state,
     leave_group as leave_group_state,
 )
+from app.workers.tasks.notifications import send_push_task
 from app.ws.manager import publish
 from ws_contracts.events import (
     DropCapacityReached,
     GroupMemberJoined,
     GroupReady,
     GroupStateUpdate,
+    RedemptionCheckedIn,
 )
 
 router = APIRouter()
@@ -42,7 +46,8 @@ def _state_event(group: GroupResponse) -> GroupStateUpdate:
 
 
 async def _broadcast_group(
-    group: GroupResponse, event: GroupStateUpdate | GroupMemberJoined | GroupReady
+    group: GroupResponse,
+    event: GroupStateUpdate | GroupMemberJoined | GroupReady | RedemptionCheckedIn,
 ) -> None:
     message = event.model_dump(mode="json")
     topics = {
@@ -51,6 +56,19 @@ async def _broadcast_group(
     }
     for topic in topics:
         await publish(topic, message)
+
+
+def _notify_squad_ready(group: GroupResponse) -> None:
+    for member in group.members:
+        send_push_task.delay(
+            member.user_id,
+            "squad_ready",
+            {
+                "title": "Squad ready!",
+                "body": "Everyone's in — head to the venue to check in.",
+                "group_id": group.id,
+            },
+        )
 
 
 async def _broadcast_capacity_reached(db: Session, group: GroupResponse) -> None:
@@ -91,6 +109,7 @@ async def create_group(
                 venue_directions_url="",
             ),
         )
+        _notify_squad_ready(group)
     await _broadcast_capacity_reached(db, group)
     return group
 
@@ -135,6 +154,7 @@ async def join_group(
                 venue_directions_url="",
             ),
         )
+        _notify_squad_ready(group)
     await _broadcast_capacity_reached(db, group)
     return group
 
@@ -164,7 +184,21 @@ async def leave_group(
     return group
 
 
-@router.post("/{group_id}/checkin")
-def checkin_group(group_id: str):
-    """Owned by the redemption workstream; intentionally left as its existing boundary."""
-    raise NotImplementedError
+@router.post("/{group_id}/checkin", response_model=RedemptionResponse)
+async def checkin_group(
+    group_id: UUID,
+    body: CheckInRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RedemptionResponse:
+    """Any squad member scans the venue QR to check the whole squad in."""
+    redemption = check_in_group(db, group_id, body.qr_token, user)
+    group = get_group_for_member(db, group_id, user.id)
+    event = RedemptionCheckedIn(
+        group_id=group.id,
+        redemption_id=str(redemption.id),
+        checked_in_at=redemption.checked_in_at,
+    )
+    await _broadcast_group(group, event)
+    await publish(f"ws:business:{redemption.business_id}", event.model_dump(mode="json"))
+    return RedemptionResponse.model_validate(redemption)

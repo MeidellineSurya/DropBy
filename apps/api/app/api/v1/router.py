@@ -4,6 +4,7 @@ from app.api.v1 import (
     auth,
     business_analytics,
     business_drops,
+    devices,
     drops,
     gamification,
     groups,
@@ -19,3 +20,4 @@ api_router.include_router(business_drops.router, prefix="/business/drops", tags=
 api_router.include_router(business_analytics.router, prefix="/business/analytics", tags=["business"])
 api_router.include_router(redemptions.router, prefix="/redemptions", tags=["redemptions"])
 api_router.include_router(gamification.router, prefix="/gamification", tags=["gamification"])
+api_router.include_router(devices.router, prefix="/devices", tags=["devices"])

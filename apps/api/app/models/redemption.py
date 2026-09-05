@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,9 +18,15 @@ class RedemptionStatus(str, enum.Enum):
 
 
 class Redemption(Base):
-    """Owned by the redemption/gamification module."""
+    """Owned by the redemption/gamification module.
+
+    One Redemption per Group: it is created (or found) the moment a member
+    scans the venue QR, and later transitions to confirmed once the business
+    taps Confirm on their queue.
+    """
 
     __tablename__ = "redemptions"
+    __table_args__ = (UniqueConstraint("group_id", name="uq_redemption_group"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     drop_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("drops.id"))

@@ -13,21 +13,30 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.businesses import Business
 from app.models.drops import Drop, DropStatus, DropViewEvent, DropViewStage
+from app.models.gamification import PerkType, UserExploredCell, UserPerk
 from app.models.users import User
 from app.schemas.drops import DropSnapshot
+from app.services.gamification import RADIUS_PERK_BONUS_PCT, award_territory_bonus, location_cell_for
 from app.ws.manager import publish
-from ws_contracts.events import DropStageUpdate, Stage
+from ws_contracts.events import DropStageUpdate, Stage, TerritoryBonusAwarded
 
 
 def stage_for_distance(
-    distance_m: float, drop: Drop, reveal_unlocked: bool = False
+    distance_m: float,
+    drop: Drop,
+    reveal_unlocked: bool = False,
+    radius_multiplier: float = 1.0,
 ) -> DropViewStage:
     """Return the public two-stage state.
 
     ``discover_radius_m`` remains the close-range threshold in the database for
     migration compatibility. Public clients now receive Reveal at that point.
+
+    radius_multiplier defaults to 1.0 (identical to prior behavior for every
+    existing caller); app/services/gamification.py's "bigger_reveal" powerup
+    passes a temporary >1.0 value via compute_stage_for_ping below.
     """
-    if reveal_unlocked or distance_m <= drop.discover_radius_m:
+    if reveal_unlocked or distance_m <= drop.discover_radius_m * radius_multiplier:
         return DropViewStage.reveal
     return DropViewStage.detect
 
@@ -86,6 +95,20 @@ async def compute_stage_for_ping(
     user.last_location = point
     user.last_location_at = datetime.now(timezone.utc)
 
+    # New-territory bonus: independent of any Drop, this rewards the ping
+    # landing somewhere the user has never pinged from before. See
+    # app/models/gamification.py::UserExploredCell and
+    # app/services/gamification.py::award_territory_bonus (which does not
+    # commit — the db.commit() below covers it).
+    cell = location_cell_for(latitude, longitude)
+    new_cell = db.execute(
+        insert(UserExploredCell)
+        .values(user_id=user.id, cell=cell)
+        .on_conflict_do_nothing(index_elements=["user_id", "cell"])
+        .returning(UserExploredCell.cell)
+    ).scalar()
+    territory_bonus_xp = award_territory_bonus(user) if new_cell is not None else 0
+
     distance = func.ST_Distance(Drop.location, point).label("distance_m")
     drop_geometry = cast(
         Drop.location, Geometry(geometry_type="POINT", srid=4326)
@@ -122,6 +145,20 @@ async def compute_stage_for_ping(
     except (RedisError, OSError):
         await redis.aclose()
         redis = None
+    # Permanent per-pick bonus from the "bigger_radius" level-milestone perk
+    # (app/services/gamification.py::choose_perk) plus, on top of that, the
+    # temporary "bigger_reveal" powerup's boost while active. Both default to
+    # no bonus (multiplier 1.0) for a user with neither.
+    radius_bonus_perks = db.scalar(
+        select(func.count())
+        .select_from(UserPerk)
+        .where(UserPerk.user_id == user.id, UserPerk.type == PerkType.bigger_radius)
+    )
+    radius_multiplier = 1.0 + RADIUS_PERK_BONUS_PCT * int(radius_bonus_perks or 0)
+    if redis:
+        boost_raw = await redis.get(f"reveal_boost:{user.id}")
+        if boost_raw:
+            radius_multiplier += float(boost_raw) - 1.0
     snapshots: list[DropSnapshot] = []
     events: list[DropStageUpdate] = []
     try:
@@ -135,7 +172,7 @@ async def compute_stage_for_ping(
                 redis
                 and (await redis.exists(reveal_key) or await redis.exists(legacy_key))
             )
-            stage = stage_for_distance(float(distance_value), drop, unlocked)
+            stage = stage_for_distance(float(distance_value), drop, unlocked, radius_multiplier)
             snapshot = snapshot_for(
                 drop,
                 business,
@@ -186,6 +223,11 @@ async def compute_stage_for_ping(
 
     for event in events:
         await publish(f"ws:user:{user.id}", event.model_dump(mode="json"))
+    if territory_bonus_xp:
+        await publish(
+            f"ws:user:{user.id}",
+            TerritoryBonusAwarded(cell=cell, xp_awarded=territory_bonus_xp).model_dump(mode="json"),
+        )
     return snapshots
 
 

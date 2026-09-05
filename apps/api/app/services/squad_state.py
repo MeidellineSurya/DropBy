@@ -250,6 +250,71 @@ def get_group_for_member(db: Session, group_id: UUID, user_id: UUID) -> GroupRes
     return group_snapshot(db, group)
 
 
+def extend_group_recruiting_window(db: Session, group_id: UUID, user: User, minutes: int) -> Group:
+    """Pushes back how long a still-forming squad can keep accepting new
+    members. Called by app/services/gamification.py when a user redeems a
+    time-extension powerup. Does not commit — the caller owns the transaction.
+
+    This only affects Group.expires_at, which join_group() checks before
+    letting someone in. It has no effect on a Drop's own end time or on the
+    expiry sweep in drop_lifecycle.expire_due(), which is driven entirely by
+    the Drop's ends_at — a squad that is still forming/ready when the Drop
+    itself ends is expired regardless of this value.
+    """
+    group = db.scalar(select(Group).where(Group.id == group_id).with_for_update())
+    if group is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Squad not found")
+    member = db.scalar(
+        select(GroupMember.id).where(
+            GroupMember.group_id == group.id,
+            GroupMember.user_id == user.id,
+            GroupMember.status == GroupMemberStatus.joined,
+        )
+    )
+    if member is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not in this squad")
+    if group.status != GroupStatus.forming:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Only a still-forming squad's recruiting window can be extended",
+        )
+    base = group.expires_at or datetime.now(timezone.utc)
+    group.expires_at = base + timedelta(minutes=minutes)
+    return group
+
+
+def extend_group_capacity(db: Session, group_id: UUID, user: User, extra_slots: int) -> Group:
+    """Lets a forming/ready squad accept more members than the Drop's own
+    max_group_size. Called by app/services/gamification.py when a user
+    redeems an "extra slot" powerup. Does not commit — the caller owns the
+    transaction.
+
+    Does not touch the Drop's overall max_capacity_participants: the extra
+    member still has to clear drop_lifecycle.reserve_capacity when they
+    actually join, same as anyone else, so this can't oversell a venue —
+    it only raises this one squad's own headcount ceiling.
+    """
+    group = db.scalar(select(Group).where(Group.id == group_id).with_for_update())
+    if group is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Squad not found")
+    member = db.scalar(
+        select(GroupMember.id).where(
+            GroupMember.group_id == group.id,
+            GroupMember.user_id == user.id,
+            GroupMember.status == GroupMemberStatus.joined,
+        )
+    )
+    if member is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not in this squad")
+    if group.status not in (GroupStatus.forming, GroupStatus.ready):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Only a forming or ready squad can accept an extra slot",
+        )
+    group.max_allowed += extra_slots
+    return group
+
+
 def _active_group_for_user(db: Session, user_id: UUID, drop_id: UUID) -> bool:
     return bool(
         db.scalar(
