@@ -85,3 +85,19 @@ export interface BusinessOverview {
   total_capacity_participants: number;
   distinct_viewers_last_7_days: number;
 }
+
+export type RedemptionStatus = "pending" | "checked_in" | "confirmed" | "rejected" | "expired";
+
+export interface Redemption {
+  id: string;
+  drop_id: string;
+  drop_title: string;
+  group_id: string;
+  status: RedemptionStatus;
+  checked_in_at: string | null;
+  confirmed_at: string | null;
+  // Record-keeping only — see apps/api/app/services/redemption.py.
+  participant_count: number | null;
+  member_count: number;
+  xp_reward_base: number;
+}

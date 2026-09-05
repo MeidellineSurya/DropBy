@@ -1,0 +1,86 @@
+.redemption-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.redemption-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.redemption-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.redemption-card__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.redemption-card__time {
+  font-size: 0.72rem;
+  color: var(--color-cyan);
+  white-space: nowrap;
+}
+
+.redemption-card__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.redemption-card__count {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.redemption-card__count input {
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.redemption-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.redemption-card__actions button {
+  border: 1px solid var(--color-border);
+  background: var(--color-lime);
+  color: var(--color-black);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.redemption-card__actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.redemption-card__actions .redemption-card__reject {
+  color: var(--color-danger);
+  border-color: rgba(255, 120, 110, 0.35);
+  background: rgba(255, 120, 110, 0.1);
+}
