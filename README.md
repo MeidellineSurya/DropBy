@@ -52,10 +52,16 @@ database migration, loads repeatable demo data, and opens Swagger at
 <http://localhost:8000/docs>.
 
 ```bat
+dev.cmd verify
 dev.cmd logs
 dev.cmd status
 dev.cmd stop
 ```
+
+`dev.cmd verify` runs an isolated integration check against the live services:
+PostGIS availability and proximity, two simultaneous squad joins competing for
+the same capacity, Redis publish/subscribe, and authenticated WebSocket
+delivery. Its temporary records are removed after the check.
 
 Python dependencies are already defined in `apps/api/requirements.txt` and
 development dependencies in `apps/api/requirements-dev.txt`; Docker installs
@@ -82,18 +88,39 @@ Implemented for the real-time discovery owner:
 - authenticated WebSockets and Redis fan-out
 - PostGIS proximity and Detect → Reveal → Discover field gating
 - Drop activation, atomic capacity enforcement, countdowns, and expiry
+- validated Drop creation with draft/scheduled/active lifecycle staging
 - live squad creation/join/leave and 2/4 → 3/4 → 4/4 broadcasts
 - Drops, Groups, GroupMembers, users/onboarding, and Alembic migration
 - JWT registration/login and protected discovery/group endpoints
 - Docker startup/migration wiring and repeatable demo seed
+- production Compose configuration, non-root containers, health check, and
+  production secret validation
 
-Still required in this workstream before production sign-off:
+The workstream implementation and local integration sign-off are complete.
+The live Docker verification passes against PostgreSQL/PostGIS and Redis,
+including a real simultaneous-join capacity race and WebSocket delivery.
 
-- add the Drop-creation lifecycle method that the business API can call
-- run the Docker stack end-to-end and test simultaneous squad joins against a
-  real PostgreSQL/Redis instance
+## Production deployment
+
+The repository includes `infra/docker-compose.production.yml` for an external
+PostgreSQL database with PostGIS enabled and an external Redis service. On the
+deployment host, create the untracked environment file and replace every
+placeholder with the provider's values:
+
+```bat
+copy infra\.env.production.example infra\.env.production
+docker compose --env-file infra\.env.production -f infra\docker-compose.production.yml up --build -d
+```
+
+The migration runs before the API, worker, and scheduler. The API container has
+a health check at `/health`, runs as a non-root user, and refuses weak/default
+production signing secrets. TLS, domain attachment, and the final environment
+values are configured in the selected hosting provider.
+
+External release step still required:
+
 - choose a deployment provider, configure production secrets/domain, and run
-  the migration in that environment
+  the supplied production stack in that account
 
 Cross-team integration still required, but not owned by this workstream:
 

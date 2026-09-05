@@ -21,17 +21,20 @@ their existing placeholders.
 | Authenticated WebSocket transport with Redis fan-out/reconnect | Done |
 | Squad create/read/join/leave and 2/4 → 3/4 → 4/4 broadcasts | Done |
 | Atomic Drop participant-capacity enforcement | Done |
+| Validated Drop creation and lifecycle staging | Done |
 | Scheduled activation, countdown, and expiry tasks | Done |
 | Discovery schema and initial Alembic migration | Done |
-| Docker migration/API/worker/beat startup ordering | Done; full Docker smoke test still needed |
+| Docker migration/API/worker/beat startup ordering | Done and live-tested |
+| Production Compose, health check, non-root runtime, secret validation | Done; provider release pending |
 | Business Drop management and analytics | Teammate-owned scaffold |
 | Redemption, gamification, and notifications | Teammate-owned scaffold |
 | Mobile and dashboard product UI | Teammate-owned scaffold |
 
-**Verified:** the FastAPI app imports with 17 documented REST paths, the
-Alembic upgrade renders valid PostgreSQL/PostGIS SQL, auth hashing works, lint
-passes on discovery-owned files, and all 7 tests pass. Docker is not installed
-on the current machine, so the full container stack has not been executed here.
+**Verified:** all 15 automated tests pass; lint and Python compilation pass;
+the Alembic upgrade renders valid PostgreSQL/PostGIS SQL; and the Docker API,
+migration, Celery worker, and scheduler start cleanly. The live integration
+verifier confirmed PostGIS 3.4, atomic capacity under simultaneous squad joins,
+Redis pub/sub, and authenticated WebSocket delivery through Redis.
 
 ## Key decisions
 
@@ -51,9 +54,8 @@ on the current machine, so the full container stack has not been executed here.
 
 ## Next steps
 
-1. Install Docker Desktop and run the full-stack smoke test documented in
-   `apps/api/DISCOVERY_ENGINE.md`.
-2. Exercise concurrent squad joins against PostgreSQL to verify capacity races
-   under real transactions.
-3. Let the other workstreams add migrations after `0001_discovery_core` for
+1. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
+   secrets, domain, and TLS configuration, then start the supplied production
+   Compose stack.
+2. Let the other workstreams add migrations after `0001_discovery_core` for
    their own tables and implement their existing route/service boundaries.

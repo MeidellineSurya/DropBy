@@ -6,6 +6,7 @@ set "COMPOSE_FILE=infra\docker-compose.yml"
 if /I "%~1"=="stop" goto stop
 if /I "%~1"=="logs" goto logs
 if /I "%~1"=="status" goto status
+if /I "%~1"=="verify" goto verify
 if not "%~1"=="" goto usage
 
 call :require_docker
@@ -38,6 +39,7 @@ echo DropBy is ready at http://localhost:8000/docs
 echo Login: explorer@dropby.test / dropby12345
 echo.
 echo Useful commands:
+echo   dev.cmd verify
 echo   dev.cmd logs
 echo   dev.cmd status
 echo   dev.cmd stop
@@ -60,6 +62,12 @@ exit /b %errorlevel%
 call :require_docker
 if errorlevel 1 exit /b 1
 docker compose -f "%COMPOSE_FILE%" ps
+exit /b %errorlevel%
+
+:verify
+call :require_docker
+if errorlevel 1 exit /b 1
+docker compose -f "%COMPOSE_FILE%" exec -T api python -m app.scripts.verify_discovery
 exit /b %errorlevel%
 
 :require_docker
@@ -88,5 +96,6 @@ echo Usage:
 echo   dev.cmd          Start the backend, migrate, seed, and open Swagger
 echo   dev.cmd logs     Follow backend logs
 echo   dev.cmd status   Show container status
+echo   dev.cmd verify   Test PostGIS, concurrent capacity, and Redis
 echo   dev.cmd stop     Stop the DropBy containers
 exit /b 1

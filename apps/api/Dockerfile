@@ -10,8 +10,12 @@ COPY packages/ws-contracts /packages/ws-contracts
 COPY apps/api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY apps/api .
+RUN useradd --create-home --uid 10001 dropby
+
+COPY --chown=dropby:dropby apps/api .
+
+USER dropby
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
