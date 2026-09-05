@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Env
+.env
+.env.local
+
+# React Native
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/.expo/
+
+# Editors
+.vscode/
+.idea/

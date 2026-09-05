@@ -1,0 +1,13 @@
+[project]
+name = "ws-contracts"
+version = "0.1.0"
+description = "Frozen WebSocket event and shared DTO contracts for DropBy — the single source of truth imported by apps/api, and used to generate packages/shared-types for the mobile and dashboard frontends."
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.9,<3"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["ws_contracts*"]

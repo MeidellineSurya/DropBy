@@ -1,0 +1,8 @@
+{
+  "name": "@dropby/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript types generated from packages/ws-contracts, consumed by apps/mobile and apps/dashboard.",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}
