@@ -69,6 +69,7 @@ def seed() -> None:
                     interest_tag="korean_bbq",
                     rarity=DropRarity.rare,
                     discount_percent=40,
+                    xp_reward_base=40,  # matches compute_xp_reward(DropRarity.rare)
                     drop_type=DropType.squad,
                     min_group_size=2,
                     max_group_size=4,

@@ -36,7 +36,6 @@ class BusinessDropCreateRequest(BaseModel):
     # the two-stage engine never reads it. Left optional so callers don't need
     # to know it exists; the route derives a valid midpoint when omitted.
     reveal_radius_m: int | None = Field(default=None, gt=0, le=50_000)
-    xp_reward_base: int = Field(default=10, ge=0, le=10_000)
     publish: bool = False
 
 

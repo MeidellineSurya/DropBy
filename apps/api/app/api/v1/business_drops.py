@@ -104,7 +104,6 @@ def create_drop(
             reveal_radius_m=body.reveal_radius_m
             or _legacy_reveal_radius_m(body.discovery_radius_m, body.discover_radius_m),
             discover_radius_m=body.discover_radius_m,
-            xp_reward_base=body.xp_reward_base,
             publish=body.publish,
         )
     except ValueError as exc:

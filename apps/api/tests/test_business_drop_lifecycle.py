@@ -9,6 +9,7 @@ from app.models.drops import Drop, DropRarity, DropStatus
 from app.services.drop_lifecycle import (
     cancel_drop,
     compute_rarity,
+    compute_xp_reward,
     describe_capacity_failure,
     pause_drop,
     publish_drop,
@@ -207,3 +208,28 @@ def test_compute_rarity_is_never_business_declared() -> None:
     from app.services.drop_lifecycle import create_drop
 
     assert "rarity" not in inspect.signature(create_drop).parameters
+
+
+@pytest.mark.parametrize(
+    ("rarity", "expected_xp"),
+    [
+        (DropRarity.common, 10),
+        (DropRarity.uncommon, 20),
+        (DropRarity.rare, 40),
+        (DropRarity.epic, 80),
+        (DropRarity.legendary, 160),
+    ],
+)
+def test_compute_xp_reward_doubles_per_tier(rarity: DropRarity, expected_xp: int) -> None:
+    assert compute_xp_reward(rarity) == expected_xp
+
+
+def test_compute_xp_reward_is_never_business_declared() -> None:
+    # Same reasoning as rarity: a free xp_reward_base input let a business
+    # pair a trivial discount with a huge XP payout. There is no way to pass
+    # xp_reward_base into create_drop at all anymore.
+    import inspect
+
+    from app.services.drop_lifecycle import create_drop
+
+    assert "xp_reward_base" not in inspect.signature(create_drop).parameters
