@@ -1,13 +1,17 @@
 """Add spatial and lookup indexes for business-side proximity/listing queries.
 
-Revision ID: 0003_business_indexes
-Revises: 0002_detect_interest_tag
+Revision ID: 0009_business_indexes
+Revises: 0008_progression_extras
+
+Rebased to follow the redemption/gamification/notifications chain
+(0003-0008) after both branched independently off 0002_detect_interest_tag —
+see STATUS.md for the merge note.
 """
 
 from alembic import op
 
-revision = "0003_business_indexes"
-down_revision = "0002_detect_interest_tag"
+revision = "0009_business_indexes"
+down_revision = "0008_progression_extras"
 branch_labels = None
 depends_on = None
 

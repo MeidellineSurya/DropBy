@@ -17,6 +17,7 @@ class NotificationType(str, enum.Enum):
     drop_expiring = "drop_expiring"
     redemption_confirmed = "redemption_confirmed"
     badge_unlocked = "badge_unlocked"
+    powerup_granted = "powerup_granted"
 
 
 class PushStatus(str, enum.Enum):

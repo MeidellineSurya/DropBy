@@ -1,12 +1,5 @@
 import { clearToken, getToken } from "./auth";
-import type {
-  Business,
-  BusinessDrop,
-  BusinessOverview,
-  DropFunnel,
-  Redemption,
-  RedemptionStatus,
-} from "../types";
+import type { Business, BusinessDrop, BusinessOverview, DropFunnel, Redemption } from "../types";
 
 const API_BASE_URL = "http://localhost:8000/api/v1";
 
@@ -113,15 +106,16 @@ export const api = {
   dropFunnel: (dropId: string) =>
     request<DropFunnel>(`/business/analytics/drops/${dropId}`),
 
-  listRedemptions: (status: RedemptionStatus = "checked_in") =>
-    request<Redemption[]>(`/business/redemptions?redemption_status=${status}`),
+  // /redemptions/queue only ever returns checked_in ones (awaiting
+  // confirm/reject) — there's no status filter to pass.
+  listRedemptions: () => request<Redemption[]>("/redemptions/queue"),
   confirmRedemption: (redemptionId: string, participantCount?: number) =>
-    request<Redemption>(`/business/redemptions/${redemptionId}/confirm`, {
+    request<Redemption>(`/redemptions/${redemptionId}/confirm`, {
       method: "POST",
       body: JSON.stringify({ participant_count: participantCount ?? null }),
     }),
   rejectRedemption: (redemptionId: string) =>
-    request<Redemption>(`/business/redemptions/${redemptionId}/reject`, {
+    request<Redemption>(`/redemptions/${redemptionId}/reject`, {
       method: "POST",
     }),
 };

@@ -1,14 +1,14 @@
 """Add the discount_percent value signal rarity is computed from.
 
-Revision ID: 0004_drop_discount_percent
-Revises: 0003_business_indexes
+Revision ID: 0010_drop_discount_percent
+Revises: 0009_business_indexes
 """
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0004_drop_discount_percent"
-down_revision = "0003_business_indexes"
+revision = "0010_drop_discount_percent"
+down_revision = "0009_business_indexes"
 branch_labels = None
 depends_on = None
 

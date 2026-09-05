@@ -10,6 +10,7 @@ from app.models.groups import Group
 from app.services.drop_lifecycle import activate_scheduled, expire_due
 from app.services.squad_state import group_snapshot
 from app.workers.celery_app import celery_app
+from app.workers.tasks.notifications import notify_users_of_new_drop, send_push_task
 from app.ws.manager import publish
 from ws_contracts.events import DropCountdownWarning, DropExpired, GroupStateUpdate
 
@@ -30,6 +31,7 @@ def activate_scheduled_drops() -> int:
                 ) - timedelta(minutes=5)
                 warning_at = warning_at.replace(microsecond=0)
                 schedule_drop_countdown.apply_async(args=[str(drop_id)], eta=warning_at)
+            notify_users_of_new_drop.delay(str(drop_id))
         return len(drop_ids)
 
 
@@ -100,4 +102,13 @@ def schedule_drop_countdown(drop_id: str) -> bool:
         ).model_dump(mode="json")
         for user_id in user_ids:
             _publish(f"ws:user:{user_id}", event)
+            send_push_task.delay(
+                str(user_id),
+                "countdown_warning",
+                {
+                    "title": "Drop ending soon!",
+                    "body": f"{remaining} minutes left on {drop.title}",
+                    "drop_id": drop_id,
+                },
+            )
         return True

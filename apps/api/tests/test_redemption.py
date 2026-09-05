@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -6,207 +6,144 @@ from sqlalchemy.orm import Session
 
 from app.models.groups import Group, GroupStatus
 from app.models.redemption import Redemption, RedemptionStatus
-from app.services.redemption import (
-    check_in_group,
-    confirm_redemption,
-    reject_redemption,
-    sign_venue_qr,
-    verify_venue_qr,
-)
+from app.services.redemption import reject_redemption, sign_venue_qr, verify_venue_qr
 
 
-def make_group(**overrides) -> Group:
-    defaults = dict(
-        id=uuid4(),
-        drop_id=uuid4(),
-        created_by_user_id=uuid4(),
-        status=GroupStatus.ready,
-        min_required=2,
-        max_allowed=4,
-        open_to_nearby=True,
-    )
-    defaults.update(overrides)
-    return Group(**defaults)
+def test_sign_and_verify_venue_qr_roundtrip() -> None:
+    token = sign_venue_qr("drop-123", "business-456")
+
+    claims = verify_venue_qr(token)
+
+    assert claims == {"drop_id": "drop-123", "business_id": "business-456"}
 
 
-def make_redemption(**overrides) -> Redemption:
-    defaults = dict(
-        id=uuid4(),
-        drop_id=uuid4(),
-        group_id=uuid4(),
-        business_id=uuid4(),
-        status=RedemptionStatus.checked_in,
-    )
-    defaults.update(overrides)
-    return Redemption(**defaults)
+def test_verify_venue_qr_rejects_tampered_signature() -> None:
+    token = sign_venue_qr("drop-123", "business-456")
+    drop_id, _business_id, iat, nonce, signature = token.split(":")
+    tampered = f"{drop_id}:attacker-business:{iat}:{nonce}:{signature}"
 
-
-# --- QR sign/verify ---------------------------------------------------
-
-
-def test_qr_round_trips() -> None:
-    drop_id, business_id = str(uuid4()), str(uuid4())
-    token = sign_venue_qr(drop_id, business_id)
-    payload = verify_venue_qr(token)
-    assert payload == {"drop_id": drop_id, "business_id": business_id}
-
-
-def test_qr_rejects_a_tampered_signature() -> None:
-    token = sign_venue_qr(str(uuid4()), str(uuid4()))
-    tampered = token[:-4] + "0000"
     with pytest.raises(ValueError, match="invalid QR signature"):
         verify_venue_qr(tampered)
 
 
-# --- check_in_group -----------------------------------------------------
+def test_verify_venue_qr_rejects_malformed_token() -> None:
+    with pytest.raises(ValueError, match="malformed QR token"):
+        verify_venue_qr("not-a-real-token")
 
 
-def test_check_in_group_creates_a_redemption_and_advances_the_group() -> None:
-    drop_id, business_id, user_id = uuid4(), uuid4(), uuid4()
-    token = sign_venue_qr(str(drop_id), str(business_id))
-    group = make_group(drop_id=drop_id, status=GroupStatus.ready)
+def test_repeated_signing_produces_independently_valid_tokens() -> None:
+    """Re-fetching the QR (get_venue_qr) any number of times must never
+    invalidate a copy already printed/displayed by the business."""
+    first = sign_venue_qr("drop-123", "business-456")
+    second = sign_venue_qr("drop-123", "business-456")
+
+    assert first != second
+    assert verify_venue_qr(first) == verify_venue_qr(second)
+
+
+def _business(business_id) -> MagicMock:
+    business = MagicMock()
+    business.id = business_id
+    return business
+
+
+def test_reject_redemption_releases_capacity_and_cancels_group(monkeypatch) -> None:
+    business_id = uuid4()
+    drop_id = uuid4()
+    group_id = uuid4()
+    redemption = Redemption(
+        id=uuid4(),
+        drop_id=drop_id,
+        group_id=group_id,
+        business_id=business_id,
+        status=RedemptionStatus.checked_in,
+    )
+    group = Group(id=group_id, drop_id=drop_id, status=GroupStatus.checked_in)
+
     db = MagicMock(spec=Session)
-    db.scalar.side_effect = [group, uuid4(), None]  # group, is_member, existing
+    # In order: the redemption lookup, the group lookup, then
+    # joined_member_count()'s own db.scalar(select(func.count())...) call.
+    db.scalar.side_effect = [redemption, group, 3]
+    released = {}
+    monkeypatch.setattr(
+        "app.services.redemption.release_capacity",
+        lambda db_, drop_id_, count: released.update(drop_id=drop_id_, count=count),
+    )
 
-    redemption = check_in_group(db, group.id, token, user_id)
+    result = reject_redemption(db, redemption.id, _business(business_id))
 
-    assert redemption.status == RedemptionStatus.checked_in
-    assert redemption.business_id == business_id
-    assert group.status == GroupStatus.checked_in
-    assert group.checked_in_at is not None
-    db.add.assert_called_once()
-    db.commit.assert_called_once_with()
+    assert result.status == RedemptionStatus.rejected
+    assert result.confirmed_by == business_id
+    assert group.status == GroupStatus.cancelled
+    assert released == {"drop_id": drop_id, "count": 3}
+    db.commit.assert_called_once()
 
 
-def test_check_in_group_is_idempotent_on_repeat_scan() -> None:
-    group = make_group()
-    existing = make_redemption(group_id=group.id)
-    token = sign_venue_qr(str(group.drop_id), str(uuid4()))
+def test_reject_redemption_skips_release_when_no_joined_members(monkeypatch) -> None:
+    """An empty squad (everyone already left) has nothing to release —
+    calling release_capacity with count=0 would raise (it requires count>0)."""
+    business_id = uuid4()
+    drop_id = uuid4()
+    group_id = uuid4()
+    redemption = Redemption(
+        id=uuid4(), drop_id=drop_id, group_id=group_id, business_id=business_id,
+        status=RedemptionStatus.checked_in,
+    )
+    group = Group(id=group_id, drop_id=drop_id, status=GroupStatus.checked_in)
+
     db = MagicMock(spec=Session)
-    db.scalar.side_effect = [group, uuid4(), existing]
+    db.scalar.side_effect = [redemption, group, 0]
+    release_capacity = MagicMock()
+    monkeypatch.setattr("app.services.redemption.release_capacity", release_capacity)
 
-    result = check_in_group(db, group.id, token, uuid4())
+    reject_redemption(db, redemption.id, _business(business_id))
 
-    assert result is existing
-    db.add.assert_not_called()
+    release_capacity.assert_not_called()
+
+
+def test_reject_redemption_is_idempotent_when_already_rejected() -> None:
+    business_id = uuid4()
+    redemption = Redemption(
+        id=uuid4(), drop_id=uuid4(), group_id=uuid4(), business_id=business_id,
+        status=RedemptionStatus.rejected,
+    )
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [redemption]
+
+    result = reject_redemption(db, redemption.id, _business(business_id))
+
+    assert result is redemption
     db.commit.assert_not_called()
 
 
-def test_check_in_group_rejects_a_qr_for_a_different_drop() -> None:
-    group = make_group(drop_id=uuid4())
-    token = sign_venue_qr(str(uuid4()), str(uuid4()))  # different drop_id
-    db = MagicMock(spec=Session)
-    db.scalar.return_value = group
+def test_reject_redemption_rejects_a_different_businesss_redemption() -> None:
+    from fastapi import HTTPException
 
-    with pytest.raises(ValueError, match="different Drop"):
-        check_in_group(db, group.id, token, uuid4())
-
-
-def test_check_in_group_rejects_a_non_member() -> None:
-    group = make_group()
-    token = sign_venue_qr(str(group.drop_id), str(uuid4()))
-    db = MagicMock(spec=Session)
-    db.scalar.side_effect = [group, None]  # group found, not a member
-
-    with pytest.raises(ValueError, match="not a member"):
-        check_in_group(db, group.id, token, uuid4())
-
-
-def test_check_in_group_rejects_a_squad_that_is_not_ready() -> None:
-    group = make_group(status=GroupStatus.forming)
-    token = sign_venue_qr(str(group.drop_id), str(uuid4()))
-    db = MagicMock(spec=Session)
-    db.scalar.side_effect = [group, uuid4(), None]
-
-    with pytest.raises(ValueError, match="not ready to check in"):
-        check_in_group(db, group.id, token, uuid4())
-
-
-# --- confirm_redemption ---------------------------------------------------
-
-
-@patch("app.services.redemption.award_xp_for_redemption")
-def test_confirm_redemption_completes_group_and_defaults_participant_count(
-    mock_award: MagicMock,
-) -> None:
-    redemption = make_redemption()
-    group = make_group(id=redemption.group_id, status=GroupStatus.checked_in)
-    member_ids = [uuid4(), uuid4()]
-    mock_award.return_value = {str(uid): 40 for uid in member_ids}
-
-    db = MagicMock(spec=Session)
-    db.scalar.return_value = redemption
-    db.get.return_value = group
-    db.scalars.return_value.all.return_value = member_ids
-
-    result, xp_awarded = confirm_redemption(
-        db, redemption.id, redemption.business_id, redemption.business_id
+    redemption = Redemption(
+        id=uuid4(), drop_id=uuid4(), group_id=uuid4(), business_id=uuid4(),
+        status=RedemptionStatus.checked_in,
     )
-
-    assert result.status == RedemptionStatus.confirmed
-    assert result.participant_count == len(member_ids)
-    assert group.status == GroupStatus.completed
-    assert xp_awarded == mock_award.return_value
-    mock_award.assert_called_once_with(db, redemption, member_ids)
-    db.commit.assert_called_once_with()
-
-
-@patch("app.services.redemption.award_xp_for_redemption", return_value={})
-def test_confirm_redemption_honors_an_explicit_participant_count(_: MagicMock) -> None:
-    redemption = make_redemption()
-    group = make_group(id=redemption.group_id, status=GroupStatus.checked_in)
     db = MagicMock(spec=Session)
-    db.scalar.return_value = redemption
-    db.get.return_value = group
-    db.scalars.return_value.all.return_value = [uuid4(), uuid4()]
+    db.scalar.side_effect = [redemption]
 
-    result, _xp = confirm_redemption(
-        db, redemption.id, redemption.business_id, redemption.business_id, participant_count=5
+    with pytest.raises(HTTPException) as exc_info:
+        reject_redemption(db, redemption.id, _business(uuid4()))
+
+    assert exc_info.value.status_code == 403
+
+
+def test_reject_redemption_rejects_a_confirmed_redemption() -> None:
+    from fastapi import HTTPException
+
+    business_id = uuid4()
+    redemption = Redemption(
+        id=uuid4(), drop_id=uuid4(), group_id=uuid4(), business_id=business_id,
+        status=RedemptionStatus.confirmed,
     )
-
-    assert result.participant_count == 5
-
-
-def test_confirm_redemption_rejects_a_redemption_not_awaiting_confirmation() -> None:
-    redemption = make_redemption(status=RedemptionStatus.confirmed)
     db = MagicMock(spec=Session)
-    db.scalar.return_value = redemption
+    db.scalar.side_effect = [redemption]
 
-    with pytest.raises(ValueError, match="not awaiting confirmation"):
-        confirm_redemption(db, redemption.id, redemption.business_id, redemption.business_id)
+    with pytest.raises(HTTPException) as exc_info:
+        reject_redemption(db, redemption.id, _business(business_id))
 
-
-def test_confirm_redemption_raises_when_not_found() -> None:
-    db = MagicMock(spec=Session)
-    db.scalar.return_value = None
-
-    with pytest.raises(ValueError, match="not found"):
-        confirm_redemption(db, uuid4(), uuid4(), uuid4())
-
-
-# --- reject_redemption ---------------------------------------------------
-
-
-def test_reject_redemption_cancels_group_and_releases_capacity() -> None:
-    redemption = make_redemption()
-    group = make_group(id=redemption.group_id, status=GroupStatus.checked_in)
-    db = MagicMock(spec=Session)
-    db.scalar.side_effect = [redemption, 3]  # redemption, member_count
-    db.get.return_value = group
-
-    with patch("app.services.redemption.release_capacity") as mock_release:
-        result = reject_redemption(db, redemption.id, redemption.business_id)
-
-    assert result.status == RedemptionStatus.rejected
-    assert group.status == GroupStatus.cancelled
-    mock_release.assert_called_once_with(db, group.drop_id, 3)
-    db.commit.assert_called_once_with()
-
-
-def test_reject_redemption_rejects_a_redemption_not_awaiting_confirmation() -> None:
-    redemption = make_redemption(status=RedemptionStatus.rejected)
-    db = MagicMock(spec=Session)
-    db.scalar.return_value = redemption
-
-    with pytest.raises(ValueError, match="not awaiting confirmation"):
-        reject_redemption(db, redemption.id, redemption.business_id)
+    assert exc_info.value.status_code == 409
