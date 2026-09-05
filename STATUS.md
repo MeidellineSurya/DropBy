@@ -16,8 +16,8 @@ their existing placeholders.
 | Monorepo and shared WebSocket contracts | Done |
 | JWT registration/login and protected endpoints | Done |
 | User onboarding preferences and location permission state | Done |
-| PostGIS Detect → Reveal → Discover engine | Done |
-| Persistent per-user Discover unlock | Done |
+| PostGIS Detect → Reveal engine | Done |
+| Persistent per-user Reveal unlock | Done |
 | Authenticated WebSocket transport with Redis fan-out/reconnect | Done |
 | Squad create/read/join/leave and 2/4 → 3/4 → 4/4 broadcasts | Done |
 | Atomic Drop participant-capacity enforcement | Done |
@@ -30,14 +30,14 @@ their existing placeholders.
 | Redemption, gamification, and notifications | Teammate-owned scaffold |
 | Mobile and dashboard product UI | Teammate-owned scaffold |
 
-**Verified:** all 15 automated tests pass; lint and Python compilation pass;
+**Verified:** all 18 automated tests pass; lint and Python compilation pass;
 the Alembic upgrade renders valid PostgreSQL/PostGIS SQL; and the Docker API,
 migration, Celery worker, and scheduler start cleanly. The live integration
 verifier confirmed PostGIS 3.4, atomic capacity under simultaneous squad joins,
 Redis pub/sub, and authenticated WebSocket delivery through Redis.
 
 **Re-verified locally after pull (2026-09-05):** fresh venv, `pip install -r
-requirements-dev.txt`, `pytest -q` — all 15 tests pass with no changes needed.
+requirements-dev.txt`, `pytest -q` — all 18 tests pass.
 
 ## Key decisions
 
@@ -48,8 +48,11 @@ requirements-dev.txt`, `pytest -q` — all 15 tests pass with no changes needed.
   runner; REST discovery continues from PostgreSQL during a Redis outage.
 - Keep all state mutations in protected REST endpoints. WebSockets are a
   read-only notification channel and clients re-fetch snapshots after reconnect.
-- Detect defaults to 700 m, Reveal to 180 m, and Discover to 60 m.
-- Once discovered, a Drop stays unlocked for that user for the Drop lifetime.
+- Every active Drop is detectable regardless of distance. Detect exposes its
+  rarity, specific interest type, distance, and required group size.
+- The full Reveal unlocks at 100 m. The legacy radius database fields are
+  retained for migration compatibility.
+- Once revealed, a Drop stays unlocked for that user for the Drop lifetime.
 - Reserve participant capacity atomically when a squad becomes ready, then one
   place at a time as it fills to its maximum.
 - QR check-in, redemption confirmation, XP, and notifications remain outside

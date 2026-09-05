@@ -171,19 +171,27 @@
       .host { margin-left: auto; font-size: 0.7rem; }
       .map-frame { position: relative; height: 300px; margin: 0 -6px; overflow: hidden; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); }
       #mobileMap { width: 100%; height: 100%; }
+      .map-legend { position: absolute; z-index: 500; right: 9px; bottom: 9px; display: grid; gap: 5px; padding: 8px 10px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 10px; color: var(--text); background: rgb(8 11 16 / 88%); font-size: 0.66rem; pointer-events: none; }
+      .legend-row { display: flex; align-items: center; gap: 6px; }
+      .legend-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--violet); }
+      .legend-dot.revealed { background: var(--lime); }
+      .legend-ring { width: 12px; height: 12px; border: 1px solid var(--violet); border-radius: 50%; background: rgb(155 135 255 / 12%); }
       .leaflet-tile-pane { filter: saturate(0.82) contrast(1.06); }
       .leaflet-control-attribution { color: #687383 !important; background: rgb(8 11 16 / 82%) !important; }
       .leaflet-control-attribution a { color: #aeb8c7 !important; }
       .drop-pin, .user-pin { border: 0; background: transparent; }
-      .drop-pin-core, .user-pin-core { display: grid; place-items: center; border-radius: 50%; }
-      .drop-pin-core { width: 42px; height: 42px; border: 6px solid rgb(217 255 67 / 15%); color: var(--black); background: var(--lime); background-clip: padding-box; box-shadow: 0 0 0 9px rgb(217 255 67 / 7%); font-size: 0.7rem; font-weight: 900; }
+      .drop-pin-core, .user-pin-core { display: grid; place-items: center; }
+      .drop-pin-core { display: flex; width: max-content; max-width: 138px; min-height: 34px; align-items: center; gap: 6px; padding: 4px 9px 4px 5px; overflow: hidden; border: 2px solid rgb(255 255 255 / 35%); border-radius: 999px; color: var(--black); background: var(--lime); box-shadow: 0 5px 18px rgb(0 0 0 / 50%); font-size: 0.68rem; font-weight: 900; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+      .pin-symbol { display: grid; width: 23px; height: 23px; flex: 0 0 23px; place-items: center; border-radius: 50%; background: rgb(0 0 0 / 16%); font-size: 0.9rem; }
+      .pin-symbol.store-logo { color: white; background: #111722; font: 900 0.57rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.02em; }
+      .pin-type { overflow: hidden; text-overflow: ellipsis; text-transform: capitalize; }
       .drop-pin-core.detect { background: var(--violet); }
-      .drop-pin-core.reveal { background: var(--cyan); }
+      .drop-pin-core.reveal { background: var(--lime); }
       .drop-pin-core.outside { opacity: 0.28; filter: grayscale(1); }
-      .user-pin-core { width: 21px; height: 21px; border: 5px solid white; background: #367dff; box-shadow: 0 4px 16px #000; }
+      .user-pin-core { width: 21px; height: 21px; border: 5px solid white; border-radius: 50%; background: #367dff; box-shadow: 0 4px 16px #000; }
       .location-button { margin-top: 14px; }
       .demo-label { margin: 20px 0 9px; color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.11em; }
-      .demo-positions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .demo-positions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .demo-positions button { min-height: 43px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: var(--surface); cursor: pointer; font-size: 0.82rem; font-weight: 700; }
       .demo-positions button.active { border-color: var(--lime); color: var(--lime); }
       .join-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 14px; padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
@@ -195,18 +203,17 @@
       .signal-list { display: grid; gap: 9px; }
       .empty { padding: 17px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; text-align: center; }
       .signal-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; align-items: center; width: 100%; padding: 13px; border: 1px solid var(--border); border-radius: 16px; color: var(--text); background: var(--surface); cursor: pointer; text-align: left; }
+      .signal-copy { display: grid; min-width: 0; }
       .signal-orb { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; color: var(--black); background: var(--violet); font-size: 0.76rem; font-weight: 900; }
-      .signal-card[data-stage="reveal"] .signal-orb { background: var(--cyan); }
-      .signal-card[data-stage="discover"] .signal-orb { background: var(--lime); }
-      .signal-stage { color: var(--muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-      .signal-title { margin-top: 3px; overflow: hidden; font-size: 0.98rem; font-weight: 800; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
-      .signal-meta { margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 0.77rem; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
+      .signal-card[data-stage="reveal"] .signal-orb { background: var(--lime); }
+      .signal-stage { display: block; color: var(--muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+      .signal-title { display: block; margin-top: 3px; overflow: hidden; font-size: 0.98rem; font-weight: 800; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
+      .signal-meta { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 0.77rem; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
       .signal-distance { color: var(--lime); font: 800 0.72rem/1 ui-monospace, monospace; }
 
       .detail-content { padding: 12px 20px 40px; }
       .stage-badge { display: inline-flex; min-height: 30px; align-items: center; padding: 0 13px; border-radius: 999px; color: var(--black); background: var(--violet); font-size: 0.7rem; font-weight: 900; letter-spacing: 0.08em; }
-      .stage-badge.reveal { background: var(--cyan); }
-      .stage-badge.discover { background: var(--lime); }
+      .stage-badge.reveal { background: var(--lime); }
       .detail-distance { margin: 18px 0 0; color: var(--muted); font-size: 0.84rem; }
       .detail-title { margin: 5px 0 9px; font-size: 2rem; line-height: 1.08; letter-spacing: -0.04em; text-transform: capitalize; }
       .detail-explanation { color: var(--muted); font-size: 1rem; line-height: 1.5; }
@@ -357,13 +364,19 @@
         </header>
         <div class="content">
           <div class="connection"><span class="live-dot"></span>Live updates connected <span class="host">demo engine</span></div>
-          <div class="map-frame"><div id="mobileMap" aria-label="Map of nearby Drops"></div></div>
+          <div class="map-frame">
+            <div id="mobileMap" aria-label="Map of nearby Drops"></div>
+            <div class="map-legend" aria-hidden="true">
+              <span class="legend-row"><span class="legend-dot"></span>Detected signal</span>
+              <span class="legend-row"><span class="legend-dot revealed"></span>Revealed Drop</span>
+              <span class="legend-row"><span class="legend-ring"></span>100 m Reveal zone</span>
+            </div>
+          </div>
           <button class="primary location-button" id="useLocation" type="button">Start continuous walk demo</button>
           <div class="demo-label">MELBOURNE DEMO POSITIONS</div>
           <div class="demo-positions">
             <button data-distance="500" type="button">Detect</button>
-            <button data-distance="150" type="button">Reveal</button>
-            <button data-distance="50" type="button">Discover</button>
+            <button data-distance="100" type="button">Reveal</button>
           </div>
           <div class="join-row">
             <input class="input" id="joinCode" placeholder="Paste a squad ID" />
@@ -466,7 +479,7 @@
           </div>
           <div class="card engine-card">
             <h3>Protected API response</h3>
-            <p>Sensitive fields remain absent until Discover.</p>
+            <p>Detect shows rarity and type. The exact offer and location remain absent until Reveal.</p>
             <pre class="payload" id="enginePayload"></pre>
           </div>
           <div class="card engine-card">
@@ -509,21 +522,22 @@
       const state = {
         screen: "auth", authMode: "signin", email: "explorer@dropbyapp.com", name: "Melbourne Explorer",
         preferences: new Set(["korean_bbq", "japanese_cuisine", "laser_tag"]), distance: 850,
-        discovered: new Set(), selectedDropId: null, squadCount: 0, squadCode: "dropby-demo-squad",
+        revealed: new Set(), selectedDropId: null, squadCount: 0, squadCode: "dropby-demo-squad",
         lifecycleStatus: "active", lifecycleReserved: 0, lifecycleCapacity: 8, lifecycleSeconds: 5400,
         demoRunning: false, tracking: false,
       };
       const primaryLocation = [-37.8119, 144.9674];
       const drops = [
-        { id: "drop_mel_001", coordinates: primaryLocation, title: "Rare Korean BBQ Drop", offer: "40% off the group dining menu", business: "Seoul Table", address: "200 Little Bourke Street, Melbourne", category: "food_dining", rarity: "rare", label: "40%" },
-        { id: "drop_mel_002", coordinates: [-37.8097, 144.9648], title: "Rooftop Cinema Drop", offer: "Two-for-one twilight tickets", business: "Skyline Cinema", address: "Swanston Street, Melbourne", category: "activity_entertainment", rarity: "epic", label: "2X" },
-        { id: "drop_mel_003", coordinates: [-37.815, 144.97], title: "Matcha Break Drop", offer: "Free ceremonial matcha upgrade", business: "Midori Corner", address: "Russell Street, Melbourne", category: "food_dining", rarity: "common", label: "+" },
-        { id: "drop_mel_004", coordinates: [-37.813, 144.9605], title: "Hidden Jazz Session", offer: "Secret set with complimentary entry", business: "Basement 27", address: "Hardware Lane, Melbourne", category: "nightlife", rarity: "legendary", label: "VIP" },
-        { id: "drop_mel_005", coordinates: [-37.8078, 144.971], title: "Recovery Sauna Drop", offer: "30-minute recovery session", business: "Reset Studio", address: "Lonsdale Street, Melbourne", category: "wellness_beauty", rarity: "uncommon", label: "30" },
+        { id: "drop_mel_001", coordinates: primaryLocation, title: "Rare Korean BBQ Drop", offer: "40% off the group dining menu", business: "Seoul Table", address: "200 Little Bourke Street, Melbourne", category: "food_dining", interest: "korean_bbq", icon: "🥩", logo: "ST", rarity: "rare", minPeople: 2, maxPeople: 4, label: "40%" },
+        { id: "drop_mel_002", coordinates: [-37.8097, 144.9648], title: "Rooftop Cinema Drop", offer: "Two-for-one twilight tickets", business: "Skyline Cinema", address: "Swanston Street, Melbourne", category: "activity_entertainment", interest: "rooftop_cinema", icon: "🎬", logo: "SC", rarity: "epic", minPeople: 2, maxPeople: 4, label: "2X" },
+        { id: "drop_mel_003", coordinates: [-37.815, 144.97], title: "Matcha Break Drop", offer: "Free ceremonial matcha upgrade", business: "Midori Corner", address: "Russell Street, Melbourne", category: "food_dining", interest: "japanese_cuisine", icon: "🍵", logo: "MC", rarity: "common", minPeople: 1, maxPeople: 1, label: "+" },
+        { id: "drop_mel_004", coordinates: [-37.813, 144.9605], title: "Hidden Jazz Session", offer: "Secret set with complimentary entry", business: "Basement 27", address: "Hardware Lane, Melbourne", category: "nightlife", interest: "live_jazz", icon: "🎷", logo: "B27", rarity: "legendary", minPeople: 2, maxPeople: 4, label: "VIP" },
+        { id: "drop_mel_005", coordinates: [-37.8078, 144.971], title: "Recovery Sauna Drop", offer: "30-minute recovery session", business: "Reset Studio", address: "Lonsdale Street, Melbourne", category: "wellness_beauty", interest: "recovery_sauna", icon: "♨️", logo: "RS", rarity: "uncommon", minPeople: 2, maxPeople: 2, label: "30" },
       ];
       let map = null;
       let userMarker = null;
       let dropMarkers = [];
+      let dropRevealZones = [];
       let toastTimer = null;
       let trackingTimer = null;
 
@@ -564,21 +578,18 @@
       function userLocation() { return [primaryLocation[0] + state.distance / 111320, primaryLocation[1]]; }
       function stageFor(drop) {
         const distance = Math.round(distanceBetween(userLocation(), drop.coordinates));
-        if (distance <= 60) state.discovered.add(drop.id);
-        if (state.discovered.has(drop.id)) return "discover";
-        if (distance <= 180) return "reveal";
-        if (distance <= 700) return "detect";
-        return "outside";
+        if (distance <= 100) state.revealed.add(drop.id);
+        if (state.revealed.has(drop.id)) return "reveal";
+        return "detect";
       }
 
       function snapshot(drop) {
         const stage = stageFor(drop);
         const rawDistance = Math.round(distanceBetween(userLocation(), drop.coordinates));
-        const distance = stage === "detect" ? Math.max(50, Math.round(rawDistance / 50) * 50) : stage === "reveal" ? Math.round(rawDistance / 10) * 10 : rawDistance;
+        const distance = stage === "detect" ? Math.max(50, Math.round(rawDistance / 50) * 50) : rawDistance;
         const result = { id: drop.id, stage, distance_m: distance };
-        if (stage === "detect" && ["rare", "epic", "legendary"].includes(drop.rarity)) result.rarity = drop.rarity;
-        if (stage === "reveal") Object.assign(result, { rarity: drop.rarity, category: drop.category });
-        if (stage === "discover") Object.assign(result, { rarity: drop.rarity, category: drop.category, title: drop.title, description: drop.offer, business_name: drop.business, address: drop.address, drop_type: "squad", min_group_size: 2, max_group_size: 4, can_assemble: true });
+        if (stage === "detect") Object.assign(result, { rarity: drop.rarity, category: drop.category, interest_tag: drop.interest, min_group_size: drop.minPeople, max_group_size: drop.maxPeople });
+        if (stage === "reveal") Object.assign(result, { rarity: drop.rarity, category: drop.category, interest_tag: drop.interest, title: drop.title, description: drop.offer, business_name: drop.business, address: drop.address, drop_type: drop.maxPeople > 1 ? "squad" : "solo", min_group_size: drop.minPeople, max_group_size: drop.maxPeople, can_assemble: drop.maxPeople > 1 });
         return result;
       }
 
@@ -592,8 +603,11 @@
         list.prepend(item);
       }
 
-      function markerIcon(stage, label) {
-        return L.divIcon({ className: "drop-pin", html: `<div class="drop-pin-core ${stage}">${stage === "discover" ? label : "?"}</div>`, iconSize: [42, 42], iconAnchor: [21, 21] });
+      function markerIcon(stage, drop) {
+        const revealed = stage === "reveal";
+        const label = revealed ? drop.business : drop.interest.replaceAll("_", " ");
+        const symbol = revealed ? drop.logo : drop.icon;
+        return L.divIcon({ className: "drop-pin", html: `<div class="drop-pin-core ${stage}"><span class="pin-symbol ${revealed ? "store-logo" : ""}">${symbol}</span><span class="pin-type">${label}</span></div>`, iconSize: [138, 38], iconAnchor: [69, 19] });
       }
 
       function initializeMap() {
@@ -603,9 +617,10 @@
         }
         map = L.map("mobileMap", { zoomControl: false }).setView([-37.8119, 144.9674], 15);
         L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO' }).addTo(map);
-        L.circle(primaryLocation, { radius: 700, color: "#9b87ff", opacity: 0.45, weight: 1.5, dashArray: "7 8", fillOpacity: 0.02 }).addTo(map);
+        dropRevealZones = drops.map((drop) => L.circle(drop.coordinates, { radius: 100, color: "#9b87ff", opacity: 0.75, weight: 1.5, dashArray: "6 6", fillColor: "#9b87ff", fillOpacity: 0.08, interactive: false }).addTo(map));
         userMarker = L.marker(userLocation(), { icon: L.divIcon({ className: "user-pin", html: '<div class="user-pin-core"></div>', iconSize: [21, 21], iconAnchor: [10, 10] }), zIndexOffset: 600 }).addTo(map);
-        dropMarkers = drops.map((drop) => L.marker(drop.coordinates, { icon: markerIcon(stageFor(drop), drop.label), zIndexOffset: 500 }).addTo(map));
+        dropMarkers = drops.map((drop) => { const stage = stageFor(drop); return L.marker(drop.coordinates, { icon: markerIcon(stage, drop), opacity: 1, zIndexOffset: 500 }).addTo(map).on("click", () => openDrop(drop.id)); });
+        map.fitBounds([...drops.map((drop) => drop.coordinates), userLocation()], { padding: [28, 28], maxZoom: 15 });
       }
 
       function renderDiscover() {
@@ -618,20 +633,22 @@
         list.replaceChildren();
         if (!snapshots.length) list.innerHTML = '<div class="empty">Nothing is in range yet. Choose a demo position to start exploring.</div>';
         snapshots.forEach((drop) => {
+          const source = drops.find((item) => item.id === drop.id);
           const button = document.createElement("button");
           button.type = "button";
           button.className = "signal-card";
           button.dataset.stage = drop.stage;
-          const title = drop.title || (drop.category ? drop.category.replaceAll("_", " ") : drop.rarity ? `${drop.rarity} mystery signal` : "Mystery Drop");
-          const meta = drop.business_name || drop.rarity || "Details hidden";
-          button.innerHTML = `<span class="signal-orb">${drop.stage === "discover" ? "OK" : "?"}</span><span><span class="signal-stage">${drop.stage}</span><span class="signal-title">${title}</span><span class="signal-meta">${meta}</span></span><span class="signal-distance">${drop.distance_m} m</span>`;
+          const title = drop.title || drop.interest_tag?.replaceAll("_", " ") || "Mystery Drop";
+          const people = `${drop.min_group_size} needed${drop.max_group_size !== drop.min_group_size ? ` · up to ${drop.max_group_size}` : ""}`;
+          const meta = drop.business_name || `${drop.rarity} · ${people}`;
+          button.innerHTML = `<span class="signal-orb">${drop.stage === "reveal" ? source.logo : source.icon}</span><span class="signal-copy"><span class="signal-stage">${drop.stage}</span><span class="signal-title">${title}</span><span class="signal-meta">${meta}</span></span><span class="signal-distance">${drop.distance_m} m</span>`;
           button.addEventListener("click", () => openDrop(drop.id));
           list.append(button);
         });
         if (map && userMarker) {
           userMarker.setLatLng(userLocation());
-          dropMarkers.forEach((marker, index) => marker.setIcon(markerIcon(stageFor(drops[index]), drops[index].label)));
-          map.panTo(userLocation(), { animate: true });
+          dropMarkers.forEach((marker, index) => { const stage = stageFor(drops[index]); marker.setIcon(markerIcon(stage, drops[index])); marker.setOpacity(1); dropRevealZones[index].setStyle({ color: stage === "reveal" ? "#d9ff43" : "#9b87ff", fillColor: stage === "reveal" ? "#d9ff43" : "#9b87ff", fillOpacity: stage === "reveal" ? 0.14 : 0.08 }); });
+          map.fitBounds([...drops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [28, 28], maxZoom: 15 });
         }
         renderEngine();
       }
@@ -640,15 +657,16 @@
         state.selectedDropId = id;
         const drop = drops.find((item) => item.id === id);
         const data = snapshot(drop);
-        const copy = { detect: "A Drop signal is nearby. Get closer to reveal its category and rarity.", reveal: "You are close. The experience type is revealed, but the exact offer stays hidden.", discover: "You found it. The full offer and squad details are now unlocked." };
+        const copy = { detect: "This signal is always visible. Its type, rarity, and group requirement are known; move closer to reveal the venue.", reveal: "You found it. The location, full offer, and squad details are now unlocked." };
         $("#detailStage").textContent = data.stage.toUpperCase();
         $("#detailStage").className = `stage-badge ${data.stage}`;
         $("#detailDistance").textContent = `${data.distance_m} metres away`;
-        $("#detailTitle").textContent = data.title || (data.category ? data.category.replaceAll("_", " ") : "Mystery Drop");
+        $("#detailTitle").textContent = data.title || data.interest_tag?.replaceAll("_", " ") || "Mystery Drop";
         $("#detailExplanation").textContent = copy[data.stage];
-        const rows = [["Rarity", data.rarity], ["Category", data.category?.replaceAll("_", " ")], ["Business", data.business_name], ["Address", data.address], ["Offer", data.description]];
-        $("#detailRows").innerHTML = rows.map(([label, value], index) => `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value ${!value && index >= 2 ? "hidden" : ""}">${value || (index >= 2 ? "Move closer to unlock" : "Not revealed")}</div></div>`).join("");
-        $("#assembleCard").hidden = data.stage !== "discover";
+        const people = `${data.min_group_size} needed${data.max_group_size !== data.min_group_size ? ` · up to ${data.max_group_size}` : ""}`;
+        const rows = [["Rarity", data.rarity, false], ["Type", data.interest_tag?.replaceAll("_", " "), false], ["People needed", people, false], ["Business", data.business_name, true], ["Address", data.address, true], ["Offer", data.description, true]];
+        $("#detailRows").innerHTML = rows.map(([label, value, hiddenUntilReveal]) => `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value ${!value && hiddenUntilReveal ? "hidden" : ""}">${value || (hiddenUntilReveal ? "Move closer to unlock" : "Not provided")}</div></div>`).join("");
+        $("#assembleCard").hidden = data.stage !== "reveal";
         showScreen("detail");
       }
 
@@ -708,9 +726,9 @@
           toast("Continuous demo tracking paused.");
           return;
         }
-        if (state.distance <= 60) {
+        if (state.distance <= 100) {
           state.distance = 850;
-          state.discovered.clear();
+          state.revealed.clear();
         }
         state.tracking = true;
         $("#useLocation").textContent = "Pause continuous tracking";
@@ -771,7 +789,7 @@
       $("#addDemoMember").addEventListener("click", () => { if (state.squadCount >= 4) return; state.squadCount += 1; addEvent("group.member_joined", `${state.squadCount}/4 members`); if (state.squadCount === 2) addEvent("group.ready", "minimum squad size reached"); if (state.squadCount === 4) addEvent("drop.capacity_reached", "squad is full"); renderSquad(); });
       $("#leaveSquad").addEventListener("click", () => { state.squadCount = 0; addEvent("group.state_update", "cancelled · 0/4"); showScreen("discover"); });
       $("#shareSquad").addEventListener("click", async () => { const text = `Join my DropBy squad: ${state.squadCode}`; if (navigator.share) await navigator.share({ title: "DropBy squad", text }).catch(() => {}); else if (navigator.clipboard) await navigator.clipboard.writeText(state.squadCode).catch(() => {}); toast("Squad invite ready to share."); });
-      $("#signOut").addEventListener("click", () => { stopTrackingDemo(); state.distance = 850; state.discovered.clear(); state.squadCount = 0; showScreen("auth"); });
+      $("#signOut").addEventListener("click", () => { stopTrackingDemo(); state.distance = 850; state.revealed.clear(); state.squadCount = 0; showScreen("auth"); });
 
       $("#newDraft").addEventListener("click", () => { state.lifecycleStatus = "draft"; state.lifecycleReserved = 0; addEvent("drop.created", "draft created"); renderEngine(); });
       $("#scheduleDrop").addEventListener("click", () => { state.lifecycleStatus = "scheduled"; addEvent("drop.scheduled", "starts at 6:00 pm"); renderEngine(); });
@@ -784,10 +802,10 @@
         if (state.demoRunning) return;
         stopTrackingDemo();
         state.demoRunning = true;
-        state.email = "explorer@dropbyapp.com"; state.name = "Test Explorer"; state.distance = 850; state.discovered.clear(); state.squadCount = 0;
+        state.email = "explorer@dropbyapp.com"; state.name = "Test Explorer"; state.distance = 850; state.revealed.clear(); state.squadCount = 0;
         addEvent("auth.jwt_issued", "protected demo session started");
         showScreen("discover");
-        for (const distance of [500, 150, 50]) { await wait(650); setDistance(distance); }
+        for (const distance of [500, 100]) { await wait(650); setDistance(distance); }
         await wait(700); openDrop("drop_mel_001");
         await wait(800); $("#createSquad").click();
         for (let index = 0; index < 3; index += 1) { await wait(550); $("#addDemoMember").click(); }

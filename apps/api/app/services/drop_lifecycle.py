@@ -31,6 +31,7 @@ def create_drop(
     starts_at: datetime,
     ends_at: datetime,
     description: str | None = None,
+    interest_tag: str | None = None,
     rarity: DropRarity = DropRarity.common,
     min_group_size: int = 1,
     max_group_size: int = 1,
@@ -46,8 +47,11 @@ def create_drop(
     boundary so lifecycle status and invariants keep a single writer.
     """
     clean_title = title.strip()
+    clean_interest_tag = (interest_tag or category.value).strip().lower()
     if not clean_title:
         raise ValueError("title is required")
+    if not clean_interest_tag:
+        raise ValueError("interest_tag is required")
     if starts_at.tzinfo is None or ends_at.tzinfo is None:
         raise ValueError("starts_at and ends_at must include a timezone")
     if ends_at <= starts_at:
@@ -57,7 +61,7 @@ def create_drop(
     if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
         raise ValueError("invalid latitude or longitude")
     if not 0 < discover_radius_m <= reveal_radius_m <= discovery_radius_m:
-        raise ValueError("radii must satisfy 0 < Discover <= Reveal <= Detect")
+        raise ValueError("radii must satisfy 0 < close Reveal <= legacy radius <= Detect")
     if min_group_size < 1 or max_group_size < min_group_size:
         raise ValueError("invalid group-size range")
     if drop_type == DropType.solo and (min_group_size != 1 or max_group_size != 1):
@@ -79,6 +83,7 @@ def create_drop(
         title=clean_title,
         description=description,
         category=category,
+        interest_tag=clean_interest_tag,
         rarity=rarity,
         drop_type=drop_type,
         min_group_size=min_group_size,

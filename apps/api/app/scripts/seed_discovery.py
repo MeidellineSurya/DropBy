@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.businesses import Business, BusinessStatus
@@ -56,7 +57,7 @@ def seed() -> None:
             db.flush()
 
         existing = db.scalar(
-            select(Drop.id).where(Drop.title == "Rare Korean BBQ Drop")
+            select(Drop).where(Drop.title == "Rare Korean BBQ Drop")
         )
         if existing is None:
             db.add(
@@ -65,6 +66,7 @@ def seed() -> None:
                     title="Rare Korean BBQ Drop",
                     description="40% off the group dining menu",
                     category=DropCategory.food_dining,
+                    interest_tag="korean_bbq",
                     rarity=DropRarity.rare,
                     drop_type=DropType.squad,
                     min_group_size=2,
@@ -76,6 +78,9 @@ def seed() -> None:
                     status=DropStatus.active,
                 )
             )
+        else:
+            existing.discover_radius_m = settings.default_discover_radius_m
+            existing.interest_tag = "korean_bbq"
         db.commit()
     print("Seeded explorer@dropbyapp.com and a Melbourne discovery Drop")
 

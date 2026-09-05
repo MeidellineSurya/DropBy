@@ -87,6 +87,7 @@ class Drop(Base):
     title: Mapped[str] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     category: Mapped[DropCategory] = mapped_column(Enum(DropCategory))
+    interest_tag: Mapped[str] = mapped_column(String, default="other")
     rarity: Mapped[DropRarity] = mapped_column(
         Enum(DropRarity), default=DropRarity.common
     )
@@ -99,6 +100,8 @@ class Drop(Base):
     discovery_radius_m: Mapped[int] = mapped_column(
         Integer, default=settings.default_detect_radius_m
     )
+    # Retained to keep the original schema and migrations compatible. The
+    # two-stage engine uses discover_radius_m below as its close Reveal radius.
     reveal_radius_m: Mapped[int] = mapped_column(
         Integer, default=settings.default_reveal_radius_m
     )
@@ -127,6 +130,8 @@ class Drop(Base):
 class DropViewStage(str, enum.Enum):
     detect = "detect"
     reveal = "reveal"
+    # Legacy internal value: existing databases use this to record that the
+    # final, close-range Reveal has been unlocked. Never expose it to clients.
     discover = "discover"
 
 

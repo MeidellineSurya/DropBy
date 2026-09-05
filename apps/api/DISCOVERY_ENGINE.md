@@ -7,8 +7,10 @@ This is the implemented scope for the real-time discovery owner. Other API modul
 - JWT registration/login and protected routes
 - onboarding preferences and location permission state
 - PostGIS `POST /api/v1/drops/location/ping`
-- server-side Detect (700 m), Reveal (180 m), and Discover (60 m) field gating
-- Redis-backed persistent Discover unlock until the Drop expires
+- all active Drops are always detectable, regardless of distance
+- Detect exposes rarity, specific interest type, and required group size
+- full Reveal at 100 m exposes the restaurant, offer, and exact location
+- Redis-backed persistent Reveal unlock until the Drop expires
 - authenticated raw WebSocket endpoint at `/ws/live?token=...`
 - squad create/read/join/leave with live 2/4 -> 3/4 -> 4/4 count/state events
 - atomic Drop capacity reservation when a squad reaches ready and as it fills
@@ -26,12 +28,12 @@ demo.cmd
 
 This opens a self-contained discovery sandbox with a pannable, zoomable
 OpenStreetMap view centred on five fictional Melbourne Drops. The distance
-control moves the user marker against real 700 m, 180 m, and 60 m map circles,
-while every Drop independently applies the reveal rules. Click any marker to
-inspect its currently permitted details, or click the map to calculate that
-location's distance from the primary Drop. Move
-through 850 m → 500 m → 150 m → 50 m to see the exact Detect, Reveal, and
-Discover payloads, then create a squad and advance it through 2/4, 3/4, and
+control moves the user marker toward the real 100 m Reveal threshold. Purple
+question-mark pins and rings show detected signals and their Reveal zones;
+revealed pins and rings turn green. Every Drop independently applies the reveal
+rules. Open any signal card to inspect its currently permitted details. Move
+through 850 m → 500 m → 100 m to see persistent Detect signals and the Reveal
+payload, then create a squad and advance it through 2/4, 3/4, and
 4/4. Internet is needed for the map library/tiles. The sandbox uses simulated
 local state and does not claim to test the database or WebSocket transport.
 
@@ -100,14 +102,20 @@ Copy the returned token into Swagger's **Authorize** dialog. Then call the locat
 { "latitude": -37.8074, "longitude": 144.9674 }
 ```
 
-That is roughly 500 m away and returns Detect data only. Repeat with approximately 150 m and 50 m:
+That is roughly 500 m away and returns Detect data (rarity, specific type, and
+people needed). Active Drops remain detectable from farther away as well.
+Repeat just inside the 100 m Reveal threshold:
 
 ```json
-{ "latitude": -37.81055, "longitude": 144.9674 }
-{ "latitude": -37.81145, "longitude": 144.9674 }
+{ "latitude": -37.81105, "longitude": 144.9674 }
 ```
 
-Only the final response includes the venue, address, offer, group sizes, countdown, and Assemble flag.
+The Reveal response includes the venue, address, exact coordinates, offer,
+group sizes, countdown, and Assemble flag.
+
+The original database enum and `discover_radius_m` column are retained
+internally so existing installations migrate safely. They represent the final
+Reveal unlock and are never emitted as a public `discover` stage.
 
 ## WebSocket contract
 

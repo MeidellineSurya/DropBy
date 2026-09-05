@@ -193,7 +193,7 @@ def _verify_websocket(user_id: UUID) -> None:
     event = {
         "type": "drop.stage_update",
         "drop_id": str(uuid4()),
-        "stage": "discover",
+        "stage": "reveal",
         "distance_m": 42,
         "data": {"verification": True},
     }

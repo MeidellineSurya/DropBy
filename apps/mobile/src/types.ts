@@ -1,4 +1,4 @@
-export type Stage = "detect" | "reveal" | "discover";
+export type Stage = "detect" | "reveal";
 
 export type DropCategory =
   | "food_dining"
@@ -29,6 +29,7 @@ export interface DropSnapshot {
   distance_m: number;
   rarity?: "common" | "uncommon" | "rare" | "epic" | "legendary";
   category?: DropCategory;
+  interest_tag?: string;
   title?: string;
   description?: string;
   business_name?: string;

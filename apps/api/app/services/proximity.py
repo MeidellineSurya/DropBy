@@ -1,32 +1,33 @@
-"""Detect -> Reveal -> Discover, driven by REST location pings."""
+"""Detect -> Reveal proximity engine, driven by REST location pings."""
 
 from datetime import datetime, timezone
 from uuid import UUID
 
 import redis.asyncio as aioredis
 from geoalchemy2 import Geography, Geometry
+from redis.exceptions import RedisError
 from sqlalchemy import cast, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
-from redis.exceptions import RedisError
 
 from app.core.config import settings
 from app.models.businesses import Business
-from app.models.drops import Drop, DropRarity, DropStatus, DropViewEvent, DropViewStage
+from app.models.drops import Drop, DropStatus, DropViewEvent, DropViewStage
 from app.models.users import User
 from app.schemas.drops import DropSnapshot
 from app.ws.manager import publish
 from ws_contracts.events import DropStageUpdate, Stage
 
-VISIBLE_DETECT_RARITIES = {DropRarity.rare, DropRarity.epic, DropRarity.legendary}
-
 
 def stage_for_distance(
-    distance_m: float, drop: Drop, discover_unlocked: bool = False
+    distance_m: float, drop: Drop, reveal_unlocked: bool = False
 ) -> DropViewStage:
-    if discover_unlocked or distance_m <= drop.discover_radius_m:
-        return DropViewStage.discover
-    if distance_m <= drop.reveal_radius_m:
+    """Return the public two-stage state.
+
+    ``discover_radius_m`` remains the close-range threshold in the database for
+    migration compatibility. Public clients now receive Reveal at that point.
+    """
+    if reveal_unlocked or distance_m <= drop.discover_radius_m:
         return DropViewStage.reveal
     return DropViewStage.detect
 
@@ -43,24 +44,21 @@ def snapshot_for(
     if stage == DropViewStage.detect:
         return DropSnapshot(
             id=str(drop.id),
-            stage=stage,
+            stage=stage.value,
             distance_m=max(50, round(distance_m / 50) * 50),
-            rarity=drop.rarity if drop.rarity in VISIBLE_DETECT_RARITIES else None,
-        )
-    if stage == DropViewStage.reveal:
-        return DropSnapshot(
-            id=str(drop.id),
-            stage=stage,
-            distance_m=round(distance_m / 10) * 10,
             rarity=drop.rarity,
             category=drop.category,
+            interest_tag=drop.interest_tag,
+            min_group_size=drop.min_group_size,
+            max_group_size=drop.max_group_size,
         )
     return DropSnapshot(
         id=str(drop.id),
-        stage=stage,
+        stage=stage.value,
         distance_m=round(distance_m),
         rarity=drop.rarity,
         category=drop.category,
+        interest_tag=drop.interest_tag,
         title=drop.title,
         description=drop.description,
         business_name=business.name,
@@ -101,15 +99,14 @@ async def compute_stage_for_ping(
             Drop.status == DropStatus.active,
             Drop.starts_at <= func.now(),
             Drop.ends_at > func.now(),
-            func.ST_DWithin(Drop.location, point, Drop.discovery_radius_m),
         )
         .order_by(distance)
     ).all()
 
     drop_ids = [drop.id for drop, _, _, _, _ in rows]
-    discovered_ids: set[UUID] = set()
+    revealed_ids: set[UUID] = set()
     if drop_ids:
-        discovered_ids = set(
+        revealed_ids = set(
             db.scalars(
                 select(DropViewEvent.drop_id).where(
                     DropViewEvent.user_id == user.id,
@@ -132,9 +129,11 @@ async def compute_stage_for_ping(
             ttl = max(
                 1, int((drop.ends_at - datetime.now(timezone.utc)).total_seconds())
             )
-            discover_key = f"discover_unlocked:{user.id}:{drop.id}"
-            unlocked = drop.id in discovered_ids or bool(
-                redis and await redis.exists(discover_key)
+            reveal_key = f"reveal_unlocked:{user.id}:{drop.id}"
+            legacy_key = f"discover_unlocked:{user.id}:{drop.id}"
+            unlocked = drop.id in revealed_ids or bool(
+                redis
+                and (await redis.exists(reveal_key) or await redis.exists(legacy_key))
             )
             stage = stage_for_distance(float(distance_value), drop, unlocked)
             snapshot = snapshot_for(
@@ -147,13 +146,21 @@ async def compute_stage_for_ping(
             )
             snapshots.append(snapshot)
 
+            # The original PostgreSQL enum called the full-unlock event
+            # ``discover``. Keep writing that internal value so existing
+            # databases and historical reveal records remain unambiguous.
+            stored_stage = (
+                DropViewStage.discover
+                if stage == DropViewStage.reveal
+                else DropViewStage.detect
+            )
             db.execute(
                 insert(DropViewEvent)
-                .values(user_id=user.id, drop_id=drop.id, stage=stage)
+                .values(user_id=user.id, drop_id=drop.id, stage=stored_stage)
                 .on_conflict_do_nothing(constraint="uq_drop_view_user_drop_stage")
             )
-            if stage == DropViewStage.discover and redis:
-                await redis.setex(discover_key, ttl, "1")
+            if stage == DropViewStage.reveal and redis:
+                await redis.setex(reveal_key, ttl, "1")
 
             if redis:
                 stage_key = f"last_stage:{user.id}:{drop.id}"
@@ -182,7 +189,7 @@ async def compute_stage_for_ping(
     return snapshots
 
 
-def get_discovered_drop(
+def get_revealed_drop(
     db: Session, user_id: UUID, drop_id: UUID
 ) -> DropSnapshot | None:
     unlocked = db.scalar(
@@ -215,7 +222,7 @@ def get_discovered_drop(
         drop,
         business,
         0,
-        DropViewStage.discover,
+        DropViewStage.reveal,
         latitude=float(latitude),
         longitude=float(longitude),
     )
