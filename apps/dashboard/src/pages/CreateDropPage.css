@@ -48,6 +48,14 @@
   font-family: inherit;
 }
 
+/* Excludes the checkbox: it lives in .form-checkbox's row layout, not a
+   shrunk flex column, and a native checkbox shouldn't stretch to fill it. */
+.create-drop-form input:not([type="checkbox"]),
+.create-drop-form select,
+.create-drop-form textarea {
+  width: 100%;
+}
+
 .create-drop-form input:focus,
 .create-drop-form select:focus,
 .create-drop-form textarea:focus {
