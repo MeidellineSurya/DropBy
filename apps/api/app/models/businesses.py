@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from geoalchemy2 import Geography
-from sqlalchemy import DateTime, Enum, String, func
+from sqlalchemy import DateTime, Enum, Index, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,9 @@ class Business(Base):
     """Owned by the business/supply module."""
 
     __tablename__ = "businesses"
+    __table_args__ = (
+        Index("ix_businesses_location_gist", "location", postgresql_using="gist"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String)
