@@ -332,6 +332,16 @@
       .badge-chip { opacity: 0.35; }
       .badge-chip.unlocked { opacity: 1; border-color: var(--lime); color: var(--black); background: var(--lime); }
 
+      .badge-list { display: grid; gap: 9px; }
+      .badge-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); opacity: 0.45; text-align: left; }
+      .badge-card.unlocked { opacity: 1; border-color: var(--lime); }
+      .badge-card-icon { flex-shrink: 0; font-size: 22px; }
+      .badge-card-copy { min-width: 0; flex: 1; }
+      .badge-card-name { display: block; font-size: 0.92rem; font-weight: 800; }
+      .badge-card-desc { display: block; margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+      .badge-card-buff { display: block; margin-top: 4px; color: var(--muted); font-size: 0.76rem; font-weight: 800; }
+      .badge-card.unlocked .badge-card-buff { color: var(--lime); }
+
       .profile-content { text-align: center; }
       .profile-avatar { display: grid; width: 76px; height: 76px; margin: 15px auto 12px; place-items: center; border-radius: 50%; color: var(--black); background: var(--lime); font-size: 1.8rem; font-weight: 900; }
       .profile-name { margin-bottom: 4px; font-size: 1.55rem; }
@@ -654,7 +664,7 @@
           <h3 class="profile-section-title">Your interests</h3>
           <div class="chips" id="profileInterests"></div>
           <h3 class="profile-section-title">Badges</h3>
-          <div class="chips" id="profileBadges"></div>
+          <div class="badge-list" id="profileBadges"></div>
           <div class="button-gap">
             <button class="secondary" id="openHistory" type="button">Drop history</button>
             <button class="secondary" id="profileEngine" type="button">Discovery engine lab</button>
@@ -896,6 +906,11 @@
       function badgeXpBonusPct(heldCodes) {
         return badgeDefs.reduce((total, def) => (heldCodes.has(def.code) ? total + def.xpBonusPct : total), 0);
       }
+      function badgeBuffLabel(def) {
+        const pct = Math.round(def.xpBonusPct * 100);
+        const scope = def.xpBonusCategory ? `${def.xpBonusCategory.replaceAll("_", " ")} Drops` : "all Drops";
+        return `+${pct}% XP on ${scope}`;
+      }
       function specializationBonusPct(perks, category) {
         return perks.filter((perk) => perk.type === "category_specialization" && perk.category === category)
           .reduce((total) => total + SPECIALIZATION_PERK_BONUS_PCT, 0);
@@ -1114,7 +1129,16 @@
         $("#profileInterests").innerHTML = [...state.preferences].map((interest) => `<span class="chip" aria-pressed="true">${interestLabels[interest]}</span>`).join("");
         $("#profileBadges").innerHTML = badgeDefs.map((def) => {
           const unlocked = Boolean(state.badges[def.code]);
-          return `<span class="chip badge-chip ${unlocked ? "unlocked" : ""}" title="${def.description}">${unlocked ? "🏅" : "🔒"} ${def.name}</span>`;
+          return `
+            <div class="badge-card ${unlocked ? "unlocked" : ""}">
+              <span class="badge-card-icon">${unlocked ? "🏅" : "🔒"}</span>
+              <span class="badge-card-copy">
+                <span class="badge-card-name">${def.name}</span>
+                <span class="badge-card-desc">${def.description}</span>
+                <span class="badge-card-buff">${badgeBuffLabel(def)}</span>
+              </span>
+            </div>
+          `;
         }).join("");
         const pending = pendingPerkChoices();
         $("#openRewardsSubtitle").textContent = pending > 0

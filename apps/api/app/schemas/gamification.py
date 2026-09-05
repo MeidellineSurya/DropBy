@@ -14,6 +14,8 @@ class BadgeResponse(BaseModel):
     description: str | None
     icon_url: str | None
     criteria_type: BadgeCriteriaType
+    xp_bonus_pct: float
+    xp_bonus_category: str | None
     unlocked: bool
     unlocked_at: datetime | None = None
 

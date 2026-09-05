@@ -606,6 +606,8 @@ def get_user_stats(db: Session, user: User) -> UserStatsResponse:
                 description=badge.description,
                 icon_url=badge.icon_url,
                 criteria_type=badge.criteria_type,
+                xp_bonus_pct=badge.xp_bonus_pct,
+                xp_bonus_category=badge.xp_bonus_category,
                 unlocked=badge.code in unlocked_by_code,
                 unlocked_at=unlocked_by_code.get(badge.code),
             )
