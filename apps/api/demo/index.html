@@ -560,6 +560,281 @@
         .system-strip { grid-template-columns: 1fr; }
         .lifecycle-actions { grid-template-columns: 1fr 1fr; }
       }
+
+      /* Mobile-app presentation: the full demo remains available in one phone surface. */
+      html {
+        min-height: 100%;
+        background: #05070a;
+      }
+
+      body {
+        display: grid;
+        min-height: 100vh;
+        padding: 22px;
+        place-items: start center;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 20% 5%, rgb(155 135 255 / 20%), transparent 30%),
+          radial-gradient(circle at 82% 88%, rgb(217 255 67 / 10%), transparent 28%),
+          #05070a;
+      }
+
+      .shell {
+        position: relative;
+        width: min(430px, 100%);
+        height: min(900px, calc(100vh - 44px));
+        margin: 0;
+        padding: 0 0 30px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        border: 1px solid #303846;
+        border-radius: 38px;
+        background: var(--bg);
+        box-shadow:
+          0 40px 100px rgb(0 0 0 / 65%),
+          0 0 0 8px #0e1218;
+        scrollbar-width: none;
+      }
+
+      .shell::-webkit-scrollbar { display: none; }
+
+      header {
+        position: sticky;
+        z-index: 2000;
+        top: 0;
+        align-items: center;
+        margin: 0;
+        padding: 22px 20px 14px;
+        background: linear-gradient(180deg, #090b0f 72%, rgb(9 11 15 / 86%) 88%, transparent);
+        backdrop-filter: blur(14px);
+      }
+
+      .brand { gap: 11px; }
+      .brand-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        font-size: 20px;
+      }
+
+      h1 { font-size: 1.75rem; line-height: 1.05; }
+      .eyebrow { color: var(--violet); font-size: 0.75rem; }
+      .header-actions { flex-direction: column; align-items: flex-end; gap: 6px; }
+      .mode {
+        min-height: auto;
+        padding: 0;
+        border: 0;
+        color: var(--muted);
+        background: transparent;
+        font-size: 0.75rem;
+      }
+
+      .mode::before { width: 7px; height: 7px; }
+      .run-demo {
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 10px;
+        font-size: 0.78rem;
+        font-weight: 900;
+      }
+
+      .system-strip {
+        display: flex;
+        gap: 7px;
+        margin: 0;
+        padding: 0 20px 15px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .system-strip::-webkit-scrollbar { display: none; }
+      .system-pill {
+        min-height: 32px;
+        padding: 0 10px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        white-space: nowrap;
+      }
+
+      .system-pill span { width: 6px; height: 6px; }
+      .layout { display: flex; flex-direction: column; gap: 0; }
+      .map-panel {
+        position: static;
+        margin: 0 14px 14px;
+        padding: 0;
+        border: 1px solid #303947;
+        border-radius: 24px;
+        background: #111821;
+        overflow: hidden;
+      }
+
+      .map { min-height: 0; height: 340px; border-radius: 23px; }
+      .stage-card {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        gap: 10px;
+        padding: 12px 13px;
+        border-radius: 15px;
+      }
+
+      .stage-name { font-size: 0.95rem; }
+      .stage-copy { max-width: 245px; font-size: 0.75rem; }
+      .distance { font-size: 1rem; }
+      .map-tip { top: 84px; left: 12px; font-size: 0.72rem; }
+      .legend { right: 12px; bottom: 27px; left: 12px; }
+      .legend span { padding: 7px 3px; font-size: 0.66rem; }
+
+      .signal-feed {
+        margin: 0 14px 14px;
+        padding: 17px;
+      }
+
+      .signal-feed-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 11px;
+      }
+
+      .signal-feed-head h2 { font-size: 1.22rem; }
+      .signal-count { color: var(--muted); font-size: 0.78rem; }
+      .signal-list { display: grid; gap: 9px; }
+      .signal-empty {
+        padding: 16px;
+        border: 1px dashed #354052;
+        border-radius: 14px;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .signal-card {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        gap: 11px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        background: #0d1117;
+      }
+
+      .signal-orb {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        place-items: center;
+        border-radius: 50%;
+        color: #0b0d09;
+        background: var(--violet);
+        font-size: 0.78rem;
+        font-weight: 900;
+        box-shadow: 0 0 22px rgb(155 135 255 / 20%);
+      }
+
+      .signal-card[data-stage="reveal"] .signal-orb { background: var(--cyan); }
+      .signal-card[data-stage="discover"] .signal-orb { background: var(--lime); }
+      .signal-stage {
+        color: var(--muted);
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .signal-title {
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--text);
+        font-size: 0.95rem;
+        font-weight: 850;
+        text-overflow: ellipsis;
+        text-transform: capitalize;
+        white-space: nowrap;
+      }
+
+      .signal-meta {
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 0.77rem;
+        text-overflow: ellipsis;
+        text-transform: capitalize;
+        white-space: nowrap;
+      }
+
+      .signal-distance { color: var(--lime); font: 800 0.74rem/1 ui-monospace, monospace; }
+
+      .workspace {
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+        padding: 0 14px;
+      }
+
+      .panel {
+        border-color: var(--line);
+        border-radius: 20px;
+        background: var(--surface);
+        box-shadow: none;
+      }
+
+      .account, .controls, .detail { padding: 18px; }
+      .section-head { margin-bottom: 16px; }
+      h2 { font-size: 1.2rem; line-height: 1.25; }
+      .hint { font-size: 0.85rem; line-height: 1.5; }
+      .section-index { font-size: 0.72rem; }
+      .onboarding-status, .lifecycle-status { flex: 0 0 auto; }
+
+      .profile-grid { grid-template-columns: 1fr; gap: 15px; }
+      .profile-actions { grid-column: auto; grid-template-columns: 1fr; }
+      .field-label { font-size: 0.9rem; }
+      .text-input { min-height: 48px; border-radius: 12px; font-size: 1rem; }
+      .preference { min-height: 40px; font-size: 0.84rem; }
+      .permission { min-height: 48px; font-size: 0.88rem; }
+
+      .presets { grid-template-columns: 1fr 1fr; }
+      button.action, .presets button { min-height: 46px; }
+      .slider-label { font-size: 0.9rem; }
+      .steps {
+        display: flex;
+        gap: 7px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .steps::-webkit-scrollbar { display: none; }
+      .step { min-width: 116px; min-height: 72px; font-size: 0.78rem; }
+      .lower-grid { display: flex; flex-direction: column; gap: 13px; }
+      .payload { max-height: 290px; min-height: 220px; font-size: 0.76rem; }
+      .count { font-size: 2.4rem; }
+      .button-stack { grid-template-columns: 1fr 1fr; }
+      .lifecycle-grid { grid-template-columns: 1fr 1fr; }
+      .lifecycle-actions { grid-template-columns: 1fr 1fr; }
+      .event-list { max-height: 300px; }
+      .event-list li {
+        grid-template-columns: 1fr auto;
+        gap: 5px 10px;
+        padding: 11px 12px;
+        font-size: 0.74rem;
+      }
+
+      .event-list li span:nth-child(2) { grid-column: 1 / -1; color: #c8d0dc; }
+
+      @media (max-width: 520px) {
+        body { display: block; padding: 0; overflow: hidden; }
+        .shell {
+          width: 100%;
+          height: 100dvh;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -568,12 +843,12 @@
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">D</div>
           <div>
-            <p class="eyebrow">Discovery sandbox</p>
-            <h1>DropBy</h1>
+            <p class="eyebrow">Live discovery</p>
+            <h1>Nearby Drops</h1>
           </div>
         </div>
         <div class="header-actions">
-          <div class="mode">Interactive product demo</div>
+          <div class="mode">Engine connected</div>
           <button class="run-demo" id="runDemo" type="button">Run full demo</button>
         </div>
       </header>
@@ -601,6 +876,16 @@
               <span>Reveal · 180 m</span>
               <span>Discover · 60 m</span>
             </div>
+          </div>
+        </section>
+
+        <section class="panel signal-feed" aria-labelledby="nearbySignalsHeading">
+          <div class="signal-feed-head">
+            <h2 id="nearbySignalsHeading">Nearby signals</h2>
+            <span class="signal-count" id="signalCount">Location locked</span>
+          </div>
+          <div class="signal-list" id="signalList" aria-live="polite">
+            <div class="signal-empty">Complete your profile to start detecting nearby Drops.</div>
           </div>
         </section>
 
@@ -1069,6 +1354,43 @@
         list.prepend(item);
       }
 
+      function renderSignals(drops) {
+        const list = $("#signalList");
+        const count = $("#signalCount");
+        if (!state.profileComplete) {
+          count.textContent = "Location locked";
+          list.innerHTML = '<div class="signal-empty">Complete your profile to start detecting nearby Drops.</div>';
+          return;
+        }
+        count.textContent = drops.length
+          ? `${drops.length} ${drops.length === 1 ? "signal" : "signals"}`
+          : "No signals yet";
+        if (!drops.length) {
+          list.innerHTML = '<div class="signal-empty">Nothing is in range yet. Move closer or choose a demo position.</div>';
+          return;
+        }
+        list.replaceChildren();
+        drops.forEach((drop) => {
+          const card = document.createElement("article");
+          card.className = "signal-card";
+          card.dataset.stage = drop.stage;
+          const title = drop.title ||
+            (drop.category ? drop.category.replaceAll("_", " ") :
+              drop.rarity ? `${drop.rarity} mystery signal` : "Mystery Drop");
+          const meta = drop.business_name || drop.rarity || "Details hidden · move closer";
+          card.innerHTML = `
+            <div class="signal-orb">${drop.stage === "discover" ? "OK" : "?"}</div>
+            <div>
+              <div class="signal-stage">${drop.stage}</div>
+              <div class="signal-title">${title}</div>
+              <div class="signal-meta">${meta}</div>
+            </div>
+            <div class="signal-distance">${drop.distance_m} m</div>
+          `;
+          list.append(card);
+        });
+      }
+
       function render() {
         const previous = state.stage;
         state.stage = currentStage();
@@ -1088,7 +1410,9 @@
         $("#distanceReadout").textContent = `${state.distance} m`;
         $("#sliderValue").textContent = `${state.distance} metres`;
         $("#distanceSlider").value = state.distance;
-        $("#payload").textContent = JSON.stringify(responsePayload(), null, 2);
+        const response = responsePayload();
+        $("#payload").textContent = JSON.stringify(response, null, 2);
+        renderSignals(response.drops);
 
         if (dropMarker && userMarker) {
           dropMarker.setIcon(dropIcon(state.stage));

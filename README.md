@@ -23,27 +23,23 @@ demo.cmd
 ```
 
 The browser-only sandbox needs no Docker, database, Python, Node, or install.
-It uses an interactive Melbourne street map with real metre-scaled proximity
-rings and five fictional Drops across food, entertainment, nightlife, and
-wellness. Each marker independently changes from hidden → detected → revealed
-→ discovered, and the page simulates protected response fields, squad
-formation, Drop lifecycle controls, capacity enforcement, onboarding, and the
-real-time event stream. Press **Run full demo** for an automatic walkthrough of
-the complete flow. An internet connection is only needed to load the map
-library and street tiles. It is a product demonstration, not an integration
-test of the server.
+It mirrors the Expo app as separate mobile screens for sign-in, onboarding,
+map discovery, Drop details, squad assembly, profile, and an engine lab. The
+Melbourne map includes five fictional Drops that independently progress from
+hidden → detected → revealed → discovered. The separate engine-lab screen
+preserves protected-response, lifecycle, capacity, and real-time event tools
+without crowding the product screens. An internet connection is only needed
+for the map library and street tiles. It is a product demonstration, not an
+integration test of the server.
 
 Try the complete flow:
 
-1. Enter the demo account, choose interests, allow location access, and press
-   **Sign in & complete setup**.
-2. Pan/zoom and click the map to move, or press **Detect · 500 m**.
-   Click any Drop marker to inspect what is currently revealed.
-3. Press **Reveal · 150 m** to expose the category and rarity.
-4. Press **Discover · 50 m** to expose the venue and full offer.
-5. Create a squad and add members to move through 2/4, 3/4, and 4/4.
-6. Use the lifecycle controls to create, schedule, activate, fill, and expire a
-   Drop while watching the event stream.
+1. Sign in with the filled demo account, or create an account to see onboarding.
+2. On **Nearby Drops**, press **Detect**, **Reveal**, and **Discover**.
+3. Open a signal card to see the progressive Drop-details screen.
+4. Create a squad and add members to move through 2/4, 3/4, and 4/4.
+5. Open **Profile** from the avatar, then open **Discovery engine lab** for the
+   lifecycle, capacity, protected payload, and real-time event tools.
 
 On Windows, install and open Docker Desktop, then run one command from the
 repository root when you want to test the real backend:
@@ -86,6 +82,11 @@ QR code shown by `mobile.cmd`. The launcher detects this computer's LAN address
 and creates the mobile `.env` automatically. See
 [`apps/mobile/README.md`](apps/mobile/README.md) for troubleshooting and the
 two-phone live squad walkthrough.
+
+While the discovery screen is open, the mobile client continuously watches the
+device location and refreshes nearby Drops after roughly 10 metres of movement
+or every few seconds on supported platforms. Selecting a Melbourne demo
+position pauses live GPS until continuous tracking is enabled again.
 
 ## Status
 

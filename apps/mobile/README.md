@@ -41,7 +41,8 @@ For an Android emulator, use `http://10.0.2.2:8000`. For an iOS simulator, use
 ## Demo flow
 
 1. Create a new account in the app and choose onboarding interests.
-2. On the discovery screen, press **Detect**, **Reveal**, and **Discover** to
+2. Allow location to start continuous foreground discovery. For a repeatable
+   demo, press **Detect**, **Reveal**, and **Discover** to pause live GPS and
    simulate moving toward the seeded Melbourne Drops.
 3. Open a discovered squad Drop and press **Create squad**.
 4. Share the squad ID. On a second signed-in phone, press **Discover** for the
@@ -72,7 +73,7 @@ npx.cmd expo export --platform android
 
 - JWT registration, login, stored sessions, and protected API calls
 - onboarding preferences and foreground location permission
-- a real native map and device GPS
+- a real native map and continuous foreground GPS updates while exploring
 - Detect -> Reveal -> Discover field gating
 - discovered Drop markers and details
 - squad creation, sharing, joining, leaving, and capacity progress
