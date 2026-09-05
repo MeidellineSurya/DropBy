@@ -36,6 +36,11 @@ Mobile app native scaffolding still needs to be generated — see `apps/mobile/R
 
 ## Status
 
-This is a skeleton: directory structure, DB models, API/WS route stubs, and Celery task
-signatures are in place per the architecture plan; business logic (`NotImplementedError`
-stubs in `apps/api/app/services/`) still needs to be built out.
+The real-time discovery workstream is implemented: JWT/onboarding, PostGIS
+Detect/Reveal/Discover, authenticated WebSockets, Drop lifecycle jobs, squad
+formation, capacity enforcement, migrations, and Docker wiring. See
+[`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md) for setup and a
+seeded walkthrough.
+
+The business, redemption, gamification, notifications, mobile, and dashboard
+workstreams remain owned separately and still contain scaffold placeholders.
