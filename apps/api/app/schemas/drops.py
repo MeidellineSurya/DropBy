@@ -20,6 +20,8 @@ class DropSnapshot(BaseModel):
     description: str | None = None
     business_name: str | None = None
     address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     drop_type: DropType | None = None
     min_group_size: int | None = None
     max_group_size: int | None = None

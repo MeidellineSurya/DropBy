@@ -7,7 +7,7 @@ Location-based social deal discovery — "Pokémon GO, but you catch experiences
 ## Structure
 
 - `apps/api` — FastAPI backend (modular monolith: discovery/real-time, business/supply, redemption+gamification+notifications modules), PostgreSQL+PostGIS, Redis, Celery.
-- `apps/mobile` — React Native consumer app (JS-layer skeleton; native `ios`/`android` projects not yet generated — see `apps/mobile/README.md`).
+- `apps/mobile` — working Expo/React Native demo client for the discovery backend.
 - `apps/dashboard` — React + Vite business dashboard.
 - `packages/ws-contracts` — frozen Pydantic WebSocket event/DTO contracts, the source of truth for `packages/shared-types`.
 - `packages/shared-types` — TypeScript types mirroring `ws-contracts`, for both frontends.
@@ -27,18 +27,23 @@ It uses an interactive Melbourne street map with real metre-scaled proximity
 rings and five fictional Drops across food, entertainment, nightlife, and
 wellness. Each marker independently changes from hidden → detected → revealed
 → discovered, and the page simulates protected response fields, squad
-formation, and the real-time event stream. An internet connection is only
-needed to load the map library and street tiles. It is a product demonstration,
-not an integration test of the server.
+formation, Drop lifecycle controls, capacity enforcement, onboarding, and the
+real-time event stream. Press **Run full demo** for an automatic walkthrough of
+the complete flow. An internet connection is only needed to load the map
+library and street tiles. It is a product demonstration, not an integration
+test of the server.
 
 Try the complete flow:
 
-1. Pan/zoom and click the map to move, or press **Detect · 500 m**.
+1. Enter the demo account, choose interests, allow location access, and press
+   **Sign in & complete setup**.
+2. Pan/zoom and click the map to move, or press **Detect · 500 m**.
    Click any Drop marker to inspect what is currently revealed.
-2. Press **Reveal · 150 m** to expose the category and rarity.
-3. Press **Discover · 50 m** to expose the venue and full offer.
-4. Create a squad and add members to move through 2/4, 3/4, and 4/4.
-5. Compare the API response and real-time event stream after each action.
+3. Press **Reveal · 150 m** to expose the category and rarity.
+4. Press **Discover · 50 m** to expose the venue and full offer.
+5. Create a squad and add members to move through 2/4, 3/4, and 4/4.
+6. Use the lifecycle controls to create, schedule, activate, fill, and expire a
+   Drop while watching the event stream.
 
 On Windows, install and open Docker Desktop, then run one command from the
 repository root when you want to test the real backend:
@@ -68,7 +73,19 @@ development dependencies in `apps/api/requirements-dev.txt`; Docker installs
 them during the first build. Manual and non-Docker setup is documented in
 [`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md).
 
-Mobile app native scaffolding still needs to be generated — see `apps/mobile/README.md`.
+To run the real client on a phone, start the backend in one Command Prompt and
+Expo in another:
+
+```bat
+dev.cmd
+mobile.cmd
+```
+
+Install Expo Go on the phone, keep it on the same Wi-Fi network, then scan the
+QR code shown by `mobile.cmd`. The launcher detects this computer's LAN address
+and creates the mobile `.env` automatically. See
+[`apps/mobile/README.md`](apps/mobile/README.md) for troubleshooting and the
+two-phone live squad walkthrough.
 
 ## Status
 
@@ -126,5 +143,6 @@ Cross-team integration still required, but not owned by this workstream:
 
 - connect the teammate-owned business Drop-creation route to the lifecycle
   method
-- connect a mobile client to the REST/WebSocket contracts; the browser sandbox
-  intentionally uses simulated state
+- the included Expo client now exercises the REST and authenticated WebSocket
+  contracts; teammate-owned production mobile polish and redemption remain
+  separate workstreams

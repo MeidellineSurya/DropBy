@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 import redis.asyncio as aioredis
-from geoalchemy2 import Geography
+from geoalchemy2 import Geography, Geometry
 from sqlalchemy import cast, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -32,7 +32,13 @@ def stage_for_distance(
 
 
 def snapshot_for(
-    drop: Drop, business: Business, distance_m: float, stage: DropViewStage
+    drop: Drop,
+    business: Business,
+    distance_m: float,
+    stage: DropViewStage,
+    *,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> DropSnapshot:
     if stage == DropViewStage.detect:
         return DropSnapshot(
@@ -59,6 +65,8 @@ def snapshot_for(
         description=drop.description,
         business_name=business.name,
         address=business.address,
+        latitude=latitude,
+        longitude=longitude,
         drop_type=drop.drop_type,
         min_group_size=drop.min_group_size,
         max_group_size=drop.max_group_size,
@@ -81,8 +89,13 @@ async def compute_stage_for_ping(
     user.last_location_at = datetime.now(timezone.utc)
 
     distance = func.ST_Distance(Drop.location, point).label("distance_m")
+    drop_geometry = cast(
+        Drop.location, Geometry(geometry_type="POINT", srid=4326)
+    )
+    drop_latitude = func.ST_Y(drop_geometry).label("drop_latitude")
+    drop_longitude = func.ST_X(drop_geometry).label("drop_longitude")
     rows = db.execute(
-        select(Drop, Business, distance)
+        select(Drop, Business, distance, drop_latitude, drop_longitude)
         .join(Business, Business.id == Drop.business_id)
         .where(
             Drop.status == DropStatus.active,
@@ -93,7 +106,7 @@ async def compute_stage_for_ping(
         .order_by(distance)
     ).all()
 
-    drop_ids = [drop.id for drop, _, _ in rows]
+    drop_ids = [drop.id for drop, _, _, _, _ in rows]
     discovered_ids: set[UUID] = set()
     if drop_ids:
         discovered_ids = set(
@@ -115,7 +128,7 @@ async def compute_stage_for_ping(
     snapshots: list[DropSnapshot] = []
     events: list[DropStageUpdate] = []
     try:
-        for drop, business, distance_value in rows:
+        for drop, business, distance_value, latitude_value, longitude_value in rows:
             ttl = max(
                 1, int((drop.ends_at - datetime.now(timezone.utc)).total_seconds())
             )
@@ -124,7 +137,14 @@ async def compute_stage_for_ping(
                 redis and await redis.exists(discover_key)
             )
             stage = stage_for_distance(float(distance_value), drop, unlocked)
-            snapshot = snapshot_for(drop, business, float(distance_value), stage)
+            snapshot = snapshot_for(
+                drop,
+                business,
+                float(distance_value),
+                stage,
+                latitude=float(latitude_value),
+                longitude=float(longitude_value),
+            )
             snapshots.append(snapshot)
 
             db.execute(
@@ -175,11 +195,27 @@ def get_discovered_drop(
     if unlocked is None:
         return None
     row = db.execute(
-        select(Drop, Business)
+        select(
+            Drop,
+            Business,
+            func.ST_Y(
+                cast(Drop.location, Geometry(geometry_type="POINT", srid=4326))
+            ),
+            func.ST_X(
+                cast(Drop.location, Geometry(geometry_type="POINT", srid=4326))
+            ),
+        )
         .join(Business, Business.id == Drop.business_id)
         .where(Drop.id == drop_id)
     ).one_or_none()
     if row is None:
         return None
-    drop, business = row
-    return snapshot_for(drop, business, 0, DropViewStage.discover)
+    drop, business, latitude, longitude = row
+    return snapshot_for(
+        drop,
+        business,
+        0,
+        DropViewStage.discover,
+        latitude=float(latitude),
+        longitude=float(longitude),
+    )

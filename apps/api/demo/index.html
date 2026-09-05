@@ -61,6 +61,8 @@
         margin-bottom: 20px;
       }
 
+      .header-actions { display: flex; align-items: center; gap: 10px; }
+
       .brand { display: flex; align-items: center; gap: 12px; }
       .brand-mark {
         display: grid;
@@ -105,6 +107,46 @@
         background: var(--cyan);
         content: "";
         box-shadow: 0 0 14px var(--cyan);
+      }
+
+      .run-demo {
+        min-height: 40px;
+        padding: 0 16px;
+        border: 1px solid var(--lime);
+        border-radius: 999px;
+        color: #11140c;
+        background: var(--lime);
+        font-weight: 850;
+        cursor: pointer;
+      }
+
+      .system-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .system-pill {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-height: 44px;
+        padding: 0 13px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        color: #cbd3df;
+        background: rgb(17 21 28 / 78%);
+        font-size: 0.875rem;
+      }
+
+      .system-pill span {
+        width: 8px;
+        height: 8px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 10px rgb(82 230 216 / 65%);
       }
 
       .layout {
@@ -253,6 +295,99 @@
       .workspace { display: grid; gap: 18px; }
       .controls, .detail { padding: 20px; }
 
+      .account { padding: 20px; }
+      .section-index {
+        margin: 0 0 5px;
+        color: var(--violet);
+        font: 800 0.75rem/1 ui-monospace, monospace;
+        letter-spacing: 0.1em;
+      }
+
+      .onboarding-status, .lifecycle-status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0 10px;
+        border: 1px solid #414b5b;
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 750;
+      }
+
+      .onboarding-status.complete, .lifecycle-status.active,
+      .lifecycle-status.capacity_reached {
+        border-color: rgb(82 230 216 / 45%);
+        color: var(--cyan);
+        background: rgb(82 230 216 / 8%);
+      }
+
+      .profile-grid {
+        display: grid;
+        grid-template-columns: minmax(150px, 0.9fr) minmax(230px, 1.35fr);
+        gap: 14px;
+        align-items: end;
+      }
+
+      .field-label {
+        display: grid;
+        gap: 7px;
+        color: #cbd3df;
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+
+      .text-input {
+        width: 100%;
+        min-height: 42px;
+        padding: 0 12px;
+        border: 1px solid #374152;
+        border-radius: 10px;
+        color: var(--text);
+        background: #0d1117;
+      }
+
+      .preference-row { display: flex; flex-wrap: wrap; gap: 7px; }
+      .preference {
+        min-height: 38px;
+        padding: 0 11px;
+        border: 1px solid #374152;
+        border-radius: 999px;
+        color: #b8c1ce;
+        background: #0d1117;
+        cursor: pointer;
+        font-size: 0.82rem;
+      }
+
+      .preference[aria-pressed="true"] {
+        border-color: var(--violet);
+        color: #ddd6ff;
+        background: rgb(155 135 255 / 14%);
+      }
+
+      .profile-actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .permission {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        color: #cbd3df;
+        background: #0d1117;
+        font-size: 0.875rem;
+      }
+
+      .permission input { width: 18px; height: 18px; accent-color: var(--lime); }
+
       .section-head {
         display: flex;
         align-items: start;
@@ -339,6 +474,45 @@
       button.primary { border-color: var(--lime); color: #11140c; background: var(--lime); font-weight: 800; }
 
       .events { grid-column: 1 / -1; }
+
+      .lifecycle { grid-column: 1 / -1; }
+      .lifecycle-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .metric {
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #0d1117;
+      }
+
+      .metric-label { color: var(--muted); font-size: 0.78rem; }
+      .metric-value { margin-top: 5px; font-size: 1.15rem; font-weight: 850; }
+      .capacity-track {
+        height: 7px;
+        margin-top: 9px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: #252c37;
+      }
+
+      .capacity-fill {
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--violet), var(--lime));
+        transition: width 200ms ease;
+      }
+
+      .lifecycle-actions {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 7px;
+      }
       .event-list {
         display: grid;
         gap: 7px;
@@ -368,16 +542,23 @@
         .layout { grid-template-columns: 1fr; }
         .map-panel { position: static; }
         .map { min-height: 500px; }
+        .system-strip { grid-template-columns: 1fr 1fr; }
       }
 
       @media (max-width: 600px) {
         .shell { width: min(100% - 20px, 1240px); padding-top: 14px; }
         header { align-items: start; }
-        .mode { max-width: 150px; text-align: left; }
+        .header-actions { align-items: stretch; flex-direction: column-reverse; }
+        .mode { max-width: 170px; text-align: left; }
         .lower-grid { grid-template-columns: 1fr; }
         .events { grid-column: auto; }
+        .lifecycle { grid-column: auto; }
         .steps { grid-template-columns: 1fr 1fr; }
         .presets { grid-template-columns: 1fr 1fr; }
+        .profile-grid { grid-template-columns: 1fr; }
+        .profile-actions { grid-column: auto; grid-template-columns: 1fr; }
+        .system-strip { grid-template-columns: 1fr; }
+        .lifecycle-actions { grid-template-columns: 1fr 1fr; }
       }
     </style>
   </head>
@@ -391,8 +572,18 @@
             <h1>DropBy</h1>
           </div>
         </div>
-        <div class="mode">Simulation mode · no setup</div>
+        <div class="header-actions">
+          <div class="mode">Interactive product demo</div>
+          <button class="run-demo" id="runDemo" type="button">Run full demo</button>
+        </div>
       </header>
+
+      <section class="system-strip" aria-label="Backend capabilities represented in this demo">
+        <div class="system-pill"><span></span>JWT protected account</div>
+        <div class="system-pill"><span></span>PostGIS proximity</div>
+        <div class="system-pill"><span></span>Redis + WebSocket live</div>
+        <div class="system-pill"><span></span>Lifecycle jobs running</div>
+      </section>
 
       <div class="layout">
         <section class="panel map-panel" aria-label="Proximity map simulation">
@@ -414,9 +605,49 @@
         </section>
 
         <div class="workspace">
+          <section class="panel account" aria-labelledby="profileHeading">
+            <div class="section-head">
+              <div>
+                <p class="section-index">01 ACCOUNT</p>
+                <h2 id="profileHeading">Sign in and set up your explorer</h2>
+                <p class="hint">A protected account stores your profile, interests, and location permission.</p>
+              </div>
+              <span class="onboarding-status" id="profileStatus">Setup needed</span>
+            </div>
+            <div class="profile-grid">
+              <div class="field-label">
+                Account
+                <input class="text-input" id="emailAddress" type="email" value="alex@example.com" aria-label="Email address" />
+                <input class="text-input" id="displayName" value="Alex Morgan" maxlength="80" aria-label="Display name" />
+              </div>
+              <div class="field-label">
+                Interests
+                <div class="preference-row" aria-label="Select interests">
+                  <button class="preference" type="button" data-preference="korean_bbq" aria-pressed="true">Korean BBQ</button>
+                  <button class="preference" type="button" data-preference="japanese_cuisine" aria-pressed="true">Japanese cuisine</button>
+                  <button class="preference" type="button" data-preference="laser_tag" aria-pressed="true">Laser tag</button>
+                  <button class="preference" type="button" data-preference="escape_rooms" aria-pressed="false">Escape rooms</button>
+                  <button class="preference" type="button" data-preference="brunch_cafes" aria-pressed="false">Brunch &amp; cafes</button>
+                  <button class="preference" type="button" data-preference="desserts" aria-pressed="false">Desserts</button>
+                  <button class="preference" type="button" data-preference="live_music" aria-pressed="false">Live music</button>
+                  <button class="preference" type="button" data-preference="cocktail_bars" aria-pressed="false">Cocktail bars</button>
+                  <button class="preference" type="button" data-preference="spa_massage" aria-pressed="false">Spa &amp; massage</button>
+                </div>
+              </div>
+              <div class="profile-actions">
+                <label class="permission" for="locationPermission">
+                  <input id="locationPermission" type="checkbox" />
+                  Allow location while using DropBy
+                </label>
+                <button class="action primary" id="completeProfile" type="button">Sign in &amp; complete setup</button>
+              </div>
+            </div>
+          </section>
+
           <section class="panel controls">
             <div class="section-head">
               <div>
+                <p class="section-index">02 DISCOVER</p>
                 <h2>Move toward the Drop</h2>
                 <p class="hint">Each range unlocks only the fields the real API returns.</p>
               </div>
@@ -459,6 +690,7 @@
             <section class="panel detail">
               <div class="section-head">
                 <div>
+                  <p class="section-index">03 ASSEMBLE</p>
                   <h2>Squad assembly</h2>
                   <p class="hint" id="squadHint">Discover the Drop to unlock assembly.</p>
                 </div>
@@ -473,6 +705,37 @@
               </div>
             </section>
 
+            <section class="panel detail lifecycle" aria-labelledby="lifecycleHeading">
+              <div class="section-head">
+                <div>
+                  <p class="section-index">04 DROP LIFECYCLE</p>
+                  <h2 id="lifecycleHeading">Sunset Cinema Drop</h2>
+                  <p class="hint">Create, schedule, activate, reserve capacity, or expire a Drop.</p>
+                </div>
+                <span class="lifecycle-status active" id="lifecycleStatus">Active</span>
+              </div>
+              <div class="lifecycle-grid">
+                <div class="metric">
+                  <div class="metric-label">Time remaining</div>
+                  <div class="metric-value" id="lifecycleTime">01:30:00</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Reserved capacity</div>
+                  <div class="metric-value" id="lifecycleCapacity">0 / 8 people</div>
+                  <div class="capacity-track" aria-hidden="true">
+                    <div class="capacity-fill" id="capacityFill"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="lifecycle-actions">
+                <button class="action" id="newDraft" type="button">New draft</button>
+                <button class="action" id="scheduleDrop" type="button">Schedule</button>
+                <button class="action primary" id="activateDrop" type="button">Activate</button>
+                <button class="action" id="reserveCapacity" type="button">Reserve 2</button>
+                <button class="action" id="expireDrop" type="button">Expire</button>
+              </div>
+            </section>
+
             <section class="panel detail events">
               <div class="section-head">
                 <div>
@@ -481,7 +744,7 @@
                 </div>
                 <button class="reset" id="clearEvents" type="button">Clear</button>
               </div>
-              <ul class="event-list" id="eventList">
+              <ul class="event-list" id="eventList" aria-live="polite">
                 <li class="empty">Move the distance control to begin.</li>
               </ul>
             </section>
@@ -493,11 +756,19 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
       const state = {
+        profileComplete: false,
+        locationPermission: false,
+        preferences: new Set(["korean_bbq", "japanese_cuisine", "laser_tag"]),
         distance: 850,
         discovered: false,
         stage: "outside",
         squadCount: 0,
         userPoint: null,
+        lifecycleStatus: "active",
+        lifecycleReserved: 0,
+        lifecycleCapacity: 8,
+        lifecycleSeconds: 5400,
+        demoRunning: false,
       };
       const stageOrder = ["outside", "detect", "reveal", "discover"];
       const $ = (selector) => document.querySelector(selector);
@@ -593,6 +864,7 @@
       }
 
       function exampleStage(drop) {
+        if (!state.profileComplete) return "outside";
         const distance = distanceBetween(currentUserLocation(), drop.coordinates);
         if (distance <= 60) exampleUnlocks.add(drop.id);
         if (exampleUnlocks.has(drop.id)) return "discover";
@@ -691,6 +963,10 @@
         });
 
         map.on("click", (event) => {
+          if (!state.profileComplete) {
+            addEvent("location.permission_required", "Complete account setup first");
+            return;
+          }
           state.userPoint = event.latlng;
           state.distance = Math.round(map.distance(event.latlng, dropLocation));
           render();
@@ -698,6 +974,7 @@
       }
 
       function currentStage() {
+        if (!state.profileComplete) return "outside";
         if (state.discovered || state.distance <= 60) return "discover";
         if (state.distance <= 180) return "reveal";
         if (state.distance <= 700) return "detect";
@@ -711,6 +988,7 @@
       }
 
       function responsePayload() {
+        if (!state.profileComplete) return { drops: [] };
         const visibleDrops = [];
         const primaryDrop = {
           id: "drop_mel_001",
@@ -797,7 +1075,9 @@
         if (state.stage === "discover") state.discovered = true;
 
         const details = {
-          outside: ["Out of range", "Move closer to detect nearby energy."],
+          outside: state.profileComplete
+            ? ["Out of range", "Move closer to detect nearby energy."]
+            : ["Location locked", "Complete account setup to begin exploring."],
           detect: ["Rare signal detected", "The venue and offer are still hidden."],
           reveal: ["Food & dining · Rare", "You are close. Keep moving to reveal it."],
           discover: ["Rare Korean BBQ Drop", "40% off · Seoul Table"],
@@ -833,14 +1113,20 @@
           step.classList.toggle("complete", adjustedIndex < activeIndex);
         });
         $$("[data-distance]").forEach((button) => {
+          button.disabled = !state.profileComplete || state.demoRunning;
           button.classList.toggle("active", Number(button.dataset.distance) === state.distance);
         });
+        $("#distanceSlider").disabled = !state.profileComplete || state.demoRunning;
 
-        $("#createSquad").disabled = !state.discovered || state.squadCount > 0;
-        $("#addMember").disabled = state.squadCount === 0 || state.squadCount >= 4;
-        $("#squadHint").textContent = state.discovered
-          ? "Minimum 2 people. Capacity is enforced at 4."
-          : "Discover the Drop to unlock assembly.";
+        $("#createSquad").disabled =
+          !state.discovered || state.squadCount > 0 || state.demoRunning;
+        $("#addMember").disabled =
+          state.squadCount === 0 || state.squadCount >= 4 || state.demoRunning;
+        $("#squadHint").textContent = !state.profileComplete
+          ? "Complete account setup before forming a squad."
+          : state.discovered
+            ? "Minimum 2 people. Capacity is enforced at 4."
+            : "Discover the Drop to unlock assembly.";
 
         if (previous !== state.stage && state.stage !== "outside") {
           addEvent("drop.stage_update", `${state.stage} · ${roundedDistance()} m`);
@@ -869,19 +1155,261 @@
         render();
       }
 
-      $$("[data-distance]").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.distance = Number(button.dataset.distance);
-          state.userPoint = null;
-          render();
+      function renderProfile() {
+        const status = $("#profileStatus");
+        status.textContent = state.profileComplete ? "Ready to explore" : "Setup needed";
+        status.className = `onboarding-status${state.profileComplete ? " complete" : ""}`;
+        $("#locationPermission").checked = state.locationPermission;
+        $("#completeProfile").textContent = state.profileComplete
+          ? "Save profile"
+          : "Sign in & complete setup";
+        $("#completeProfile").disabled =
+          state.demoRunning ||
+          !$("#emailAddress").value.trim() ||
+          !$("#displayName").value.trim() ||
+          !state.locationPermission;
+        $$('[data-preference]').forEach((button) => {
+          button.setAttribute(
+            "aria-pressed",
+            String(state.preferences.has(button.dataset.preference)),
+          );
+          button.disabled = state.demoRunning;
         });
+      }
+
+      function formatTime(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return [hours, minutes, seconds]
+          .map((value) => String(value).padStart(2, "0"))
+          .join(":");
+      }
+
+      function renderLifecycle() {
+        const status = $("#lifecycleStatus");
+        const labels = {
+          draft: "Draft",
+          scheduled: "Scheduled",
+          active: "Active",
+          capacity_reached: "Capacity reached",
+          expired: "Expired",
+        };
+        status.textContent = labels[state.lifecycleStatus];
+        status.className = `lifecycle-status ${state.lifecycleStatus}`;
+        $("#lifecycleTime").textContent = formatTime(state.lifecycleSeconds);
+        $("#lifecycleCapacity").textContent =
+          `${state.lifecycleReserved} / ${state.lifecycleCapacity} people`;
+        $("#capacityFill").style.width =
+          `${(state.lifecycleReserved / state.lifecycleCapacity) * 100}%`;
+
+        $("#newDraft").disabled = state.demoRunning;
+        $("#scheduleDrop").disabled =
+          state.demoRunning || state.lifecycleStatus !== "draft";
+        $("#activateDrop").disabled =
+          state.demoRunning || state.lifecycleStatus !== "scheduled";
+        $("#reserveCapacity").disabled =
+          state.demoRunning ||
+          state.lifecycleStatus !== "active" ||
+          state.lifecycleReserved >= state.lifecycleCapacity;
+        $("#expireDrop").disabled =
+          state.demoRunning ||
+          !["scheduled", "active", "capacity_reached"].includes(
+            state.lifecycleStatus,
+          );
+      }
+
+      function completeProfileAction() {
+        if (
+          !state.locationPermission ||
+          !$("#emailAddress").value.trim() ||
+          !$("#displayName").value.trim()
+        ) return;
+        const firstCompletion = !state.profileComplete;
+        state.profileComplete = true;
+        addEvent(
+          firstCompletion ? "onboarding.completed" : "profile.updated",
+          `${$("#displayName").value.trim()} · ${state.preferences.size} interests`,
+        );
+        if (firstCompletion) {
+          addEvent("auth.jwt_issued", `${$("#emailAddress").value.trim()} signed in`);
+        }
+        renderProfile();
+        renderSquad();
+      }
+
+      function setDistanceAction(distance) {
+        state.distance = distance;
+        state.userPoint = null;
+        render();
+      }
+
+      function createSquadAction() {
+        if (!state.discovered || state.squadCount > 0) return;
+        state.squadCount = 1;
+        addEvent("group.state_update", "forming · 1/4");
+        renderSquad();
+      }
+
+      function addMemberAction() {
+        if (state.squadCount === 0 || state.squadCount >= 4) return;
+        state.squadCount += 1;
+        addEvent("group.member_joined", `${state.squadCount}/4 members`);
+        addEvent(
+          "group.state_update",
+          `${state.squadCount >= 2 ? "ready" : "forming"} · ${state.squadCount}/4`,
+        );
+        if (state.squadCount === 2) {
+          addEvent("group.ready", "minimum squad size reached");
+        }
+        if (state.squadCount === 4) {
+          addEvent("drop.capacity_reached", "squad is full");
+        }
+        renderSquad();
+      }
+
+      function newDraftAction() {
+        state.lifecycleStatus = "draft";
+        state.lifecycleReserved = 0;
+        state.lifecycleSeconds = 5400;
+        addEvent("drop.created", "draft · Sunset Cinema Drop");
+        renderLifecycle();
+      }
+
+      function scheduleDropAction() {
+        if (state.lifecycleStatus !== "draft") return;
+        state.lifecycleStatus = "scheduled";
+        addEvent("drop.scheduled", "starts at 6:00 pm");
+        renderLifecycle();
+      }
+
+      function activateDropAction() {
+        if (state.lifecycleStatus !== "scheduled") return;
+        state.lifecycleStatus = "active";
+        addEvent("drop.activated", "nearby explorers can now detect it");
+        renderLifecycle();
+      }
+
+      function reserveCapacityAction() {
+        if (state.lifecycleStatus !== "active") return;
+        state.lifecycleReserved = Math.min(
+          state.lifecycleCapacity,
+          state.lifecycleReserved + 2,
+        );
+        addEvent(
+          "drop.capacity_reserved",
+          `${state.lifecycleReserved}/${state.lifecycleCapacity} places reserved`,
+        );
+        if (state.lifecycleReserved === state.lifecycleCapacity) {
+          state.lifecycleStatus = "capacity_reached";
+          addEvent("drop.capacity_reached", "new reservations are blocked");
+        }
+        renderLifecycle();
+      }
+
+      function expireDropAction() {
+        if (state.lifecycleStatus === "draft" || state.lifecycleStatus === "expired") return;
+        state.lifecycleStatus = "expired";
+        state.lifecycleSeconds = 0;
+        addEvent("drop.expired", "time ended · active squads notified");
+        renderLifecycle();
+      }
+
+      const wait = (milliseconds) =>
+        new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+      async function runFullDemo() {
+        if (state.demoRunning) return;
+        state.demoRunning = true;
+        $("#runDemo").disabled = true;
+        $("#runDemo").textContent = "Running…";
+        exampleUnlocks.clear();
+        Object.assign(state, {
+          profileComplete: false,
+          locationPermission: false,
+          distance: 850,
+          discovered: false,
+          stage: "outside",
+          squadCount: 0,
+          userPoint: null,
+          lifecycleStatus: "active",
+          lifecycleReserved: 0,
+          lifecycleSeconds: 5400,
+        });
+        $("#eventList").innerHTML = '<li class="empty">Starting guided demo…</li>';
+        renderProfile();
+        renderSquad();
+        renderLifecycle();
+
+        await wait(450);
+        state.locationPermission = true;
+        state.profileComplete = true;
+        addEvent("auth.jwt_issued", "protected session started");
+        addEvent("onboarding.completed", "profile, interests, and location saved");
+        renderProfile();
+        render();
+
+        for (const distance of [500, 150, 50]) {
+          await wait(550);
+          setDistanceAction(distance);
+        }
+        await wait(550);
+        createSquadAction();
+        for (let count = 0; count < 3; count += 1) {
+          await wait(450);
+          addMemberAction();
+        }
+
+        await wait(550);
+        newDraftAction();
+        await wait(400);
+        scheduleDropAction();
+        await wait(400);
+        activateDropAction();
+        for (let count = 0; count < 4; count += 1) {
+          await wait(300);
+          reserveCapacityAction();
+        }
+        await wait(450);
+        expireDropAction();
+        addEvent("demo.complete", "full discovery-engine journey finished");
+        state.demoRunning = false;
+        $("#runDemo").disabled = false;
+        $("#runDemo").textContent = "Run full demo";
+        renderProfile();
+        renderSquad();
+        renderLifecycle();
+      }
+
+      $$("[data-distance]").forEach((button) => {
+        button.addEventListener("click", () =>
+          setDistanceAction(Number(button.dataset.distance)),
+        );
       });
 
       $("#distanceSlider").addEventListener("input", (event) => {
-        state.distance = Number(event.target.value);
-        state.userPoint = null;
-        render();
+        setDistanceAction(Number(event.target.value));
       });
+
+      $$("[data-preference]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const preference = button.dataset.preference;
+          if (state.preferences.has(preference)) {
+            state.preferences.delete(preference);
+          } else {
+            state.preferences.add(preference);
+          }
+          renderProfile();
+        });
+      });
+
+      $("#displayName").addEventListener("input", renderProfile);
+      $("#emailAddress").addEventListener("input", renderProfile);
+      $("#locationPermission").addEventListener("change", (event) => {
+        state.locationPermission = event.target.checked;
+        renderProfile();
+      });
+      $("#completeProfile").addEventListener("click", completeProfileAction);
 
       $("#resetDiscovery").addEventListener("click", () => {
         exampleUnlocks.clear();
@@ -896,27 +1424,29 @@
         addEvent("simulation.reset", "Discovery and squad state cleared");
       });
 
-      $("#createSquad").addEventListener("click", () => {
-        state.squadCount = 1;
-        addEvent("group.state_update", "forming · 1/4");
-        renderSquad();
-      });
-
-      $("#addMember").addEventListener("click", () => {
-        state.squadCount += 1;
-        addEvent("group.member_joined", `${state.squadCount}/4 members`);
-        addEvent("group.state_update", `${state.squadCount >= 2 ? "ready" : "forming"} · ${state.squadCount}/4`);
-        if (state.squadCount === 2) addEvent("group.ready", "minimum squad size reached");
-        if (state.squadCount === 4) addEvent("drop.capacity_reached", "squad is full");
-        renderSquad();
-      });
+      $("#createSquad").addEventListener("click", createSquadAction);
+      $("#addMember").addEventListener("click", addMemberAction);
+      $("#newDraft").addEventListener("click", newDraftAction);
+      $("#scheduleDrop").addEventListener("click", scheduleDropAction);
+      $("#activateDrop").addEventListener("click", activateDropAction);
+      $("#reserveCapacity").addEventListener("click", reserveCapacityAction);
+      $("#expireDrop").addEventListener("click", expireDropAction);
+      $("#runDemo").addEventListener("click", runFullDemo);
 
       $("#clearEvents").addEventListener("click", () => {
         $("#eventList").innerHTML = '<li class="empty">Event stream cleared.</li>';
       });
 
       initializeMap();
+      renderProfile();
       renderSquad();
+      renderLifecycle();
+      window.setInterval(() => {
+        if (state.lifecycleStatus === "active" && state.lifecycleSeconds > 0) {
+          state.lifecycleSeconds -= 1;
+          renderLifecycle();
+        }
+      }, 1000);
     </script>
   </body>
 </html>
