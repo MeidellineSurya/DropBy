@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, get_db
 from app.models.users import User
 from app.schemas.drops import DropSnapshot, LocationPingRequest, LocationPingResponse
-from app.services.proximity import compute_stage_for_ping, get_discovered_drop
+from app.services.proximity import compute_stage_for_ping, get_revealed_drop
 
 router = APIRouter()
 
@@ -31,9 +31,9 @@ def get_drop(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DropSnapshot:
-    drop = get_discovered_drop(db, user.id, drop_id)
+    drop = get_revealed_drop(db, user.id, drop_id)
     if drop is None:
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "Move close enough to Discover this Drop first"
+            status.HTTP_403_FORBIDDEN, "Move close enough to Reveal this Drop first"
         )
     return drop

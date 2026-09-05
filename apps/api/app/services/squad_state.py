@@ -64,16 +64,16 @@ def create_group(
         or drop.ends_at <= datetime.now(timezone.utc)
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Active Drop not found")
-    discovered = db.scalar(
+    revealed = db.scalar(
         select(DropViewEvent.id).where(
             DropViewEvent.user_id == user.id,
             DropViewEvent.drop_id == drop_id,
             DropViewEvent.stage == DropViewStage.discover,
         )
     )
-    if discovered is None:
+    if revealed is None:
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "Discover this Drop before creating a squad"
+            status.HTTP_403_FORBIDDEN, "Reveal this Drop before creating a squad"
         )
     if _active_group_for_user(db, user.id, drop_id):
         raise HTTPException(
@@ -130,7 +130,7 @@ def join_group(
     if not _user_can_assemble(db, user, group.drop_id):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Discover this Drop and stay nearby before joining a squad",
+            "Reveal this Drop and stay nearby before joining a squad",
         )
 
     member = db.scalar(
@@ -272,14 +272,14 @@ def _user_can_assemble(db: Session, user: User, drop_id: UUID) -> bool:
         or user.last_location_at < datetime.now(timezone.utc) - timedelta(minutes=5)
     ):
         return False
-    discovered = db.scalar(
+    revealed = db.scalar(
         select(DropViewEvent.id).where(
             DropViewEvent.user_id == user.id,
             DropViewEvent.drop_id == drop_id,
             DropViewEvent.stage == DropViewStage.discover,
         )
     )
-    if discovered is None:
+    if revealed is None:
         return False
     return bool(
         db.scalar(

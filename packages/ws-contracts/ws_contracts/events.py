@@ -22,7 +22,6 @@ class Envelope(BaseModel):
 class Stage(str, Enum):
     detect = "detect"
     reveal = "reveal"
-    discover = "discover"
 
 
 class DropStageUpdate(BaseModel):
