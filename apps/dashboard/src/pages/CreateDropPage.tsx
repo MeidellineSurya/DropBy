@@ -16,6 +16,7 @@ export function CreateDropPage() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [interestTag, setInterestTag] = useState("");
   const [category, setCategory] = useState<DropCategory>("food_dining");
   const [rarity, setRarity] = useState<DropRarity>("common");
   const [dropType, setDropType] = useState<DropType>("solo");
@@ -25,8 +26,7 @@ export function CreateDropPage() {
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [discoveryRadius, setDiscoveryRadius] = useState(700);
-  const [revealRadius, setRevealRadius] = useState(180);
-  const [discoverRadius, setDiscoverRadius] = useState(60);
+  const [discoverRadius, setDiscoverRadius] = useState(100);
   const [xpRewardBase, setXpRewardBase] = useState(10);
   const [publishNow, setPublishNow] = useState(true);
 
@@ -38,6 +38,7 @@ export function CreateDropPage() {
       await api.createDrop({
         title,
         description: description || undefined,
+        interest_tag: interestTag || undefined,
         category,
         rarity,
         drop_type: dropType,
@@ -47,7 +48,6 @@ export function CreateDropPage() {
         starts_at: toIso(startsAt),
         ends_at: toIso(endsAt),
         discovery_radius_m: discoveryRadius,
-        reveal_radius_m: revealRadius,
         discover_radius_m: discoverRadius,
         xp_reward_base: xpRewardBase,
         publish: publishNow,
@@ -74,6 +74,18 @@ export function CreateDropPage() {
             Description
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
           </label>
+          <label>
+            Interest tag
+            <input
+              value={interestTag}
+              onChange={(e) => setInterestTag(e.target.value)}
+              placeholder="e.g. trivia night, ramen, rooftop cinema"
+            />
+          </label>
+          <p className="form-hint">
+            Shown even at Detect range, before the venue is revealed — falls back to the category
+            if left blank.
+          </p>
           <div className="form-row">
             <label>
               Category
@@ -177,20 +189,15 @@ export function CreateDropPage() {
               Reveal radius (m)
               <input
                 type="number"
-                value={revealRadius}
-                onChange={(e) => setRevealRadius(Number(e.target.value))}
-              />
-            </label>
-            <label>
-              Discover radius (m)
-              <input
-                type="number"
                 value={discoverRadius}
                 onChange={(e) => setDiscoverRadius(Number(e.target.value))}
               />
             </label>
           </div>
-          <p className="form-hint">Detect &ge; Reveal &ge; Discover, or the API will reject it.</p>
+          <p className="form-hint">
+            Users see a mystery pin within the Detect radius, then the full offer once they're
+            within the Reveal radius. Detect must be &ge; Reveal.
+          </p>
         </section>
 
         <section>

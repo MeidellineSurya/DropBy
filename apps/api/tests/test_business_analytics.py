@@ -31,8 +31,7 @@ def test_drop_funnel_combines_view_and_squad_counts() -> None:
     result = drop_funnel(db, drop)
 
     assert result.detect_count == 10
-    assert result.reveal_count == 0
-    assert result.discover_count == 3
+    assert result.revealed_count == 3
     assert result.squads_forming == 2
     assert result.squads_ready == 1
     assert result.squads_checked_in == 0

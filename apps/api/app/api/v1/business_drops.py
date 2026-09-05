@@ -37,12 +37,12 @@ def _drop_response(drop: Drop) -> BusinessDropResponse:
         title=drop.title,
         description=drop.description,
         category=drop.category,
+        interest_tag=drop.interest_tag,
         rarity=drop.rarity,
         drop_type=drop.drop_type,
         min_group_size=drop.min_group_size,
         max_group_size=drop.max_group_size,
         discovery_radius_m=drop.discovery_radius_m,
-        reveal_radius_m=drop.reveal_radius_m,
         discover_radius_m=drop.discover_radius_m,
         max_capacity_participants=drop.max_capacity_participants,
         reserved_count=drop.reserved_count,
@@ -51,6 +51,14 @@ def _drop_response(drop: Drop) -> BusinessDropResponse:
         status=drop.status,
         xp_reward_base=drop.xp_reward_base,
     )
+
+
+def _legacy_reveal_radius_m(discovery_radius_m: int, discover_radius_m: int) -> int:
+    """The DB still enforces discovery_radius_m >= reveal_radius_m >=
+    discover_radius_m from the retired three-stage model (see
+    app/schemas/business_drops.py); pick the midpoint so callers never need
+    to think about it."""
+    return max(discover_radius_m, (discovery_radius_m + discover_radius_m) // 2)
 
 
 def _owned_drop_or_404(db: Session, drop_id: UUID, business: Business) -> Drop:
@@ -81,11 +89,13 @@ def create_drop(
             starts_at=body.starts_at,
             ends_at=body.ends_at,
             description=body.description,
+            interest_tag=body.interest_tag,
             rarity=body.rarity,
             min_group_size=body.min_group_size,
             max_group_size=body.max_group_size,
             discovery_radius_m=body.discovery_radius_m,
-            reveal_radius_m=body.reveal_radius_m,
+            reveal_radius_m=body.reveal_radius_m
+            or _legacy_reveal_radius_m(body.discovery_radius_m, body.discover_radius_m),
             discover_radius_m=body.discover_radius_m,
             xp_reward_base=body.xp_reward_base,
             publish=body.publish,

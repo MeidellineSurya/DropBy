@@ -38,12 +38,13 @@ export interface BusinessDrop {
   title: string;
   description: string | null;
   category: DropCategory;
+  // Shown even at Detect range — see apps/api/app/services/proximity.py.
+  interest_tag: string;
   rarity: DropRarity;
   drop_type: DropType;
   min_group_size: number;
   max_group_size: number;
   discovery_radius_m: number;
-  reveal_radius_m: number;
   discover_radius_m: number;
   max_capacity_participants: number;
   reserved_count: number;
@@ -53,12 +54,13 @@ export interface BusinessDrop {
   xp_reward_base: number;
 }
 
+// Two-stage discovery model: "revealed" is everyone who got close enough to
+// unlock the full offer (there's no longer a distinct middle stage).
 export interface DropFunnel {
   drop_id: string;
   status: DropStatus;
   detect_count: number;
-  reveal_count: number;
-  discover_count: number;
+  revealed_count: number;
   reserved_count: number;
   max_capacity_participants: number;
   squads_forming: number;
