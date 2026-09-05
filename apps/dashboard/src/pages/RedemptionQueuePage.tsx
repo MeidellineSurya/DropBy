@@ -16,7 +16,7 @@ export function RedemptionQueuePage() {
 
   function reload() {
     api
-      .listRedemptions("checked_in")
+      .listRedemptions()
       .then(setRedemptions)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load"));
   }

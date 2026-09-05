@@ -1,14 +1,14 @@
 """Add Business.venue_capacity, declared once at registration.
 
-Revision ID: 0005_business_venue_capacity
-Revises: 0004_drop_discount_percent
+Revision ID: 0011_business_venue_capacity
+Revises: 0010_drop_discount_percent
 """
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0005_business_venue_capacity"
-down_revision = "0004_drop_discount_percent"
+revision = "0011_business_venue_capacity"
+down_revision = "0010_drop_discount_percent"
 branch_labels = None
 depends_on = None
 
