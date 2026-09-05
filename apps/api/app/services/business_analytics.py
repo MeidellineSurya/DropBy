@@ -3,8 +3,8 @@
 No Redemption table exists yet (owned by the redemption/gamification
 workstream), so "redemption counts" isn't literally available. Until that
 lands, squad progress (forming/ready/checked_in/completed counts) is the best
-available proxy for how a Drop is converting, alongside the discover funnel
-already recorded by the discovery engine in drop_view_events.
+available proxy for how a Drop is converting, alongside the detect->reveal
+funnel already recorded by the discovery engine in drop_view_events.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -43,8 +43,7 @@ def drop_funnel(db: Session, drop: Drop) -> DropFunnelResponse:
         drop_id=str(drop.id),
         status=drop.status,
         detect_count=funnel.get(DropViewStage.detect, 0),
-        reveal_count=funnel.get(DropViewStage.reveal, 0),
-        discover_count=funnel.get(DropViewStage.discover, 0),
+        revealed_count=funnel.get(DropViewStage.discover, 0),
         reserved_count=drop.reserved_count,
         max_capacity_participants=drop.max_capacity_participants,
         squads_forming=squads.get(GroupStatus.forming, 0),

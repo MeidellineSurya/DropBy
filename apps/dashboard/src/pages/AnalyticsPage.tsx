@@ -49,10 +49,9 @@ export function AnalyticsPage() {
               <h2>Discovery funnel</h2>
               <div className="funnel__stages">
                 <FunnelStage label="Detect" value={funnel.detect_count} max={funnel.detect_count} />
-                <FunnelStage label="Reveal" value={funnel.reveal_count} max={funnel.detect_count} />
                 <FunnelStage
-                  label="Discover"
-                  value={funnel.discover_count}
+                  label="Revealed"
+                  value={funnel.revealed_count}
                   max={funnel.detect_count}
                 />
               </div>
