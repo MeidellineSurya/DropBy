@@ -15,22 +15,27 @@ Location-based social deal discovery — "Pokémon GO, but you catch experiences
 
 ## Getting started
 
-```bash
-# Backend
-cd apps/api
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-cp .env.example .env
-uvicorn app.main:app --reload
+On Windows, install and open Docker Desktop, then run one command from the
+repository root:
 
-# Dashboard
-cd apps/dashboard
-npm install
-npm run dev
-
-# Full stack via Docker
-docker compose -f infra/docker-compose.yml up --build
+```bat
+dev.cmd
 ```
+
+The launcher creates `.env` when needed, builds the discovery backend, runs the
+database migration, loads repeatable demo data, and opens Swagger at
+<http://localhost:8000/docs>.
+
+```bat
+dev.cmd logs
+dev.cmd status
+dev.cmd stop
+```
+
+Python dependencies are already defined in `apps/api/requirements.txt` and
+development dependencies in `apps/api/requirements-dev.txt`; Docker installs
+them during the first build. Manual and non-Docker setup is documented in
+[`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md).
 
 Mobile app native scaffolding still needs to be generated — see `apps/mobile/README.md`.
 
