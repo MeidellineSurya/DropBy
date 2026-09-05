@@ -5,9 +5,10 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from app.models.drops import Drop, DropStatus
+from app.models.drops import Drop, DropRarity, DropStatus
 from app.services.drop_lifecycle import (
     cancel_drop,
+    compute_rarity,
     describe_capacity_failure,
     pause_drop,
     publish_drop,
@@ -155,3 +156,54 @@ def test_describe_capacity_failure_handles_missing_drop() -> None:
     db.get.return_value = None
 
     assert describe_capacity_failure(db, uuid4()) == "This Drop no longer exists."
+
+
+@pytest.mark.parametrize(
+    ("discount_percent", "expected"),
+    [
+        (1, DropRarity.common),
+        (19, DropRarity.common),
+        (20, DropRarity.uncommon),
+        (39, DropRarity.uncommon),
+        (40, DropRarity.rare),
+        (59, DropRarity.rare),
+        (60, DropRarity.epic),
+        (79, DropRarity.epic),
+        (80, DropRarity.legendary),
+        (100, DropRarity.legendary),
+    ],
+)
+def test_compute_rarity_tiers_by_discount_depth(
+    discount_percent: int, expected: DropRarity
+) -> None:
+    # A large, unlimited-capacity, solo-friendly Drop — discount alone
+    # should decide the tier with no scarcity/commitment bump.
+    assert compute_rarity(discount_percent, min_group_size=1, max_capacity_participants=100) == expected
+
+
+def test_compute_rarity_bumps_a_tier_for_a_small_capacity() -> None:
+    # 30% off would normally be uncommon, but a 4-spot Drop is genuinely
+    # scarce — matches the brief's "Epic: very limited" framing.
+    assert compute_rarity(30, min_group_size=1, max_capacity_participants=4) == DropRarity.rare
+
+
+def test_compute_rarity_bumps_a_tier_for_a_large_required_group() -> None:
+    # A raid-sized commitment reads as a bigger ask than the discount alone.
+    assert compute_rarity(30, min_group_size=8, max_capacity_participants=100) == DropRarity.rare
+
+
+def test_compute_rarity_never_bumps_past_legendary() -> None:
+    assert (
+        compute_rarity(90, min_group_size=10, max_capacity_participants=2)
+        == DropRarity.legendary
+    )
+
+
+def test_compute_rarity_is_never_business_declared() -> None:
+    # There is no way to pass a rarity into create_drop at all anymore —
+    # confirmed at the schema layer too, see test_business_drops_schema.py.
+    import inspect
+
+    from app.services.drop_lifecycle import create_drop
+
+    assert "rarity" not in inspect.signature(create_drop).parameters

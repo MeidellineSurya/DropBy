@@ -17,6 +17,51 @@ from app.models.drops import (
 )
 from app.models.groups import Group, GroupStatus
 
+# Richest-first: the first threshold discount_percent clears wins.
+_DISCOUNT_TIER_THRESHOLDS: list[tuple[int, DropRarity]] = [
+    (80, DropRarity.legendary),
+    (60, DropRarity.epic),
+    (40, DropRarity.rare),
+    (20, DropRarity.uncommon),
+    (0, DropRarity.common),
+]
+_RARITY_ORDER = [
+    DropRarity.common,
+    DropRarity.uncommon,
+    DropRarity.rare,
+    DropRarity.epic,
+    DropRarity.legendary,
+]
+# A Drop this scarce (few total spots) or this demanding (a large required
+# group) reads as more special than its discount alone suggests — matching
+# the brief's own language ("Epic: very limited", "Legendary: extremely rare").
+_SCARCITY_CAPACITY_MAX = 6
+_COMMITMENT_GROUP_MIN = 6
+
+
+def compute_rarity(
+    discount_percent: int, min_group_size: int, max_capacity_participants: int
+) -> DropRarity:
+    """Rarity is never business-declared (see api/v1/business_drops.py — the
+    create schema has no rarity field at all) — it's derived here from the
+    offer's actual terms, so a business can't just label a 5%-off coffee
+    upgrade "Legendary". This is the only place that produces a rarity value;
+    keep it that way rather than accepting an override anywhere upstream.
+    """
+    tier = next(
+        rarity
+        for threshold, rarity in _DISCOUNT_TIER_THRESHOLDS
+        if discount_percent >= threshold
+    )
+    is_scarce_or_demanding = (
+        max_capacity_participants <= _SCARCITY_CAPACITY_MAX
+        or min_group_size >= _COMMITMENT_GROUP_MIN
+    )
+    if is_scarce_or_demanding:
+        bumped_index = min(_RARITY_ORDER.index(tier) + 1, len(_RARITY_ORDER) - 1)
+        tier = _RARITY_ORDER[bumped_index]
+    return tier
+
 
 def create_drop(
     db: Session,
@@ -30,9 +75,9 @@ def create_drop(
     max_capacity_participants: int,
     starts_at: datetime,
     ends_at: datetime,
+    discount_percent: int,
     description: str | None = None,
     interest_tag: str | None = None,
-    rarity: DropRarity = DropRarity.common,
     min_group_size: int = 1,
     max_group_size: int = 1,
     discovery_radius_m: int = settings.default_detect_radius_m,
@@ -70,6 +115,8 @@ def create_drop(
         raise ValueError("capacity must fit at least one minimum-size group")
     if xp_reward_base < 0:
         raise ValueError("xp_reward_base cannot be negative")
+    if not 1 <= discount_percent <= 100:
+        raise ValueError("discount_percent must be between 1 and 100")
 
     now = datetime.now(timezone.utc)
     lifecycle_status = DropStatus.draft
@@ -84,7 +131,8 @@ def create_drop(
         description=description,
         category=category,
         interest_tag=clean_interest_tag,
-        rarity=rarity,
+        rarity=compute_rarity(discount_percent, min_group_size, max_capacity_participants),
+        discount_percent=discount_percent,
         drop_type=drop_type,
         min_group_size=min_group_size,
         max_group_size=max_group_size,

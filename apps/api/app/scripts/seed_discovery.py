@@ -68,6 +68,7 @@ def seed() -> None:
                     category=DropCategory.food_dining,
                     interest_tag="korean_bbq",
                     rarity=DropRarity.rare,
+                    discount_percent=40,
                     drop_type=DropType.squad,
                     min_group_size=2,
                     max_group_size=4,
