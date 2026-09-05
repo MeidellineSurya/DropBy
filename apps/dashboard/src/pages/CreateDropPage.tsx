@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ApiError, api } from "../services/api";
@@ -22,10 +22,13 @@ const DISCOUNT_TIER_THRESHOLDS: [number, DropRarity][] = [
 ];
 const RARITY_ORDER: DropRarity[] = ["common", "uncommon", "rare", "epic", "legendary"];
 
-function previewRarity(discountPercent: number, minGroupSize: number, maxCapacity: number): DropRarity {
+// venueCapacity here is the business's registered Business.venue_capacity,
+// NOT the per-Drop max_capacity_participants input below — scarcity is
+// judged from the one-time registration value so it can't be gamed per Drop.
+function previewRarity(discountPercent: number, minGroupSize: number, venueCapacity: number): DropRarity {
   const match = DISCOUNT_TIER_THRESHOLDS.find(([threshold]) => discountPercent >= threshold);
   const base = match ? match[1] : "common";
-  const scarceOrDemanding = maxCapacity <= 6 || minGroupSize >= 6;
+  const scarceOrDemanding = venueCapacity <= 6 || minGroupSize >= 6;
   if (!scarceOrDemanding) return base;
   const nextIndex = Math.min(RARITY_ORDER.indexOf(base) + 1, RARITY_ORDER.length - 1);
   return RARITY_ORDER[nextIndex];
@@ -60,10 +63,18 @@ export function CreateDropPage() {
   const [discoveryRadius, setDiscoveryRadius] = useState(700);
   const [discoverRadius, setDiscoverRadius] = useState(100);
   const [publishNow, setPublishNow] = useState(true);
+  const [venueCapacity, setVenueCapacity] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.me().then((business) => setVenueCapacity(business.venue_capacity)).catch(() => {});
+  }, []);
 
   const effectiveMinGroupSize = dropType === "solo" ? 1 : minGroupSize;
-  const estimatedRarity = previewRarity(discountPercent, effectiveMinGroupSize, maxCapacity);
-  const estimatedXp = XP_REWARD_BY_RARITY[estimatedRarity];
+  const estimatedRarity =
+    venueCapacity === null
+      ? null
+      : previewRarity(discountPercent, effectiveMinGroupSize, venueCapacity);
+  const estimatedXp = estimatedRarity === null ? null : XP_REWARD_BY_RARITY[estimatedRarity];
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -146,9 +157,17 @@ export function CreateDropPage() {
           </div>
           <p className="form-hint">
             Rarity — and the XP explorers earn for completing it — are computed automatically
-            from your discount and group size/capacity. Neither is something you pick directly,
-            so both stay an honest signal. Estimated tier:{" "}
-            <strong className="rarity-preview">{estimatedRarity}</strong> ({estimatedXp} XP)
+            from your discount, group size, and your registered venue capacity (not the Max
+            total participants below, which you can vary per Drop). Neither is something you
+            pick directly, so both stay an honest signal.{" "}
+            {estimatedRarity === null ? (
+              "Loading estimate…"
+            ) : (
+              <>
+                Estimated tier: <strong className="rarity-preview">{estimatedRarity}</strong> (
+                {estimatedXp} XP)
+              </>
+            )}
           </p>
         </section>
 
@@ -189,10 +208,15 @@ export function CreateDropPage() {
             <input
               type="number"
               min={1}
+              max={venueCapacity ?? undefined}
               value={maxCapacity}
               onChange={(e) => setMaxCapacity(Number(e.target.value))}
             />
           </label>
+          <p className="form-hint">
+            Can't exceed your registered venue capacity
+            {venueCapacity !== null && ` (${venueCapacity})`}.
+          </p>
         </section>
 
         <section>
