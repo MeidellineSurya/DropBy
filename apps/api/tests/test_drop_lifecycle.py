@@ -38,6 +38,8 @@ def test_create_drop_stages_valid_scheduled_drop() -> None:
     # Computed from discount_percent=40 (rare tier), not accepted as input —
     # there's no rarity kwarg on create_drop at all anymore.
     assert drop.rarity == DropRarity.rare
+    # XP is computed from that same rarity — also not an input kwarg.
+    assert drop.xp_reward_base == 40
     db.add.assert_called_once_with(drop)
     db.flush.assert_called_once_with()
 

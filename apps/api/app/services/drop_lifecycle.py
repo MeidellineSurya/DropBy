@@ -63,6 +63,26 @@ def compute_rarity(
     return tier
 
 
+# Same reasoning as rarity: XP was a business-set field with nothing behind
+# it either, so a business could pair a 5%-off Drop with a 10,000-XP reward.
+# Doubling per tier keeps "rarer = more reward" an honest, fixed relationship.
+_XP_REWARD_BY_RARITY: dict[DropRarity, int] = {
+    DropRarity.common: 10,
+    DropRarity.uncommon: 20,
+    DropRarity.rare: 40,
+    DropRarity.epic: 80,
+    DropRarity.legendary: 160,
+}
+
+
+def compute_xp_reward(rarity: DropRarity) -> int:
+    """The only place that produces an xp_reward_base value — see
+    compute_rarity's docstring; the same "never business-declared" rule
+    applies here. Always called with a rarity compute_rarity() itself
+    produced, never a value from user input."""
+    return _XP_REWARD_BY_RARITY[rarity]
+
+
 def create_drop(
     db: Session,
     *,
@@ -83,7 +103,6 @@ def create_drop(
     discovery_radius_m: int = settings.default_detect_radius_m,
     reveal_radius_m: int = settings.default_reveal_radius_m,
     discover_radius_m: int = settings.default_discover_radius_m,
-    xp_reward_base: int = 10,
     publish: bool = False,
 ) -> Drop:
     """Validate and stage a new Drop inside the caller's transaction.
@@ -113,8 +132,6 @@ def create_drop(
         raise ValueError("solo Drops must use a group size of 1")
     if max_capacity_participants < min_group_size:
         raise ValueError("capacity must fit at least one minimum-size group")
-    if xp_reward_base < 0:
-        raise ValueError("xp_reward_base cannot be negative")
     if not 1 <= discount_percent <= 100:
         raise ValueError("discount_percent must be between 1 and 100")
 
@@ -125,13 +142,14 @@ def create_drop(
             DropStatus.scheduled if starts_at > now else DropStatus.active
         )
 
+    rarity = compute_rarity(discount_percent, min_group_size, max_capacity_participants)
     drop = Drop(
         business_id=business_id,
         title=clean_title,
         description=description,
         category=category,
         interest_tag=clean_interest_tag,
-        rarity=compute_rarity(discount_percent, min_group_size, max_capacity_participants),
+        rarity=rarity,
         discount_percent=discount_percent,
         drop_type=drop_type,
         min_group_size=min_group_size,
@@ -143,7 +161,7 @@ def create_drop(
         max_capacity_participants=max_capacity_participants,
         starts_at=starts_at,
         ends_at=ends_at,
-        xp_reward_base=xp_reward_base,
+        xp_reward_base=compute_xp_reward(rarity),
         status=lifecycle_status,
         reserved_count=0,
     )

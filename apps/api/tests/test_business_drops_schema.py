@@ -36,7 +36,6 @@ def test_accepts_reasonable_values() -> None:
         {"max_group_size": 500},
         {"discovery_radius_m": 500_000},
         {"discover_radius_m": 500_000},
-        {"xp_reward_base": 1_000_000},
         {"discount_percent": 0},
         {"discount_percent": 101},
     ],
@@ -52,3 +51,10 @@ def test_rarity_is_not_a_field_on_the_create_request() -> None:
     # at all would silently do nothing useful and confuse API consumers.
     request = BusinessDropCreateRequest(**_valid_drop())
     assert not hasattr(request, "rarity")
+
+
+def test_xp_reward_base_is_not_a_field_on_the_create_request() -> None:
+    # Same reasoning as rarity: a business-set XP value had nothing tying it
+    # to the offer either. It's computed from rarity (compute_xp_reward).
+    request = BusinessDropCreateRequest(**_valid_drop())
+    assert not hasattr(request, "xp_reward_base")
