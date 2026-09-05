@@ -75,6 +75,8 @@ class Drop(Base):
         ),
         CheckConstraint("reserved_count >= 0", name="ck_drop_reserved_nonnegative"),
         Index("ix_drops_status_time", "status", "starts_at", "ends_at"),
+        Index("ix_drops_business_id", "business_id"),
+        Index("ix_drops_location_gist", "location", postgresql_using="gist"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
