@@ -54,6 +54,8 @@ export interface BusinessDrop {
   starts_at: string;
   ends_at: string;
   status: DropStatus;
+  // Read-only — computed server-side from rarity (see compute_xp_reward in
+  // the API). Never sent when creating a Drop.
   xp_reward_base: number;
 }
 

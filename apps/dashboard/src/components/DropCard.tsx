@@ -89,7 +89,7 @@ export function DropCard({ drop, onPublish, onPause, onResume, onCancel, busy }:
             <dd>{new Date(drop.ends_at).toLocaleString()}</dd>
           </div>
           <div className="drop-card__details-row">
-            <dt>XP reward</dt>
+            <dt>XP reward (computed)</dt>
             <dd>{drop.xp_reward_base}</dd>
           </div>
         </dl>

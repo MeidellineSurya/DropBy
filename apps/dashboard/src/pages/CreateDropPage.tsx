@@ -31,6 +31,16 @@ function previewRarity(discountPercent: number, minGroupSize: number, maxCapacit
   return RARITY_ORDER[nextIndex];
 }
 
+// Mirrors app/services/drop_lifecycle.compute_xp_reward — also a preview
+// only. There is no xp_reward_base field sent to the API either.
+const XP_REWARD_BY_RARITY: Record<DropRarity, number> = {
+  common: 10,
+  uncommon: 20,
+  rare: 40,
+  epic: 80,
+  legendary: 160,
+};
+
 export function CreateDropPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +59,11 @@ export function CreateDropPage() {
   const [endsAt, setEndsAt] = useState("");
   const [discoveryRadius, setDiscoveryRadius] = useState(700);
   const [discoverRadius, setDiscoverRadius] = useState(100);
-  const [xpRewardBase, setXpRewardBase] = useState(10);
   const [publishNow, setPublishNow] = useState(true);
+
+  const effectiveMinGroupSize = dropType === "solo" ? 1 : minGroupSize;
+  const estimatedRarity = previewRarity(discountPercent, effectiveMinGroupSize, maxCapacity);
+  const estimatedXp = XP_REWARD_BY_RARITY[estimatedRarity];
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -71,7 +84,6 @@ export function CreateDropPage() {
         ends_at: toIso(endsAt),
         discovery_radius_m: discoveryRadius,
         discover_radius_m: discoverRadius,
-        xp_reward_base: xpRewardBase,
         publish: publishNow,
       });
       navigate("/drops");
@@ -133,15 +145,10 @@ export function CreateDropPage() {
             </label>
           </div>
           <p className="form-hint">
-            Rarity is computed automatically from your discount and group size/capacity — it's
-            not something you pick directly, so it stays an honest signal. Estimated tier:{" "}
-            <strong className="rarity-preview">
-              {previewRarity(
-                discountPercent,
-                dropType === "solo" ? 1 : minGroupSize,
-                maxCapacity,
-              )}
-            </strong>
+            Rarity — and the XP explorers earn for completing it — are computed automatically
+            from your discount and group size/capacity. Neither is something you pick directly,
+            so both stay an honest signal. Estimated tier:{" "}
+            <strong className="rarity-preview">{estimatedRarity}</strong> ({estimatedXp} XP)
           </p>
         </section>
 
@@ -235,16 +242,7 @@ export function CreateDropPage() {
         </section>
 
         <section>
-          <h2>Reward</h2>
-          <label>
-            Base XP reward
-            <input
-              type="number"
-              min={0}
-              value={xpRewardBase}
-              onChange={(e) => setXpRewardBase(Number(e.target.value))}
-            />
-          </label>
+          <h2>Publish</h2>
           <label className="form-checkbox">
             <input
               type="checkbox"
