@@ -17,12 +17,14 @@ from app.models.groups import (
 )
 from app.models.users import User
 from app.schemas.groups import GroupMemberResponse, GroupResponse
-from app.services.drop_lifecycle import reserve_capacity
+from app.services.drop_lifecycle import describe_capacity_failure, reserve_capacity
 
 ACTIVE_GROUP_STATES = [GroupStatus.forming, GroupStatus.ready, GroupStatus.checked_in]
 
 
-def group_snapshot(db: Session, group: Group) -> GroupResponse:
+def group_snapshot(
+    db: Session, group: Group, *, cancelled_reason: str | None = None
+) -> GroupResponse:
     rows = db.execute(
         select(GroupMember, User)
         .join(User, User.id == GroupMember.user_id)
@@ -42,6 +44,7 @@ def group_snapshot(db: Session, group: Group) -> GroupResponse:
         max_allowed=group.max_allowed,
         open_to_nearby=group.open_to_nearby,
         expires_at=group.expires_at,
+        cancelled_reason=cancelled_reason,
         members=[
             GroupMemberResponse(
                 user_id=str(member.user_id),
@@ -100,14 +103,16 @@ def create_group(
         )
     )
     db.flush()
+    cancelled_reason = None
     if group.min_required == 1:
         if reserve_capacity(db, drop.id, 1) is None:
+            cancelled_reason = describe_capacity_failure(db, drop.id)
             group.status = GroupStatus.cancelled
         else:
             group.status = GroupStatus.ready
             group.ready_at = datetime.now(timezone.utc)
     db.commit()
-    return group_snapshot(db, group)
+    return group_snapshot(db, group, cancelled_reason=cancelled_reason)
 
 
 def join_group(
@@ -173,21 +178,22 @@ def join_group(
     became_ready = (
         group.status == GroupStatus.forming and new_count >= group.min_required
     )
+    cancelled_reason = None
     if became_ready:
         if reserve_capacity(db, group.drop_id, new_count) is None:
+            cancelled_reason = describe_capacity_failure(db, group.drop_id)
             group.status = GroupStatus.cancelled
         else:
             group.status = GroupStatus.ready
             group.ready_at = datetime.now(timezone.utc)
-    elif (
-        group.status == GroupStatus.ready
-        and reserve_capacity(db, group.drop_id, 1) is None
-    ):
-        db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "Drop capacity is full")
+    elif group.status == GroupStatus.ready:
+        if reserve_capacity(db, group.drop_id, 1) is None:
+            reason = describe_capacity_failure(db, group.drop_id)
+            db.rollback()
+            raise HTTPException(status.HTTP_409_CONFLICT, reason)
     db.commit()
     return (
-        group_snapshot(db, group),
+        group_snapshot(db, group, cancelled_reason=cancelled_reason),
         True,
         became_ready and group.status == GroupStatus.ready,
     )

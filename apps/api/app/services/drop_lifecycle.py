@@ -123,8 +123,14 @@ def publish_drop(db: Session, drop_id: UUID, business_id: UUID) -> Drop | None:
 
 
 def pause_drop(db: Session, drop_id: UUID, business_id: UUID) -> Drop | None:
-    """Temporarily hide an active Drop from discovery without cancelling it or
-    releasing its reserved capacity; forming/ready squads are left alone."""
+    """Temporarily hide an active Drop from new discovery (proximity queries
+    only ever return status == active) without cancelling it or releasing its
+    reserved capacity. Existing forming/ready squads are usually left alone,
+    but reserve_capacity() only reserves against an active Drop — a squad
+    that crosses its min_required in the same instant this pauses will lose
+    that race and be cancelled rather than admitted. See
+    describe_capacity_failure(), used by services/squad_state.py, for why
+    that cancellation is reported to members as "paused", not "sold out"."""
     changed = db.execute(
         update(Drop)
         .where(
@@ -194,6 +200,24 @@ def reserve_capacity(db: Session, drop_id: UUID, count: int) -> int | None:
             .values(status=DropStatus.capacity_reached)
         )
     return reserved
+
+
+def describe_capacity_failure(db: Session, drop_id: UUID) -> str:
+    """A human-readable reason for a reserve_capacity(...) -> None result,
+    for user-facing messages only — this never gates a decision itself (that
+    stays atomic in reserve_capacity). The Drop's row can still change
+    between the failed reservation and this read; worst case a caller shows
+    a slightly stale explanation, never incorrect capacity data."""
+    drop = db.get(Drop, drop_id)
+    if drop is None:
+        return "This Drop no longer exists."
+    if drop.ends_at <= datetime.now(timezone.utc):
+        return "This Drop has ended."
+    if drop.status == DropStatus.paused:
+        return "This Drop is temporarily paused by the business."
+    if drop.status != DropStatus.active:
+        return "This Drop is no longer active."
+    return "This Drop has reached full capacity."
 
 
 def release_capacity(db: Session, drop_id: UUID, count: int) -> None:
