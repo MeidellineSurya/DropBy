@@ -4,6 +4,8 @@ import type {
   BusinessDrop,
   BusinessOverview,
   DropFunnel,
+  Redemption,
+  RedemptionStatus,
 } from "../types";
 
 const API_BASE_URL = "http://localhost:8000/api/v1";
@@ -96,6 +98,18 @@ export const api = {
   overview: () => request<BusinessOverview>("/business/analytics/overview"),
   dropFunnel: (dropId: string) =>
     request<DropFunnel>(`/business/analytics/drops/${dropId}`),
+
+  listRedemptions: (status: RedemptionStatus = "checked_in") =>
+    request<Redemption[]>(`/business/redemptions?redemption_status=${status}`),
+  confirmRedemption: (redemptionId: string, participantCount?: number) =>
+    request<Redemption>(`/business/redemptions/${redemptionId}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ participant_count: participantCount ?? null }),
+    }),
+  rejectRedemption: (redemptionId: string) =>
+    request<Redemption>(`/business/redemptions/${redemptionId}/reject`, {
+      method: "POST",
+    }),
 };
 
 export { ApiError };

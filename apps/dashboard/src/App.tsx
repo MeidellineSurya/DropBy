@@ -7,6 +7,7 @@ import { CreateDropPage } from "./pages/CreateDropPage";
 import { LiveQueuePage } from "./pages/LiveQueuePage";
 import { LoginPage } from "./pages/LoginPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { RedemptionQueuePage } from "./pages/RedemptionQueuePage";
 import { isLoggedIn } from "./services/auth";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -52,6 +53,14 @@ function App() {
         element={
           <ProtectedLayout>
             <AnalyticsPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/queue"
+        element={
+          <ProtectedLayout>
+            <RedemptionQueuePage />
           </ProtectedLayout>
         }
       />
