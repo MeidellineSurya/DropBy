@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
 from app.db.session import SessionLocal
+from app.models.businesses import Business
 from app.models.users import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -51,3 +52,22 @@ def get_current_user(
             detail="User no longer exists",
         )
     return user
+
+
+def get_current_business(
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db),
+) -> Business:
+    """Same JWT scheme as get_current_user: create_access_token(subject) is
+    generic, so a token minted for a Business id (once the business/supply
+    module adds its own login endpoint) authenticates here unchanged."""
+    try:
+        business = db.get(Business, user_id)
+    except (TypeError, ValueError):
+        business = None
+    if business is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Business no longer exists",
+        )
+    return business

@@ -12,6 +12,8 @@ from ws_contracts.events import (  # noqa: F401
     GroupMemberJoined,
     GroupReady,
     GroupStateUpdate,
+    PowerupGranted,
     RedemptionCheckedIn,
     RedemptionConfirmed,
+    TerritoryBonusAwarded,
 )
