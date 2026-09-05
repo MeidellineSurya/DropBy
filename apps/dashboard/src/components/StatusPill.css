@@ -1,39 +1,39 @@
 .status-pill {
   display: inline-block;
   padding: 0.2rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .status-pill--draft {
-  background: #eef0f3;
-  color: #5b6472;
+  background: var(--color-surface-raised);
+  color: var(--color-muted);
 }
 .status-pill--scheduled {
-  background: #e6f0ff;
-  color: #1c5ad1;
+  background: rgba(155, 135, 255, 0.16);
+  color: var(--color-violet);
 }
 .status-pill--active {
-  background: #e3f8ec;
-  color: #1c8a4d;
+  background: rgba(217, 255, 67, 0.16);
+  color: var(--color-lime);
 }
 .status-pill--paused {
-  background: #fff4e0;
-  color: #a8620a;
+  background: rgba(82, 230, 216, 0.16);
+  color: var(--color-cyan);
 }
 .status-pill--capacity_reached {
-  background: #f1e9ff;
-  color: #6a35c9;
+  background: rgba(155, 135, 255, 0.16);
+  color: var(--color-violet);
 }
 .status-pill--expired,
 .status-pill--cancelled {
-  background: #fdeaea;
-  color: #b3261e;
+  background: rgba(255, 120, 110, 0.16);
+  color: var(--color-danger);
 }
 .status-pill--completed {
-  background: #e6f0ff;
-  color: #1c5ad1;
+  background: rgba(82, 230, 216, 0.16);
+  color: var(--color-cyan);
 }

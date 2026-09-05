@@ -1,16 +1,9 @@
-* {
-  box-sizing: border-box;
-}
-
 body {
-  margin: 0;
   font-family:
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #1c222a;
-  background: #f4f6f8;
 }
 
 .app-shell {
@@ -27,4 +20,6 @@ body {
 .app-content h1 {
   margin: 0;
   font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: -0.6px;
 }

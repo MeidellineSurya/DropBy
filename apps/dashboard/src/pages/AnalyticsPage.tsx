@@ -36,7 +36,11 @@ export function AnalyticsPage() {
         <p>Create a Drop to see performance data.</p>
       ) : (
         <>
-          <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+          <select
+            className="analytics-select"
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+          >
             {drops.map((drop) => (
               <option key={drop.id} value={drop.id}>
                 {drop.title}
