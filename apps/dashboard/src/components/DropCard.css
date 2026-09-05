@@ -1,0 +1,111 @@
+.drop-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.drop-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.drop-card__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.drop-card__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  text-transform: capitalize;
+}
+
+.drop-card__details-toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--color-cyan);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.drop-card__details-toggle:hover {
+  text-decoration: underline;
+}
+
+.drop-card__details {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.drop-card__details-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.drop-card__details-row--full {
+  grid-column: 1 / -1;
+}
+
+.drop-card__details-row dt {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.drop-card__details-row dd {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.drop-card__rarity {
+  color: var(--color-lime);
+  text-transform: capitalize;
+}
+
+.drop-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.drop-card__actions button {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.drop-card__actions button:hover {
+  border-color: var(--color-lime);
+}
+
+.drop-card__actions .drop-card__cancel {
+  color: var(--color-danger);
+  border-color: rgba(255, 120, 110, 0.35);
+  background: rgba(255, 120, 110, 0.1);
+}

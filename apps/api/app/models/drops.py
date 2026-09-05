@@ -74,7 +74,13 @@ class Drop(Base):
             "reserved_count <= max_capacity_participants", name="ck_drop_capacity"
         ),
         CheckConstraint("reserved_count >= 0", name="ck_drop_reserved_nonnegative"),
+        CheckConstraint(
+            "discount_percent >= 1 AND discount_percent <= 100",
+            name="ck_drop_discount_percent_range",
+        ),
         Index("ix_drops_status_time", "status", "starts_at", "ends_at"),
+        Index("ix_drops_business_id", "business_id"),
+        Index("ix_drops_location_gist", "location", postgresql_using="gist"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -88,9 +94,13 @@ class Drop(Base):
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     category: Mapped[DropCategory] = mapped_column(Enum(DropCategory))
     interest_tag: Mapped[str] = mapped_column(String, default="other")
+    # Never business-declared — computed by services/drop_lifecycle.compute_rarity()
+    # from discount_percent/min_group_size/max_capacity_participants, so it
+    # stays an honest signal instead of every business marking itself Legendary.
     rarity: Mapped[DropRarity] = mapped_column(
         Enum(DropRarity), default=DropRarity.common
     )
+    discount_percent: Mapped[int] = mapped_column(Integer)
     drop_type: Mapped[DropType] = mapped_column(Enum(DropType))
 
     min_group_size: Mapped[int] = mapped_column(Integer, default=1)

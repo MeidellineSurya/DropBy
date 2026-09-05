@@ -1,25 +1,70 @@
-import { Link, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import "./App.css";
+import { Sidebar } from "./components/Sidebar";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CreateDropPage } from "./pages/CreateDropPage";
 import { LiveQueuePage } from "./pages/LiveQueuePage";
 import { LoginPage } from "./pages/LoginPage";
+import { OverviewPage } from "./pages/OverviewPage";
+import { RedemptionQueuePage } from "./pages/RedemptionQueuePage";
+import { isLoggedIn } from "./services/auth";
+
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  if (!isLoggedIn()) return <Navigate to="/login" replace />;
+  return (
+    <div className="app-shell">
+      <Sidebar />
+      <main className="app-content">{children}</main>
+    </div>
+  );
+}
 
 function App() {
   return (
-    <div>
-      <nav>
-        <Link to="/">Login</Link> | <Link to="/drops/new">Create Drop</Link> |{" "}
-        <Link to="/queue">Live Queue</Link> | <Link to="/analytics">Analytics</Link>
-      </nav>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/drops/new" element={<CreateDropPage />} />
-        <Route path="/queue" element={<LiveQueuePage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-      </Routes>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedLayout>
+            <OverviewPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/drops"
+        element={
+          <ProtectedLayout>
+            <LiveQueuePage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/drops/new"
+        element={
+          <ProtectedLayout>
+            <CreateDropPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedLayout>
+            <AnalyticsPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/queue"
+        element={
+          <ProtectedLayout>
+            <RedemptionQueuePage />
+          </ProtectedLayout>
+        }
+      />
+    </Routes>
   );
 }
 

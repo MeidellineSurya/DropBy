@@ -1,0 +1,53 @@
+.funnel {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.funnel h2 {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-violet);
+  margin: 0.5rem 0 0;
+}
+
+.funnel__stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.funnel-stage {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.funnel-stage__bar-track {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  overflow: hidden;
+}
+
+.funnel-stage__bar-fill {
+  height: 100%;
+  background: var(--color-cyan);
+  border-radius: var(--radius-pill);
+}
+
+.analytics-select {
+  margin-top: 1rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+}

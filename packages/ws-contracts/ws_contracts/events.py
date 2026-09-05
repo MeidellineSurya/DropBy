@@ -66,6 +66,10 @@ class GroupStateUpdate(BaseModel):
     max_allowed: int
     members: list[GroupMemberSummary]
     expires_at: datetime | None = None
+    # Set when status == cancelled/expired so members see *why* — e.g. "This
+    # Drop is temporarily paused by the business" vs "reached full capacity"
+    # (see services/drop_lifecycle.describe_capacity_failure). None otherwise.
+    reason: str | None = None
 
 
 class GroupMemberJoined(BaseModel):

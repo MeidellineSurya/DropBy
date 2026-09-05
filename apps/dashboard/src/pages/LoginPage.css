@@ -1,0 +1,141 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+}
+
+.login-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.login-card__brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--color-lime);
+  color: var(--color-black);
+  font-weight: 900;
+  font-size: 1.4rem;
+  transform: rotate(-5deg);
+  margin-bottom: 0.5rem;
+}
+
+.login-card__eyebrow {
+  color: var(--color-violet);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.login-card h1 {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: var(--color-text);
+}
+
+.login-card__tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.login-card__tabs button {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.login-card__tabs button.active {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.login-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.login-card input,
+.login-card select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.login-card input:focus,
+.login-card select:focus {
+  outline: none;
+  border-color: var(--color-lime);
+}
+
+.login-card__row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.login-card__row label {
+  flex: 1;
+}
+
+.login-card__error {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.login-card__hint {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  margin: -0.4rem 0 0;
+}
+
+.login-card__submit {
+  margin-top: 0.5rem;
+  background: var(--color-lime);
+  color: var(--color-black);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.login-card__submit:hover {
+  opacity: 0.92;
+}
+
+.login-card__submit:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

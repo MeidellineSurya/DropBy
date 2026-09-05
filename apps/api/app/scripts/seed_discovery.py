@@ -50,6 +50,7 @@ def seed() -> None:
                 address="200 Little Bourke Street, Melbourne VIC",
                 owner_email="venue@dropbyapp.com",
                 password_hash=hash_password("dropby12345"),
+                venue_capacity=60,
                 verified=True,
                 status=BusinessStatus.active,
             )
@@ -68,6 +69,8 @@ def seed() -> None:
                     category=DropCategory.food_dining,
                     interest_tag="korean_bbq",
                     rarity=DropRarity.rare,
+                    discount_percent=40,
+                    xp_reward_base=40,  # matches compute_xp_reward(DropRarity.rare)
                     drop_type=DropType.squad,
                     min_group_size=2,
                     max_group_size=4,

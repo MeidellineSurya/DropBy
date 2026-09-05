@@ -48,6 +48,9 @@ export interface GroupStateUpdate {
   max_allowed: number;
   members: GroupMemberSummary[];
   expires_at: string | null;
+  // Set when status is cancelled/expired so clients can show *why* (e.g.
+  // "temporarily paused" vs "reached full capacity"). None otherwise.
+  reason?: string | null;
 }
 
 export interface GroupMemberJoined {

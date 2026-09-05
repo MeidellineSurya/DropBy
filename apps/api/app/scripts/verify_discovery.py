@@ -71,6 +71,7 @@ def _verify_postgres(records: VerificationRecords) -> None:
                 location=WKTElement("POINT(144.9674 -37.8119)", srid=4326),
                 owner_email=f"verify-business-{suffix}@dropby.test",
                 password_hash="verification-only",
+                venue_capacity=10,
                 verified=True,
                 status=BusinessStatus.active,
             )
@@ -103,6 +104,8 @@ def _verify_postgres(records: VerificationRecords) -> None:
             min_group_size=2,
             max_group_size=4,
             max_capacity_participants=2,
+            discount_percent=25,
+            venue_capacity=10,
             starts_at=now - timedelta(minutes=1),
             ends_at=now + timedelta(minutes=10),
             publish=True,

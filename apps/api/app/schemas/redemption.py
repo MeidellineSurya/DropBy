@@ -21,12 +21,17 @@ class RedemptionResponse(BaseModel):
 
     id: UUID
     drop_id: UUID
+    drop_title: str
     group_id: UUID
     business_id: UUID
     status: RedemptionStatus
     checked_in_at: datetime | None
     confirmed_at: datetime | None
     participant_count: int | None
+    # Dashboard display fields, not columns on Redemption itself — populated
+    # by the route from the Drop and the Group's current joined members.
+    member_count: int
+    xp_reward_base: int
 
 
 class VenueQrResponse(BaseModel):

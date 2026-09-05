@@ -35,23 +35,7 @@ from app.services.gamification import (
     time_bucket_for_hour,
     time_specialization_bonus_pct,
     week_key_for,
-    xp_for_rarity,
 )
-
-
-@pytest.mark.parametrize(
-    ("rarity", "base", "expected"),
-    [
-        (DropRarity.common, 10, 10),
-        (DropRarity.uncommon, 10, 15),
-        (DropRarity.rare, 10, 20),
-        (DropRarity.epic, 10, 30),
-        (DropRarity.legendary, 10, 50),
-        ("legendary", 10, 50),
-    ],
-)
-def test_xp_for_rarity_applies_the_rarity_multiplier(rarity, base, expected) -> None:
-    assert xp_for_rarity(base, rarity) == expected
 
 
 def test_squad_bonus_is_zero_for_solo_drops() -> None:

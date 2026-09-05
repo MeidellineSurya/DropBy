@@ -1,60 +1,119 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (redemption/gamification/notifications workstream implemented, extended with a full progression system: powerups, level-milestone perks, badge/streak/time-of-day XP bonuses, rarity-set badges, weekly rotating challenges, and territory exploration)_
+_Last updated: 2026-09-06 (merged the business/supply-side workstream with the
+independently-built redemption/gamification/notifications workstream)_
 
 ## Status
 
-The real-time discovery engine (workstream 1) and the redemption,
-gamification, and notifications workstream (workstream 3) are both
-implemented on the shared FastAPI scaffold. The business/supply, mobile, and
-dashboard workstreams remain separate and retain their existing placeholders.
+All three original workstreams are now implemented on the shared FastAPI
+scaffold: the real-time discovery engine, the business/supply-side platform,
+and redemption + gamification + notifications. The last two were built in
+parallel, unaware of each other, and converged on a near-identical
+`redemptions` table and QR design — see "Merging two independent redemption
+implementations" below for how that got reconciled. Mobile/dashboard product
+polish (wiring the newer gamification endpoints into the UI) is what's left.
 
 ## Progress
 
 | Area | State |
 |---|---|
 | Monorepo and shared WebSocket contracts | Done |
-| JWT registration/login and protected endpoints | Done |
+| JWT registration/login and protected endpoints (`user`/`business` audiences) | Done |
 | User onboarding preferences and location permission state | Done |
 | PostGIS Detect → Reveal engine | Done |
 | Persistent per-user Reveal unlock | Done |
 | Authenticated WebSocket transport with Redis fan-out/reconnect | Done |
 | Squad create/read/join/leave and 2/4 → 3/4 → 4/4 broadcasts | Done |
 | Atomic Drop participant-capacity enforcement | Done |
-| Validated Drop creation and lifecycle staging | Done |
-| Scheduled activation, countdown, and expiry tasks | Done |
 | Discovery schema and initial Alembic migration | Done |
-| Docker migration/API/worker/beat startup ordering | Done and live-tested |
-| Production Compose, health check, non-root runtime, secret validation | Done; provider release pending |
-| Business Drop management and analytics | Teammate-owned scaffold |
-| Venue QR sign/verify, geofenced check-in, business confirm, capacity reconciliation | Done |
-| XP engine, badge criteria evaluation, streaks, user stats API | Done |
-| Drop history API (`GET /gamification/me/history`) and demo Profile screen | Done |
+| Business registration/login, separate JWT audience from consumer auth | Done |
+| Business Drop CRUD (create/list/publish/pause/resume/cancel) | Done |
+| Drop requires an approved (`active`) business before it can be published | Done |
+| Computed (not business-declared) rarity from discount depth + venue capacity/min group size scarcity signals | Done |
+| Computed XP reward derived from that same computed rarity | Done |
+| `venue_capacity` captured once at business registration; hard ceiling on a Drop's `max_capacity_participants` | Done |
+| Business Drop performance and account overview analytics | Done |
+| CORS so the dashboard can call the API cross-origin | Done |
+| Automatic Drop expiry / scheduled-activation worker (Celery beat) | Done |
+| Venue QR sign/verify (HMAC, per-Drop, venue-facing), fetchable via `GET /redemptions/drops/{id}/qr` | Done |
+| Check-in requires both the QR and a geofence check against the scanning member's last known location | Done |
+| Redemption queue, confirm, and reject, with capacity correctly reconciled either way | Done |
+| XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
+| Powerups, level-milestone perks, weekly challenges, territory-exploration bonus | Done |
 | Push notifications (FCM) with graceful skip when unconfigured; notification log | Done |
-| Device registration (`POST /devices`) so a real phone's FCM token reaches `user_devices` | Done |
-| Powerup system: 6 types, probabilistic earning, redeem endpoint, inventory cap | Done |
-| Level-milestone perk system (every 5 levels): radius/slot-cap/specialization choices | Done |
-| Passive XP bonuses: per-badge, per-category/time-specialization-perk, and streak (all additive, none punish absence) | Done |
-| Rarity-set-per-category badges ("catch every rarity in one category") | Done |
-| Weekly rotating category challenge (pull progress, explicit claim) | Done |
-| New-territory flat-XP bonus for a never-before-pinged grid cell | Done |
-| Redemption/gamification migrations (`0003`–`0008`) | Done |
-| Browser-only demo (`demo.cmd`) mirrors the full progression system: check-in/confirm/XP/badges, powerups, level-milestone perks (incl. category/time-of-day picker), streak bonus/grace/shield, weekly challenge, territory bonus | Done |
-| Mobile and dashboard product UI | Teammate-owned scaffold |
+| Business dashboard: login/register, Overview, Drops, Create Drop, Analytics, Live Queue | Done |
+| Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
+| Business moderation endpoints (approve/reject registrations) | Not built — only direct DB/seed access sets `Business.status = active` |
+| Dashboard UI to display/print a Drop's venue QR | Not built (backend endpoint exists, nothing renders it) |
+| Mobile app redemption/QR-scan screen | Not built |
+| Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
+| Mobile UI for a cancelled/expired/completed squad | Not built — `SquadScreen` always renders the assembling/ready layout regardless of status, and the mobile `GroupSnapshot` type is missing `cancelled_reason` (the backend has carried it since the capacity-race fix; `packages/shared-types` already models it as `reason`) |
+| `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
-**Verified:** all 97 automated tests pass (18 discovery + 79 new redemption/
-gamification tests); ruff lint is clean; every Alembic migration through
-`0008_progression_extras` renders valid PostgreSQL/PostGIS SQL. Beyond unit
-tests, every mechanic below was additionally exercised live against a running
-Docker stack (real Postgres/Redis/Celery, not mocks) with assertions on the
-actual
-database state — this caught one real bug (a `UserStats` initialization crash)
-and one real migration bug (a duplicate `CREATE TYPE`) that unit tests alone
-did not surface.
+**Verified (2026-09-06):** 177/177 backend tests pass (`pytest -q`) after the
+merge; a single linear Alembic head (`0011_business_venue_capacity`).
+Live-verified separately before merging: the business platform's full loop
+(registration → Drop creation with computed rarity/XP → a squad reaching the
+Drop → venue-QR check-in → confirm with an actual XP mutation → reject with
+capacity released) against the Docker stack, and the gamification
+workstream's mechanics against a live Postgres/Redis/Celery stack (per its
+own verification notes, this caught a real `UserStats` initialization crash
+and a duplicate `CREATE TYPE` migration bug that unit tests didn't surface).
 
-**Re-verified locally after pull (2026-09-05):** fresh venv, `pip install -r
-requirements-dev.txt`, `pytest -q` — all 18 tests pass (prior to the
-redemption/gamification/notifications workstream landing).
+## Merging two independent redemption implementations
+
+A teammate built the full redemption/gamification/notifications workstream on
+`main` at the same time this branch built redemption/gamification for the
+business platform — neither aware of the other. Both converged on
+essentially the same `redemptions` table (same columns, the same
+`uq_redemption_group` unique constraint name) and the same venue-QR design,
+which made reconciling them far more tractable than it could have been.
+`main`'s version was the deeper implementation (geofenced check-in, a full XP
+ledger instead of a flat total, badges, powerups, streaks, weekly challenges,
+notifications, and a dashboard-ready `GET /redemptions/drops/{id}/qr`
+endpoint this branch hadn't built yet), so it was kept as the base. What this
+branch had that `main` didn't:
+
+- a **reject** endpoint (`POST /redemptions/{id}/reject`) — `main`'s version
+  had no way to decline a mistaken or fraudulent check-in; a rejected squad
+  would have stayed stuck as `checked_in` forever with its capacity never
+  released. Ported over onto `main`'s service, alongside the confirm path.
+- `get_current_business` on a **separate JWT audience** from consumer auth —
+  `main`'s version was still the original skeleton's stub, authenticating a
+  business token exactly like a user token. Kept this branch's version;
+  nothing on `main`'s side depended on the stub behavior (its tests call the
+  service functions directly, not through real minted tokens).
+- `drop_title`, `member_count`, and `xp_reward_base` on `RedemptionResponse`,
+  for the dashboard's queue cards — added to `main`'s schema and assembled in
+  a new `services/redemption.build_response()` helper, since none of those
+  are columns on `Redemption` itself.
+
+A live end-to-end check of the merged flow (business login → create/publish a
+Drop → check in → confirm) caught a genuine bug the two implementations'
+convergence produced: `main`'s `award_xp_for_redemption` computed
+`xp_for_rarity(drop.xp_reward_base, drop.rarity)` — correct under `main`'s own
+assumption that `xp_reward_base` is a flat, business-set number multiplied by
+a rarity factor at redemption time. But on this branch `xp_reward_base` is
+*already* the final rarity-scaled value, computed once at Drop creation
+(`drop_lifecycle.compute_xp_reward`) specifically so a business can't declare
+it directly. Merging both unchanged silently double-counted XP by the rarity
+multiplier a second time (confirmed live: a Drop with `xp_reward_base=20`
+awarded +30 XP instead of +20). Fixed by removing `xp_for_rarity`/
+`RARITY_XP_MULTIPLIER` and using `drop.xp_reward_base` as-is; re-verified live
+that a solo squad on that same Drop now awards exactly +20.
+
+Both branches also independently created migrations `0003` through `0006` off
+the same parent (`0002_detect_interest_tag`). `main`'s redemption/
+gamification chain (`0003_redemption_gamification` through
+`0008_progression_extras`) was kept as-is; this branch's three migrations
+(business indexes, `discount_percent`, `venue_capacity`) were rebased to
+follow it and renumbered `0009`–`0011`. This branch's own `0006_redemptions`
+migration was dropped entirely — `main`'s `0003_redemption_gamification`
+already creates that exact table.
+
+The dashboard's Live Queue page was repointed from this branch's old
+`/business/redemptions` routes to `main`'s `/redemptions/*` routes
+accordingly.
 
 ## Key decisions
 
@@ -71,135 +130,63 @@ redemption/gamification/notifications workstream landing).
   retained for migration compatibility.
 - Once revealed, a Drop stays unlocked for that user for the Drop lifetime.
 - Reserve participant capacity atomically when a squad becomes ready, then one
-  place at a time as it fills to its maximum.
-- The venue QR is self-verifying (HMAC over drop_id/business_id/iat/nonce), so
-  re-fetching it any number of times never invalidates an already-printed
-  copy — no separate QR-issuance table or activation-time hook needed.
+  place at a time as it fills to its maximum; a lost race gets an honest
+  "someone else took the last spot" reason, not a generic failure.
+- Separate JWT audiences (`user` vs `business`) on the same token
+  infrastructure, so a business token can never authenticate a consumer route
+  or vice versa.
+- Rarity and XP are **platform-computed**, not business-declared: a business
+  entering its own rarity/XP would be unverifiable and gameable. Rarity comes
+  from `discount_percent` with a scarcity bump from `venue_capacity` or
+  `min_group_size`; XP is a fixed table keyed off that same computed rarity.
+- `venue_capacity` is captured once at business registration, not left as a
+  freely-editable per-Drop field — otherwise a business could inflate rarity
+  by declaring a tiny capacity on every Drop.
+- The venue QR is per-Drop and venue-facing (printed/displayed once by the
+  business, self-verifying so re-fetching it never invalidates an
+  already-printed copy), not per-customer or per-squad.
 - Check-in requires both the QR (proves the venue) and a geofence check
   against the scanning member's last location (proves the person), reusing
-  the same `ST_DWithin` pattern as the assemble-a-squad check but with a
-  15-minute freshness window instead of 5, since walking to the venue after
-  assembling legitimately takes longer than assembling itself.
+  the discovery engine's `ST_DWithin` pattern with a 15-minute freshness
+  window — longer than the 5-minute assemble window, since walking to the
+  venue after assembling legitimately takes longer.
 - One Redemption row per Group (`uq_redemption_group`), created lazily on
-  first check-in rather than eagerly when the squad becomes ready — simpler,
-  and avoids the discovery module's squad_state.py needing to import into
-  the redemption module.
-- XP = `xp_reward_base * rarity_multiplier`, plus a flat 30% squad bonus when
-  the Drop was completed as a group of 2+ — mirrors the brief's own
-  +250/+80 XP example. Leveling is a flat 500 XP/level.
-- There's no city/region model yet, so "exploration progress" is tracked as
-  distinct coarse lat/lng grid cells per user rather than named cities —
-  swap for real geo-boundaries if/when that data exists.
-- `get_current_business` (core/deps.py) decodes the same generic JWT scheme
-  as `get_current_user`, just looked up against `businesses` instead of
-  `users` — it works the moment the business/supply module mints a token via
-  the existing `create_access_token(str(business.id))`, with no changes
-  needed on this side.
-- Push notifications degrade to a logged-but-skipped `NotificationLog` row
-  when Firebase isn't configured (dev/test), so missing FCM credentials never
-  fail a check-in, confirm, or XP-award flow.
-- award_xp_for_redemption is idempotent per redemption_id (guards on an
-  existing `UserXpTransaction`), safe for Celery to retry.
-- Powerups (`extra_time`, `xp_boost`, `bigger_reveal`, `double_or_nothing`,
-  `extra_slot`, `streak_shield`) are earned probabilistically from Rare+
-  Drops (50%/75%/100% by rarity, legendary has a further chance of a 2nd) —
-  unlike badges/XP, a Rare completion does not guarantee one. Held-powerup
-  inventory is capped (base 3, +1 per `extra_powerup_slot` perk); a roll that
-  would exceed the cap is simply not granted rather than queued or wasted
-  some other way.
-- Every level-based or perk-based bonus in this system is purely additive:
-  nothing a user already has is ever reduced for being away, leveling
-  slowly, or making a "wrong" choice. This was a deliberate call after
-  rejecting an XP-decay-for-inactivity design as functionally a loss-aversion
-  mechanic — the brief explicitly asks to avoid manipulative retention
-  mechanics, and taking away earned progress for absence is that pattern
-  even when it's framed as "your level protects you."
-- Two features that sounded simple turned out to need real architecture
-  investigation before implementing, both documented in code comments where
-  they land: (1) Detect has no distance cutoff at all in this codebase (STATUS
-  above), so a "bigger Detect radius" perk would be a no-op — the actual lever
-  is Reveal's 100 m radius (`bigger_radius` perk/`bigger_reveal` powerup) and,
-  separately, the "Rare+ Drop nearby" push alert's own radius
-  (`services/notifications.py::NOTIFICATION_RADIUS_BONUS_PER_LEVEL_M`,
-  automatic per level, no perk needed). (2) The expiry sweep
-  (`drop_lifecycle.expire_due`) expires a `forming`/`ready` Group purely off
-  its Drop's `ends_at`, never consulting the Group's own `expires_at` — so a
-  squad-scoped "protect my squad from the Drop's timer" powerup is not
-  achievable without either touching that sweep (breaks the
-  additive-only-to-other-modules rule) or extending the Drop for everyone
-  (a business-facing decision, not a per-user one). The powerup that shipped
-  (`extra_time`) instead does the thing that field actually controls: extends
-  how long a still-forming squad can keep recruiting.
-- Reveal-radius bonuses compose additively as *extra* fraction over 1.0, not
-  multiplicatively: permanent `bigger_radius` perks (+15%/pick) and the
-  temporary `bigger_reveal` powerup (+50% while active) add their bonus
-  fractions together, so having both at once is stronger than either alone
-  rather than one overriding the other.
-- Badge/specialization/streak XP bonuses are deliberately modest (1-2% per
-  badge, 5% per specialization perk pick, capped at +10% for streaks) to
-  match today's milestone-style badges — a much harder future badge (e.g. a
-  full-area completionist) is where a bigger number would belong, not a
-  reason to inflate these. The rarity-set-per-category badges ("catch a
-  Common through Legendary in one category") are that harder badge, and
-  correspondingly earn 8%.
-- The "new territory" bonus is keyed off the user's own ping location
-  (`UserExploredCell`, a new grid-cell table), not off which Drops get
-  detected — Detect has no distance limit (see above), so a Drop can be
-  "detected" from anywhere the instant it activates; only a ping's actual
-  coordinates say anything about where the user has physically been.
-- Weekly challenge progress is computed by reading `drop_view_events` at
-  request time (pull), not pushed automatically the moment a qualifying
-  Reveal happens — this needed zero changes to the discovery engine's ping
-  hot path. Completing it requires an explicit `POST
-  .../challenges/weekly/claim`, same pattern as `redeem_powerup`/
-  `choose_perk`: the system tells you what's available, you decide when to
-  act on it.
-- Time-of-day specialization buckets ("night"/"morning",
-  `NIGHT_WINDOW_LOCAL_HOURS`/`MORNING_WINDOW_LOCAL_HOURS`) use the redeeming
-  user's *local* hour, not UTC — there is still no timezone field anywhere in
-  the schema, so local hour is approximated from the checked-in-at venue's
-  longitude (`approximate_utc_offset_hours`: 15 degrees per hour of solar
-  time, no DST/political-border awareness) rather than needing one. This
-  reuses data the check-in geofence already requires (the scanning member has
-  to be physically at the venue), so it needed no new field, dependency, or
-  changes to another module's onboarding flow.
-- `compute_stage_for_ping`'s return type and the `LocationPingResponse`
-  schema were deliberately left untouched for the territory bonus — it's
-  announced over the same WS channel that stage-change events already use
-  (`ws:user:{id}`, a new `territory.bonus_awarded` event), not returned
-  inline, so this needed no changes to drops.py or its response schema.
-
-- Drop history (`GET /gamification/me/history`) reads existing
-  `UserXpTransaction` rows tagged `drop_completed` joined out to their
-  `Redemption`/`Drop`/`Business` — no new table. Badge/streak/specialization
-  bonuses are already folded into that transaction's `amount` (see the XP
-  award decision above), so each row is exactly one completed Drop with its
-  final awarded XP, not a raw ledger line that would need re-deriving bonuses
-  after the fact.
+  first check-in rather than eagerly when the squad becomes ready.
+- A Drop cannot go live until its business is `active` — an unverified
+  business can create and preview Drops in draft, but publish is gated.
+- No refresh-token flow yet; a business simply logs in again once its JWT
+  expires. The dashboard acts on that (redirect to login on a 401 from an
+  attached token) rather than leaving a dead-end error on screen.
+- XP is a full ledger (`UserXpTransaction`) plus a flat squad-completion
+  bonus, badges, powerups, level-milestone perks, streaks, and a weekly
+  challenge — all additive, deliberately never punishing absence or a "wrong"
+  choice (an XP-decay-for-inactivity design was considered and rejected as a
+  loss-aversion mechanic).
+- There's no city/region model yet, so exploration progress is tracked as
+  coarse lat/lng grid cells per user rather than named cities.
 
 ## Next steps
 
-1. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
+1. Build a dashboard view to display/print a Drop's venue QR (backend
+   endpoint exists: `GET /redemptions/drops/{id}/qr`).
+2. Business moderation UI/endpoints for approving a pending registration —
+   right now only direct DB/seed access sets `Business.status = active`.
+3. Mobile: wire the check-in/confirm loop, `GET /gamification/me/stats` and
+   `/me/history` for a Collection/Profile screen, and the powerup/perk/weekly
+   -challenge endpoints — the mobile app currently only exercises discovery.
+4. Mobile: register a real FCM token via `POST /devices` and subscribe to the
+   `territory.bonus_awarded` WS event, so push notifications and territory
+   popups actually reach the phone.
+5. Mobile: add `cancelled_reason` to `GroupSnapshot` and give `SquadScreen` an
+   actual cancelled/expired/completed layout — right now a squad that loses a
+   capacity race just looks stuck in the assembling/ready view with no
+   explanation, even though the backend has carried the reason since the
+   capacity-race fix.
+6. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
+   drop the package — right now it's a hand-mirrored placeholder nothing
+   actually imports.
+7. Run `python -m app.scripts.seed_badges` once against a fresh database so
+   badge criteria have real `Badge` rows to unlock against.
+8. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
    secrets, domain, and TLS configuration, then start the supplied production
    Compose stack.
-2. Business/supply workstream: implement Drop creation/listing/cancel and
-   business login (`create_access_token(str(business.id))` will then work
-   automatically with this workstream's `get_current_business`-gated
-   endpoints — `/redemptions/queue`, `/redemptions/drops/{id}/qr`, and
-   `/redemptions/{id}/confirm`).
-3. Run `python -m app.scripts.seed_badges` once a database exists so badge
-   criteria have real Badge rows to unlock against.
-4. Mobile/dashboard: wire the Explore→Assemble→Check-in→Confirm loop to
-   `POST /groups/{id}/checkin`, the business queue/QR/confirm endpoints,
-   `GET /gamification/me/stats` for the Collection/Profile screens (now also
-   carrying `powerups`, `powerup_cap`, `pending_perk_choices`, `perks`,
-   `category_rarity_sets`, and `territory_cells_explored`), `POST
-   /gamification/powerups/{id}/redeem`, `POST /gamification/perks/choose`,
-   and `GET`/`POST /gamification/challenges/weekly` (+`/claim`) for the
-   weekly-challenge card.
-5. Mobile: once it has a real FCM token, call `POST /devices` with it so push
-   notifications actually reach the phone — right now `user_devices` has no
-   way to get populated except this endpoint.
-6. Mobile: subscribe to the `territory.bonus_awarded` WS event on
-   `ws:user:{id}` to show a "New area discovered! +10 XP" popup the moment it
-   fires — it's a push-style event, not part of any REST response body.

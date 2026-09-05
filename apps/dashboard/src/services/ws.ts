@@ -1,15 +1,21 @@
-// Mirrors apps/mobile/src/services/ws.ts — the dashboard subscribes to the
-// same ws/live endpoint, listening for ws:drop:{id} and ws:business:{id}
-// topics for its live capacity/redemption queue view. Event shapes are
-// defined once in packages/ws-contracts/ws_contracts/events.py.
+// Subscribes to the same /ws/live endpoint the mobile app uses. Business
+// tokens are routed by app/main.py's ws_live handler onto ws:business:{id}
+// and a ws:drop:{id} topic per currently live Drop (see apps/api/app/main.py).
+//
+// The server publishes each ws_contracts event as a flat JSON object (its
+// own "type" field identifies it, e.g. {"type": "drop.capacity_reached", ...})
+// rather than wrapping it in an envelope — see app/ws/manager.py's dispatch().
+
+import { getToken } from "./auth";
 
 const WS_URL = "ws://localhost:8000/ws/live";
 
-export function connectLiveSocket(token: string, onEvent: (event: unknown) => void): WebSocket {
+export function connectLiveSocket(onEvent: (event: unknown) => void): WebSocket | null {
+  const token = getToken();
+  if (!token) return null;
   const socket = new WebSocket(`${WS_URL}?token=${token}`);
   socket.onmessage = (message) => {
-    const envelope = JSON.parse(message.data);
-    onEvent(envelope.payload);
+    onEvent(JSON.parse(message.data));
   };
   return socket;
 }

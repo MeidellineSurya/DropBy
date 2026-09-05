@@ -1,26 +1,123 @@
+import { clearToken, getToken } from "./auth";
+import type { Business, BusinessDrop, BusinessOverview, DropFunnel, Redemption } from "../types";
+
 const API_BASE_URL = "http://localhost:8000/api/v1";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, options);
-  if (!response.ok) {
-    throw new Error(`Request to ${path} failed: ${response.status}`);
+class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
   }
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  if (response.status === 401 && token) {
+    // We sent a bearer token and the API still rejected it — almost always
+    // because the JWT expired (there's no refresh flow yet, see auth.ts).
+    // Clear it and bounce to login instead of leaving a dead-end
+    // "Could not validate credentials" error sitting on whatever page was
+    // open. A 401 with no token attached (e.g. a bad login attempt) is a
+    // real credentials error, not an expired session, so it falls through
+    // to the normal error handling below and stays on the page.
+    clearToken();
+    if (!window.location.pathname.startsWith("/login")) {
+      window.location.assign("/login");
+    }
+    throw new ApiError(401, "Your session expired — please log in again.");
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    // FastAPI's validation errors (422s) send `detail` as an array of
+    // {msg, loc, ...} objects, not a string — rendering that array
+    // directly showed the literal text "[object Object]".
+    const detail = body?.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((item) => item.msg ?? JSON.stringify(item)).join(", ")
+      : (detail ?? `Request to ${path} failed`);
+    throw new ApiError(response.status, message);
+  }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
+export interface TokenResponse<TAccount> {
+  access_token: string;
+  token_type: string;
+  business: TAccount;
+}
+
 export const api = {
-  createDrop: (payload: Record<string, unknown>) =>
-    request("/business/drops", {
+  register: (payload: {
+    name: string;
+    category: string;
+    owner_email: string;
+    password: string;
+    latitude: number;
+    longitude: number;
+    venue_capacity: number;
+    description?: string;
+    address?: string;
+    phone?: string;
+  }) =>
+    request<TokenResponse<Business>>("/business/auth/register", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  listDrops: () => request("/business/drops"),
-  confirmRedemption: (redemptionId: string, participantCount: number) =>
-    request(`/redemptions/${redemptionId}/confirm`, {
+
+  login: (owner_email: string, password: string) =>
+    request<TokenResponse<Business>>("/business/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ participant_count: participantCount }),
+      body: JSON.stringify({ owner_email, password }),
     }),
-  dropFunnel: (dropId: string) => request(`/business/analytics/drops/${dropId}`),
+
+  me: () => request<Business>("/business/auth/me"),
+
+  createDrop: (payload: Record<string, unknown>) =>
+    request<BusinessDrop>("/business/drops", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  listDrops: (status?: string) =>
+    request<BusinessDrop[]>(
+      `/business/drops${status ? `?drop_status=${status}` : ""}`,
+    ),
+
+  publishDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/publish`, { method: "POST" }),
+  pauseDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/pause`, { method: "POST" }),
+  resumeDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/resume`, { method: "POST" }),
+  cancelDrop: (dropId: string) =>
+    request<BusinessDrop>(`/business/drops/${dropId}/cancel`, { method: "POST" }),
+
+  overview: () => request<BusinessOverview>("/business/analytics/overview"),
+  dropFunnel: (dropId: string) =>
+    request<DropFunnel>(`/business/analytics/drops/${dropId}`),
+
+  // /redemptions/queue only ever returns checked_in ones (awaiting
+  // confirm/reject) — there's no status filter to pass.
+  listRedemptions: () => request<Redemption[]>("/redemptions/queue"),
+  confirmRedemption: (redemptionId: string, participantCount?: number) =>
+    request<Redemption>(`/redemptions/${redemptionId}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ participant_count: participantCount ?? null }),
+    }),
+  rejectRedemption: (redemptionId: string) =>
+    request<Redemption>(`/redemptions/${redemptionId}/reject`, {
+      method: "POST",
+    }),
 };
+
+export { ApiError };

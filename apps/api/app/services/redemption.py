@@ -16,6 +16,9 @@ Flow:
   3. Business staff tap Confirm (optionally correcting headcount) ->
      confirm_redemption() -> Redemption/Group -> completed, capacity
      reconciled, award_xp_for_redemption Celery task enqueued by the caller.
+     Staff can instead tap Reject (a mistaken or fraudulent scan) ->
+     reject_redemption() -> Redemption/Group -> rejected/cancelled, with the
+     squad's reserved capacity released back to the Drop.
 """
 
 import hashlib
@@ -35,6 +38,7 @@ from app.models.drops import Drop
 from app.models.groups import Group, GroupMember, GroupMemberStatus, GroupStatus
 from app.models.redemption import Redemption, RedemptionStatus
 from app.models.users import User
+from app.schemas.redemption import RedemptionResponse
 from app.services.drop_lifecycle import release_capacity, reserve_capacity
 
 # A member's last location must be this fresh to check in — longer than the
@@ -148,6 +152,15 @@ def check_in_group(
     return existing
 
 
+def joined_member_count(db: Session, group_id: UUID) -> int:
+    count = db.scalar(
+        select(func.count())
+        .select_from(GroupMember)
+        .where(GroupMember.group_id == group_id, GroupMember.status == GroupMemberStatus.joined)
+    )
+    return int(count or 0)
+
+
 def confirm_redemption(
     db: Session,
     redemption_id: UUID,
@@ -180,12 +193,7 @@ def confirm_redemption(
     if group is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Squad not found")
 
-    joined_count = db.scalar(
-        select(func.count())
-        .select_from(GroupMember)
-        .where(GroupMember.group_id == group.id, GroupMember.status == GroupMemberStatus.joined)
-    )
-    joined_count = int(joined_count or 0)
+    joined_count = joined_member_count(db, group.id)
     actual_count = participant_count if participant_count is not None else joined_count
     if actual_count < 1:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "participant_count must be at least 1")
@@ -212,6 +220,46 @@ def confirm_redemption(
     return redemption
 
 
+def reject_redemption(db: Session, redemption_id: UUID, business: Business) -> Redemption:
+    """Business rejects a checked-in squad — a mistaken or fraudulent scan —
+    instead of confirming it. Releases the squad's reserved capacity back to
+    the Drop rather than leaving it stuck as checked_in forever with no way
+    for anyone else to claim that spot.
+    """
+    redemption = db.scalar(
+        select(Redemption).where(Redemption.id == redemption_id).with_for_update()
+    )
+    if redemption is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Redemption not found")
+    if redemption.business_id != business.id:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "This redemption belongs to a different business"
+        )
+    if redemption.status == RedemptionStatus.rejected:
+        return redemption  # idempotent
+    if redemption.status != RedemptionStatus.checked_in:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Redemption cannot be rejected from status={redemption.status.value}",
+        )
+
+    group = db.scalar(select(Group).where(Group.id == redemption.group_id).with_for_update())
+    if group is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Squad not found")
+
+    member_count = joined_member_count(db, group.id)
+    if member_count > 0:
+        release_capacity(db, group.drop_id, member_count)
+
+    redemption.status = RedemptionStatus.rejected
+    redemption.confirmed_at = datetime.now(timezone.utc)
+    redemption.confirmed_by = business.id
+    group.status = GroupStatus.cancelled
+    db.commit()
+    db.refresh(redemption)
+    return redemption
+
+
 def list_redemption_queue(
     db: Session, business: Business, statuses: list[RedemptionStatus] | None = None
 ) -> list[Redemption]:
@@ -223,4 +271,26 @@ def list_redemption_queue(
             .where(Redemption.business_id == business.id, Redemption.status.in_(statuses))
             .order_by(Redemption.checked_in_at.desc().nullslast())
         ).all()
+    )
+
+
+def build_response(db: Session, redemption: Redemption) -> RedemptionResponse:
+    """RedemptionResponse plus the Drop title/XP and current joined headcount
+    the dashboard's queue cards show — none of that lives on Redemption
+    itself, so it's assembled here rather than left to a bare
+    RedemptionResponse.model_validate(redemption) at each call site (which
+    would fail: those fields aren't attributes on the ORM model)."""
+    drop = db.get(Drop, redemption.drop_id)
+    return RedemptionResponse(
+        id=redemption.id,
+        drop_id=redemption.drop_id,
+        drop_title=drop.title if drop else "(deleted Drop)",
+        group_id=redemption.group_id,
+        business_id=redemption.business_id,
+        status=redemption.status,
+        checked_in_at=redemption.checked_in_at,
+        confirmed_at=redemption.confirmed_at,
+        participant_count=redemption.participant_count,
+        member_count=joined_member_count(db, redemption.group_id),
+        xp_reward_base=drop.xp_reward_base if drop else 0,
     )

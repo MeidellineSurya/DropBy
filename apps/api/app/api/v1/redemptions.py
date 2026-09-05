@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_business, get_db
 from app.models.businesses import Business
 from app.schemas.redemption import ConfirmRequest, RedemptionResponse, VenueQrResponse
-from app.services.redemption import confirm_redemption, get_venue_qr, list_redemption_queue
+from app.services.redemption import (
+    build_response,
+    confirm_redemption,
+    get_venue_qr,
+    list_redemption_queue,
+    reject_redemption,
+)
 from app.workers.tasks.gamification import award_xp_for_redemption_task
 
 router = APIRouter()
@@ -18,10 +24,7 @@ def redemption_queue(
     db: Session = Depends(get_db),
 ) -> list[RedemptionResponse]:
     """The business dashboard's live redemption queue (checked-in, awaiting confirm)."""
-    return [
-        RedemptionResponse.model_validate(redemption)
-        for redemption in list_redemption_queue(db, business)
-    ]
+    return [build_response(db, redemption) for redemption in list_redemption_queue(db, business)]
 
 
 @router.get("/drops/{drop_id}/qr", response_model=VenueQrResponse)
@@ -44,4 +47,16 @@ def confirm(
     """Business confirms headcount, completes the Group, and enqueues XP/badge award."""
     redemption = confirm_redemption(db, redemption_id, business, body.participant_count)
     award_xp_for_redemption_task.delay(str(redemption.id))
-    return RedemptionResponse.model_validate(redemption)
+    return build_response(db, redemption)
+
+
+@router.post("/{redemption_id}/reject", response_model=RedemptionResponse)
+def reject(
+    redemption_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> RedemptionResponse:
+    """Business rejects a mistaken or fraudulent scan, releasing the squad's
+    reserved capacity back to the Drop."""
+    redemption = reject_redemption(db, redemption_id, business)
+    return build_response(db, redemption)

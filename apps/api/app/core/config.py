@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     default_reveal_radius_m: int = 180
     default_discover_radius_m: int = 100
 
+    # Comma-separated browser origins allowed to call the API (the business
+    # dashboard, and any deployed equivalent). Defaults cover the dashboard's
+    # Vite dev server both bare and via Docker Compose's port mapping.
+    cors_allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def cors_allowed_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+
     @model_validator(mode="after")
     def reject_unsafe_production_secrets(self) -> "Settings":
         if self.environment.lower() != "production":

@@ -10,7 +10,7 @@ from app.models.groups import GroupStatus
 from app.models.users import User
 from app.schemas.groups import GroupCreateRequest, GroupResponse
 from app.schemas.redemption import CheckInRequest, RedemptionResponse
-from app.services.redemption import check_in_group
+from app.services.redemption import build_response, check_in_group
 from app.services.squad_state import (
     create_group as create_group_state,
 )
@@ -42,6 +42,7 @@ def _state_event(group: GroupResponse) -> GroupStateUpdate:
         max_allowed=group.max_allowed,
         members=[member.model_dump(mode="json") for member in group.members],
         expires_at=group.expires_at,
+        reason=group.cancelled_reason,
     )
 
 
@@ -201,4 +202,4 @@ async def checkin_group(
     )
     await _broadcast_group(group, event)
     await publish(f"ws:business:{redemption.business_id}", event.model_dump(mode="json"))
-    return RedemptionResponse.model_validate(redemption)
+    return build_response(db, redemption)

@@ -1,8 +1,16 @@
 """Redemption/gamification module — XP, badges, progression.
 
 This is the ONLY module that writes User.xp_total / User.level / UserStats.
-xp = drops.xp_reward_base * rarity_multiplier (e.g. common=1x ... legendary=5x),
-plus a squad bonus when the Drop was completed as a group.
+
+xp = drops.xp_reward_base, plus a squad bonus when the Drop was completed as
+a group. xp_reward_base is NOT a flat business-set number here — the
+business platform's drop_lifecycle.compute_xp_reward() already derives it
+from the Drop's platform-computed rarity at creation time (a fixed table,
+common=10 ... legendary=160), specifically so a business can't just declare
+a big number. Do not re-multiply it by rarity again at redemption time —
+that was tried (a RARITY_XP_MULTIPLIER applied here on top of an
+already-rarity-scaled base) and silently double-counted XP; see STATUS.md's
+merge notes.
 """
 
 import random
@@ -51,14 +59,6 @@ from app.services.squad_state import (
     extend_group_recruiting_window,
     group_snapshot,
 )
-
-RARITY_XP_MULTIPLIER: dict[str, float] = {
-    DropRarity.common.value: 1,
-    DropRarity.uncommon.value: 1.5,
-    DropRarity.rare.value: 2,
-    DropRarity.epic.value: 3,
-    DropRarity.legendary.value: 5,
-}
 
 # A completed squad Drop earns every member a bonus on top of their base XP —
 # mirrors the product brief's "+250 XP / +80 XP squad bonus" example (~30%).
@@ -126,11 +126,6 @@ TERRITORY_BONUS_XP = 10
 WEEKLY_CHALLENGE_TARGET = 3
 WEEKLY_CHALLENGE_BONUS_XP = 50
 WEEKLY_CHALLENGE_CATEGORIES = list(DropCategory)
-
-
-def xp_for_rarity(base: int, rarity: DropRarity | str) -> int:
-    rarity_key = rarity.value if isinstance(rarity, DropRarity) else rarity
-    return round(base * RARITY_XP_MULTIPLIER[rarity_key])
 
 
 def squad_bonus_for(base_xp: int, member_count: int) -> int:
@@ -397,7 +392,9 @@ def award_xp_for_redemption(db: Session, redemption_id: UUID) -> RedemptionAward
             redemption_id=str(redemption.id), group_id=str(redemption.group_id)
         )
 
-    base_xp = xp_for_rarity(drop.xp_reward_base, drop.rarity)
+    # xp_reward_base is already the final, platform-computed, rarity-scaled
+    # value (see module docstring) — used as-is, not multiplied again.
+    base_xp = drop.xp_reward_base
     total_xp = base_xp + squad_bonus_for(base_xp, len(members))
     latitude, longitude = _drop_lat_lng(db, drop.id)
     location_cell = location_cell_for(latitude, longitude)
