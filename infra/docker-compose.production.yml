@@ -1,0 +1,61 @@
+x-runtime-environment: &runtime-environment
+  ENVIRONMENT: ${ENVIRONMENT:-production}
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the production environment file}
+  REDIS_URL: ${REDIS_URL:?Set REDIS_URL in the production environment file}
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the production environment file}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+  QR_SIGNING_SECRET: ${QR_SIGNING_SECRET:?Set QR_SIGNING_SECRET in the production environment file}
+  FCM_CREDENTIALS_JSON_PATH: ${FCM_CREDENTIALS_JSON_PATH:-}
+
+services:
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    command: alembic upgrade head
+    environment: *runtime-environment
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment: *runtime-environment
+    ports:
+      - "${PORT:-8000}:8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    environment: *runtime-environment
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  beat:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment: *runtime-environment
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

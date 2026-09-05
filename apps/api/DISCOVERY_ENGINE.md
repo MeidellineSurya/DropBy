@@ -12,6 +12,7 @@ This is the implemented scope for the real-time discovery owner. Other API modul
 - authenticated raw WebSocket endpoint at `/ws/live?token=...`
 - squad create/read/join/leave with live 2/4 -> 3/4 -> 4/4 count/state events
 - atomic Drop capacity reservation when a squad reaches ready and as it fills
+- validated Drop creation with draft, scheduled, and active lifecycle staging
 - scheduled activation, countdown, expiry, and squad-expiry Celery tasks
 - initial Alembic migration for discovery tables and their user/business prerequisites
 
@@ -46,10 +47,16 @@ That single command creates the environment file, builds the backend services,
 runs the migration, seeds a user/business/active Drop, and opens Swagger. Use:
 
 ```bat
+dev.cmd verify
 dev.cmd logs
 dev.cmd status
 dev.cmd stop
 ```
+
+`dev.cmd verify` checks the live PostGIS extension, creates two squads whose
+simultaneous joins compete for a two-person Drop, asserts that capacity cannot
+be oversubscribed, tests Redis pub/sub, and confirms an authenticated WebSocket
+receives the event. The verifier always removes its temporary database rows.
 
 Open <http://localhost:8000/docs>.
 
@@ -121,3 +128,20 @@ All mutations remain REST operations. The socket pushes the existing shared cont
 - `group.ready`
 
 Reconnects re-subscribe the user's active squad topics; clients re-fetch REST snapshots rather than replaying missed events. Redis fan-out reconnects automatically, while REST discovery continues from PostgreSQL if Redis is temporarily unavailable.
+
+## Production container deployment
+
+Use `infra/docker-compose.production.yml` with managed PostgreSQL/PostGIS and
+Redis services. Copy `infra/.env.production.example` to the ignored
+`infra/.env.production`, replace the placeholders, then run from the repository
+root:
+
+```bat
+docker compose --env-file infra\.env.production -f infra\docker-compose.production.yml up --build -d
+```
+
+The migration must succeed before the API, worker, and scheduler start.
+Production containers run without auto-reload as a non-root user, the API has a
+health check, and startup rejects default or matching JWT/QR signing secrets.
+The provider is responsible for TLS termination, the public domain, backups,
+and supplying the environment values.
