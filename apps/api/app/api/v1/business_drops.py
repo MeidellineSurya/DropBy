@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_business, get_db
-from app.models.businesses import Business
+from app.models.businesses import Business, BusinessStatus
 from app.models.drops import Drop, DropStatus, DropViewEvent
 from app.models.groups import Group
 from app.schemas.business_drops import BusinessDropCreateRequest, BusinessDropResponse
@@ -62,12 +62,26 @@ def _owned_drop_or_404(db: Session, drop_id: UUID, business: Business) -> Drop:
     return drop
 
 
+def _require_active_business(business: Business) -> None:
+    """Registration alone used to be enough to publish a live, discoverable
+    Drop — nothing checked BusinessStatus at all. A business can still
+    prepare drafts before approval; going live requires status == active."""
+    if business.status != BusinessStatus.active:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Your business must be approved before publishing a Drop. "
+            f"Current status: {business.status.value}.",
+        )
+
+
 @router.post("", response_model=BusinessDropResponse, status_code=status.HTTP_201_CREATED)
 def create_drop(
     body: BusinessDropCreateRequest,
     business: Business = Depends(get_current_business),
     db: Session = Depends(get_db),
 ) -> BusinessDropResponse:
+    if body.publish:
+        _require_active_business(business)
     try:
         drop = create_drop_lifecycle(
             db,
@@ -127,6 +141,7 @@ def publish_drop(
     business: Business = Depends(get_current_business),
     db: Session = Depends(get_db),
 ) -> BusinessDropResponse:
+    _require_active_business(business)
     try:
         drop = publish_drop_lifecycle(db, drop_id, business.id)
     except ValueError as exc:
@@ -154,6 +169,7 @@ def resume_drop(
     business: Business = Depends(get_current_business),
     db: Session = Depends(get_db),
 ) -> BusinessDropResponse:
+    _require_active_business(business)
     drop = resume_drop_lifecycle(db, drop_id, business.id)
     if drop is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Paused Drop not found")
@@ -197,6 +213,7 @@ async def cancel_drop(
             max_allowed=snapshot.max_allowed,
             members=[member.model_dump(mode="json") for member in snapshot.members],
             expires_at=snapshot.expires_at,
+            reason="This Drop was cancelled by the business.",
         ).model_dump(mode="json")
         for topic in {
             f"ws:group:{group_id}",
