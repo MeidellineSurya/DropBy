@@ -33,14 +33,12 @@ const MELBOURNE: Region = {
 
 const TEST_POSITIONS = [
   ["Detect", -37.8074, 144.9674],
-  ["Reveal", -37.81055, 144.9674],
-  ["Discover", -37.81145, 144.9674],
+  ["Reveal", -37.81105, 144.9674],
 ] as const;
 
 const stageColor = {
   detect: colors.violet,
-  reveal: colors.cyan,
-  discover: colors.lime,
+  reveal: colors.lime,
 };
 
 export function MapScreen({ navigation }: Props) {
@@ -58,7 +56,7 @@ export function MapScreen({ navigation }: Props) {
   const pingSequence = useRef(0);
   const loadingSequence = useRef(0);
 
-  const discoveredDrops = useMemo(
+  const revealedDrops = useMemo(
     () => drops.filter((drop) => drop.latitude != null && drop.longitude != null),
     [drops],
   );
@@ -247,7 +245,7 @@ export function MapScreen({ navigation }: Props) {
                 strokeColor="#9B87FF99"
               />
             )}
-            {discoveredDrops.map((drop) => (
+            {revealedDrops.map((drop) => (
               <Marker
                 coordinate={{ latitude: drop.latitude!, longitude: drop.longitude! }}
                 description={drop.business_name}
@@ -326,7 +324,10 @@ export function MapScreen({ navigation }: Props) {
         </View>
 
         {drops.map((drop) => {
-          const title = drop.title ?? (drop.category ? drop.category.replace(/_/g, " ") : "Mystery Drop");
+          const title = drop.title ?? drop.interest_tag?.replace(/_/g, " ") ?? "Mystery Drop";
+          const groupNeed = drop.min_group_size
+            ? `${drop.min_group_size} needed${drop.max_group_size && drop.max_group_size !== drop.min_group_size ? ` · up to ${drop.max_group_size}` : ""}`
+            : "Group size hidden";
           return (
             <Pressable
               key={drop.id}
@@ -334,7 +335,7 @@ export function MapScreen({ navigation }: Props) {
               style={styles.dropCard}
             >
               <View style={[styles.signal, { backgroundColor: stageColor[drop.stage] }]}>
-                <Text style={styles.signalText}>{drop.stage === "discover" ? "OK" : "?"}</Text>
+                <Text style={styles.signalText}>{drop.stage === "reveal" ? "OK" : "?"}</Text>
               </View>
               <View style={styles.dropCopy}>
                 <Text style={styles.dropStage}>
@@ -342,7 +343,7 @@ export function MapScreen({ navigation }: Props) {
                 </Text>
                 <Text style={styles.dropTitle}>{title}</Text>
                 <Text style={styles.dropMeta}>
-                  {drop.business_name ?? drop.rarity ?? "Details hidden"}
+                  {drop.business_name ?? `${drop.rarity ?? "common"} · ${groupNeed}`}
                 </Text>
               </View>
               <Text style={styles.chevron}>›</Text>

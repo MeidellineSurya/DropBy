@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     default_detect_radius_m: int = 700
     default_reveal_radius_m: int = 180
-    default_discover_radius_m: int = 60
+    default_discover_radius_m: int = 100
 
     @model_validator(mode="after")
     def reject_unsafe_production_secrets(self) -> "Settings":

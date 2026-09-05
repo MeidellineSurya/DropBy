@@ -16,9 +16,8 @@ import { colors } from "../theme";
 type Props = NativeStackScreenProps<RootStackParamList, "DropDetail">;
 
 const stageCopy = {
-  detect: "A Drop signal is nearby. Get closer to reveal its category and rarity.",
-  reveal: "You are close. The type of experience is revealed, but the exact offer stays hidden.",
-  discover: "You found it. The full offer and squad details are now unlocked.",
+  detect: "This signal is always visible. Its type, rarity, and group requirement are known; move closer to reveal the venue.",
+  reveal: "You found it. The location, full offer, and squad details are now unlocked.",
 };
 
 export function DropDetailScreen({ navigation, route }: Props) {
@@ -26,8 +25,11 @@ export function DropDetailScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isDiscovered = drop.stage === "discover";
-  const title = drop.title ?? (drop.category ? drop.category.replace(/_/g, " ") : "Mystery Drop");
+  const isRevealed = drop.stage === "reveal";
+  const title = drop.title ?? drop.interest_tag?.replace(/_/g, " ") ?? "Mystery Drop";
+  const groupSize = drop.min_group_size
+    ? `${drop.min_group_size} needed${drop.max_group_size && drop.max_group_size !== drop.min_group_size ? ` · up to ${drop.max_group_size}` : ""}`
+    : undefined;
 
   async function assembleSquad() {
     setLoading(true);
@@ -44,7 +46,7 @@ export function DropDetailScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.page}>
-      <View style={[styles.stageBadge, isDiscovered && styles.stageBadgeDiscovered]}>
+      <View style={[styles.stageBadge, isRevealed && styles.stageBadgeRevealed]}>
         <Text style={styles.stageText}>{drop.stage.toUpperCase()}</Text>
       </View>
       <Text style={styles.distance}>{drop.distance_m} metres away</Text>
@@ -53,14 +55,15 @@ export function DropDetailScreen({ navigation, route }: Props) {
 
       <View style={styles.card}>
         <Detail label="Rarity" value={drop.rarity} />
-        <Detail label="Category" value={drop.category?.replace(/_/g, " ")} />
-        <Detail label="Business" value={drop.business_name} hidden={!isDiscovered} />
-        <Detail label="Address" value={drop.address} hidden={!isDiscovered} />
-        <Detail label="Offer" value={drop.description} hidden={!isDiscovered} />
+        <Detail label="Type" value={drop.interest_tag?.replace(/_/g, " ")} />
+        <Detail label="People needed" value={groupSize} />
+        <Detail label="Business" value={drop.business_name} hidden={!isRevealed} />
+        <Detail label="Address" value={drop.address} hidden={!isRevealed} />
+        <Detail label="Offer" value={drop.description} hidden={!isRevealed} />
         {drop.ends_at && <Detail label="Ends" value={new Date(drop.ends_at).toLocaleString()} />}
       </View>
 
-      {isDiscovered && drop.drop_type !== "solo" && (
+      {isRevealed && drop.drop_type !== "solo" && (
         <View style={styles.squadCard}>
           <Text style={styles.squadEyebrow}>ASSEMBLE</Text>
           <Text style={styles.squadTitle}>
@@ -85,7 +88,7 @@ export function DropDetailScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {!isDiscovered && (
+      {!isRevealed && (
         <Pressable onPress={() => navigation.popTo("Discover")} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Return to the map</Text>
         </Pressable>
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
   page: { backgroundColor: colors.background },
   content: { padding: 20, paddingBottom: 40 },
   stageBadge: { alignSelf: "flex-start", backgroundColor: colors.violet, borderRadius: 99, paddingHorizontal: 13, paddingVertical: 7 },
-  stageBadgeDiscovered: { backgroundColor: colors.lime },
+  stageBadgeRevealed: { backgroundColor: colors.lime },
   stageText: { color: colors.black, fontSize: 11, fontWeight: "900", letterSpacing: 1 },
   distance: { color: colors.muted, fontSize: 13, marginTop: 18 },
   title: { color: colors.text, fontSize: 32, fontWeight: "900", marginTop: 5, textTransform: "capitalize" },

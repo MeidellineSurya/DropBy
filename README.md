@@ -26,7 +26,10 @@ The browser-only sandbox needs no Docker, database, Python, Node, or install.
 It mirrors the Expo app as separate mobile screens for sign-in, onboarding,
 map discovery, Drop details, squad assembly, profile, and an engine lab. The
 Melbourne map includes five fictional Drops that independently progress from
-hidden → detected → revealed → discovered. The separate engine-lab screen
+Detect → Reveal. Every active Drop is detectable: Detect shows its rarity,
+specific type, and people needed. Reveal unlocks the restaurant, full offer,
+and exact location at 100 m. The map displays anonymous signal points and a
+100 m Reveal zone around each Drop. The separate engine-lab screen
 preserves protected-response, lifecycle, capacity, and real-time event tools
 without crowding the product screens. An internet connection is only needed
 for the map library and street tiles. It is a product demonstration, not an
@@ -35,7 +38,7 @@ integration test of the server.
 Try the complete flow:
 
 1. Sign in with the filled demo account, or create an account to see onboarding.
-2. On **Nearby Drops**, press **Detect**, **Reveal**, and **Discover**.
+2. On **Nearby Drops**, press **Detect** and **Reveal**.
 3. Open a signal card to see the progressive Drop-details screen.
 4. Create a squad and add members to move through 2/4, 3/4, and 4/4.
 5. Open **Profile** from the avatar, then open **Discovery engine lab** for the
@@ -91,7 +94,7 @@ position pauses live GPS until continuous tracking is enabled again.
 ## Status
 
 The real-time discovery workstream is implemented: JWT/onboarding, PostGIS
-Detect/Reveal/Discover, authenticated WebSockets, Drop lifecycle jobs, squad
+Detect/Reveal, authenticated WebSockets, Drop lifecycle jobs, squad
 formation, capacity enforcement, migrations, and Docker wiring. See
 [`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md) for setup and a
 seeded walkthrough.
@@ -104,7 +107,7 @@ workstreams remain owned separately and still contain scaffold placeholders.
 Implemented for the real-time discovery owner:
 
 - authenticated WebSockets and Redis fan-out
-- PostGIS proximity and Detect → Reveal → Discover field gating
+- PostGIS proximity and Detect → Reveal field gating
 - Drop activation, atomic capacity enforcement, countdowns, and expiry
 - validated Drop creation with draft/scheduled/active lifecycle staging
 - live squad creation/join/leave and 2/4 → 3/4 → 4/4 broadcasts

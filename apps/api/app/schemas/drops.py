@@ -1,8 +1,9 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.models.drops import DropCategory, DropRarity, DropType, DropViewStage
+from app.models.drops import DropCategory, DropRarity, DropType
 
 
 class LocationPingRequest(BaseModel):
@@ -12,10 +13,11 @@ class LocationPingRequest(BaseModel):
 
 class DropSnapshot(BaseModel):
     id: str
-    stage: DropViewStage
+    stage: Literal["detect", "reveal"]
     distance_m: int
     rarity: DropRarity | None = None
     category: DropCategory | None = None
+    interest_tag: str | None = None
     title: str | None = None
     description: str | None = None
     business_name: str | None = None

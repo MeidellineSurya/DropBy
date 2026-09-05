@@ -1,4 +1,4 @@
-// TODO: detect -> reveal -> discover -> redeem funnel and capacity/performance
+// TODO: detect -> reveal -> redeem funnel and capacity/performance
 // stats per Drop, from GET /business/analytics/drops/{id}.
 export function AnalyticsPage() {
   return (
