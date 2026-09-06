@@ -1423,9 +1423,12 @@
       // the full list still drives the scrollable signal list. Coordinates are
       // hand-placed for a tidy spread around "You".
       const MAP_DROP_IDS = ["drop_mel_004", "drop_mel_001", "drop_mel_003", "drop_mel_009"];
+      const PROXIMITY_DEMO_DROP_ID = "drop_mel_001";
       const MAP_DROP_COORDS = {
         drop_mel_004: [-37.8086, 144.9642],
-        drop_mel_001: [-37.8112, 144.9612],
+        // Keep the map pin at the same coordinate used by the proximity
+        // engine, so the demo's location teleport lands beside the pin.
+        drop_mel_001: primaryLocation,
         drop_mel_003: [-37.8135, 144.9724],
         drop_mel_009: [-37.8156, 144.9658],
       };
@@ -1583,6 +1586,7 @@
       let map = null;
       let userMarker = null;
       let dropMarkers = [];
+      let openSquadMarker = null;
       let dropRevealZones = [];
       let toastTimer = null;
       let trackingTimer = null;
@@ -1642,15 +1646,19 @@
       }
 
       function userLocation() { return [primaryLocation[0] + state.distance / 111320, primaryLocation[1]]; }
+      function isProximityDemoDrop(drop) { return drop.id === PROXIMITY_DEMO_DROP_ID; }
       function revealRadiusMultiplier() {
         const permanent = 1 + RADIUS_PERK_BONUS_PCT * state.perks.filter((perk) => perk.type === "bigger_radius").length;
         return Date.now() < state.revealBoostUntil ? permanent + (REVEAL_BOOST_MULTIPLIER - 1) : permanent;
       }
       function stageFor(drop) {
         const distance = Math.round(distanceBetween(userLocation(), drop.coordinates));
+        if (state.revealed.has(drop.id)) return "reveal";
         if (distance <= 100 * revealRadiusMultiplier()) state.revealed.add(drop.id);
         if (state.revealed.has(drop.id)) return "reveal";
-        return "detect";
+        // A Drop is a mystery signal only inside the wider Detect radius.
+        // Before then it is absent from both the map and the signal list.
+        return distance <= 700 ? "detect" : "outside";
       }
 
       function snapshot(drop) {
@@ -1663,7 +1671,16 @@
         return result;
       }
 
-      function visibleSnapshots() { return drops.map(snapshot).filter((drop) => drop.stage !== "outside").sort((a, b) => a.distance_m - b.distance_m); }
+      function visibleSnapshots() {
+        // The proximity control demonstrates one real Drop at a time. This
+        // keeps the empty state genuinely empty until the user reaches its
+        // detect radius, instead of unrelated nearby fixtures leaking in.
+        return drops
+          .filter(isProximityDemoDrop)
+          .map(snapshot)
+          .filter((drop) => drop.stage !== "outside")
+          .sort((a, b) => a.distance_m - b.distance_m);
+      }
       function addEvent(type, message) {
         const list = $("#eventList");
         list.querySelector(".empty")?.remove();
@@ -1688,8 +1705,20 @@
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
         dropRevealZones = mapDrops.map((drop) => L.circle(drop.coordinates, { radius: 100, color: "#e0526e", opacity: 0.6, weight: 1.5, dashArray: "6 6", fillColor: "#e0526e", fillOpacity: 0.06, interactive: false }).addTo(map));
         userMarker = L.marker(userLocation(), { icon: L.divIcon({ className: "user-pin", html: '<div class="user-pin-core"></div>', iconSize: [21, 21], iconAnchor: [10, 10] }), zIndexOffset: 600 }).addTo(map);
-        dropMarkers = mapDrops.map((drop) => { const stage = stageFor(drop); return L.marker(drop.coordinates, { icon: markerIcon(stage, drop), opacity: 1, zIndexOffset: 500 }).addTo(map).on("click", () => openDrop(drop.id)); });
-        L.marker([-37.8102, 144.9705], { icon: L.divIcon({ className: "drop-pin", html: '<div class="drop-pin-core squad"><span class="pin-symbol"><i class="ph-fill ph-users-three"></i></span><span class="pin-type">Open Squad · 340m</span></div>', iconSize: [150, 38], iconAnchor: [75, 19] }), zIndexOffset: 450 }).addTo(map);
+        // Pins advertise that Drops exist, including their rarity, from a
+        // distance. Their contents still stay hidden until proximity unlocks
+        // them in the signal list.
+        dropMarkers = mapDrops.map((drop) => {
+          const stage = stageFor(drop);
+          const pinStage = stage === "outside" ? "map" : stage;
+          return L.marker(drop.coordinates, { icon: markerIcon(pinStage, drop), opacity: 1, zIndexOffset: 500 })
+            .addTo(map)
+            .on("click", () => {
+              if (stageFor(drop) === "outside") toast("Move closer to identify this Drop.");
+              else openDrop(drop.id);
+            });
+        });
+        openSquadMarker = L.marker([-37.8102, 144.9705], { icon: L.divIcon({ className: "drop-pin", html: '<div class="drop-pin-core squad"><span class="pin-symbol"><i class="ph-fill ph-users-three"></i></span><span class="pin-type">Open Squad · 340m</span></div>', iconSize: [150, 38], iconAnchor: [75, 19] }), opacity: 0, zIndexOffset: 450 }).addTo(map);
         map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { padding: [40, 40], maxZoom: 15 });
       }
 
@@ -1716,13 +1745,14 @@
         }
         $("#signalHeading").textContent = snapshots.length ? `${snapshots.length} drop${snapshots.length === 1 ? "" : "s"} live` : "No drops live";
         const hero = $("#exploreHero");
-        const near = snapshots[0];
+        // A detected signal stays anonymous. The full hero card only exists
+        // after the player is close enough to reveal that Drop.
+        const near = snapshots.find((drop) => drop.stage === "reveal");
         if (hero && near) {
           hero.style.display = "";
           hero.dataset.dropId = near.id;
-          // Fixed demo drop (matches the Operator Diner mock data used elsewhere).
-          $("#discoverTitle").textContent = "Operator Diner";
-          $("#exSquad").textContent = 4;
+          $("#discoverTitle").textContent = near.business_name || near.title || "Mystery Drop";
+          $("#exSquad").textContent = near.max_group_size || 1;
         } else if (hero) {
           hero.style.display = "none";
         }
@@ -1745,8 +1775,9 @@
         });
         if (map && userMarker) {
           userMarker.setLatLng(userLocation());
-          dropMarkers.forEach((marker, index) => { const stage = stageFor(mapDrops[index]); marker.setIcon(markerIcon(stage, mapDrops[index])); marker.setOpacity(1); });
-          map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [40, 40], maxZoom: 15 });
+          dropMarkers.forEach((marker, index) => { const drop = mapDrops[index]; const stage = stageFor(drop); marker.setIcon(markerIcon(stage === "outside" ? "map" : stage, drop)); marker.setOpacity(1); });
+          openSquadMarker?.setOpacity(0);
+          map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [40, 40], maxZoom: 16 });
         }
         renderEngine();
       }
@@ -2388,8 +2419,11 @@
       $$('[data-distance]').forEach((button) => button.addEventListener("click", () => { stopTrackingDemo(); setDistance(Number(button.dataset.distance)); }));
       $("#moveCloser")?.addEventListener("click", () => {
         stopTrackingDemo();
-        setDistance(Math.max(0, state.distance - 200));
-        toast(state.distance <= 100 ? "You are close enough — the full Drop is revealed!" : "You moved closer. More details will unlock as you approach.");
+        // This is a location teleport, not merely a counter: each tap moves
+        // the blue user pin toward the selected Drop on the map.
+        const nextDistance = state.distance > 700 ? 500 : state.distance > 100 ? 75 : 75;
+        setDistance(nextDistance);
+        toast(nextDistance <= 100 ? "Teleported to the Drop — the full details are revealed!" : "Teleported near a Drop. The signal is now visible on the map.");
       });
       $("#resetProximity")?.addEventListener("click", () => {
         stopTrackingDemo();

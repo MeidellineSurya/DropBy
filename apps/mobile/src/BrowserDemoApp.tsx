@@ -3,12 +3,11 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
-const DEMO_URL = "https://raw.githubusercontent.com/MeidellineSurya/DropBy/main/apps/api/demo/mobile.html";
+const DEMO_HTML = require("../../api/demo/mobile.html");
 
 /**
- * Expo Go shell for the browser frontend used by demo.cmd. Keeping the demo
- * in one HTML source of truth means the phone and browser show the same UI
- * and local product-demo interactions.
+ * Expo Go shell for the browser frontend used by mobile.cmd. The HTML is a
+ * bundled local asset, so the phone and browser use the same source file.
  */
 export function BrowserDemoApp() {
   const insets = useSafeAreaInsets();
@@ -20,17 +19,10 @@ export function BrowserDemoApp() {
     let active = true;
     setHtml(null);
     setFailed(false);
-    void fetch(DEMO_URL)
-      .then((response) => {
-        if (!response.ok) throw new Error(`Demo download failed (${response.status})`);
-        return response.text();
-      })
-      .then((source) => {
-        if (active) setHtml(source);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
+    // Keep this asynchronous so Retry can reset the same loading flow.
+    Promise.resolve(DEMO_HTML)
+      .then((source) => { if (typeof source !== "string") throw new Error("Bundled demo is invalid"); if (active) setHtml(source); })
+      .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [reloadKey]);
 
@@ -38,7 +30,7 @@ export function BrowserDemoApp() {
     return (
       <SafeAreaView style={styles.errorPage}>
         <Text style={styles.errorTitle}>Couldn’t load the DropBy demo</Text>
-        <Text style={styles.errorBody}>Check your internet connection, then try again.</Text>
+        <Text style={styles.errorBody}>Restart Expo, then try again.</Text>
         <Pressable onPress={() => setReloadKey((value) => value + 1)} style={styles.retry}>
           <Text style={styles.retryText}>Retry</Text>
         </Pressable>
@@ -64,7 +56,7 @@ export function BrowserDemoApp() {
             <ActivityIndicator color="#D9FF43" size="large" />
           </View>
         )}
-        source={{ html, baseUrl: DEMO_URL }}
+        source={{ html }}
         style={styles.webview}
       />
     </SafeAreaView>
