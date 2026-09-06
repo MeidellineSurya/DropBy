@@ -1,14 +1,18 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (made discovery notification-driven — every user
-with a known location is notified when a Drop activates, not just people
-already nearby — after tightening the check-in radius, persisting
-Group.cancelled_reason so it survives more than one response, and giving
-the mobile app cancelled/expired squad screens; before that, removing the
-business confirm/reject approval step in favor of auto-confirm plus a
-dispute window, reworking check-in from a QR scan to a location claim, and
-merging the business/supply-side workstream with the independently-built
-redemption/gamification/notifications workstream)_
+_Last updated: 2026-09-06 (reworked check-in a third time: each squad now
+generates its own signed QR once ready, and the business scans it — the scan
+itself is both the verification and the confirmation, closing the fraud gap
+the auto-confirm-by-location-claim design opened; before that, made
+discovery notification-driven — every user with a known location is
+notified when a Drop activates, not just people already nearby — after
+tightening the check-in radius, persisting Group.cancelled_reason so it
+survives more than one response, and giving the mobile app cancelled/expired
+squad screens; before that, removing the business confirm/reject approval
+step in favor of auto-confirm plus a dispute window, reworking check-in from
+a QR scan to a location claim, and merging the business/supply-side
+workstream with the independently-built redemption/gamification/
+notifications workstream)_
 
 ## Status
 
@@ -44,9 +48,10 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Business Drop performance and account overview analytics | Done |
 | CORS so the dashboard can call the API cross-origin | Done |
 | Automatic Drop expiry / scheduled-activation worker (Celery beat) | Done |
-| Check-in as a location claim — no QR at all, just a tight-radius (`check_in_radius_m`, default 10 m) geofence check against the scanning member's last known location | Done |
-| Mobile "Check in now" claim button on `SquadScreen`, wired to the check-in endpoint | Done |
-| Check-in auto-confirms on the spot (no business approval step); business can dispute a confirmed redemption within a 24h window, releasing capacity but not clawing back XP | Done |
+| Check-in is a squad-generated, signed QR scanned by the business — `GET /groups/{id}/qr` (member-facing) and `POST /redemptions/scan` (business-facing); no GPS/location check at all | Done |
+| Mobile `SquadScreen` shows a black-on-white QR once the squad is `ready`, replacing the old "Check in now" claim button | Done |
+| The scan itself both verifies (proves physical presence in front of staff) and confirms (awards XP) in one action — no business approval step, no headcount correction; business can still dispute a confirmed redemption within a 24h window, releasing capacity but not clawing back XP | Done |
+| Business dashboard camera-based Scan page (`/scan`, `html5-qrcode`) to confirm a squad's code | Done — backend/API path live-verified end-to-end; the actual camera-to-decode round trip could not be physically verified in this environment (no camera hardware) |
 | `Group.cancelled_reason` persisted on the model, set on every path a squad ends without completing (capacity-race loss, a Drop being cancelled, a Drop expiring while forming/ready) | Done |
 | Mobile cancelled/expired squad screen showing the persisted reason, with distinct copy for "never found enough people" vs. "was ready but ran out of time" | Done |
 | XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
@@ -63,8 +68,10 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Business dashboard funnel showing cancelled/expired squads | Not built — `business_analytics.py`'s funnel only ever tracked forming/ready/checked_in/completed; a squad that never made it isn't visible there at all, only findable by absence |
 | `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
-**Verified (2026-09-06):** 193/193 backend tests pass (`pytest -q`); a single
-linear Alembic head (`0014_group_cancelled_reason`). Live-verified: the
+**Verified (2026-09-06):** 198/198 backend tests pass (`pytest -q`); a single
+linear Alembic head (`0014_group_cancelled_reason` — the squad-QR-scan
+redesign below needed no schema change, only a reused `confirmed_by` column
+and a reintroduced config secret). Live-verified: the
 business platform's full loop (registration → Drop creation with computed
 rarity/XP → a squad reaching the Drop → check-in that auto-confirms and
 awards real XP in the same flow → dispute that releases capacity without
@@ -343,6 +350,76 @@ excluded (no distance to show); and a Drop created directly into `active`
 status (immediate publish, not via the scheduled sweep) fires the
 notification too.
 
+## Business scans a squad-generated QR
+
+Auto-confirm-by-location-claim (above) had a real hole: nothing about it
+actually proved a *staff member* saw the squad. A location claim only proves
+a phone's GPS says it's near the venue — spoofable, and even genuine, it
+never puts a human in the loop at all. Check-in is now: each squad, once
+`ready`, generates its own signed QR (`GET /groups/{id}/qr`, HMAC-signed
+`{group_id, drop_id, business_id, iat, nonce}` — same signing pattern the
+original venue QR used, but per-squad instead of per-Drop and scanned in the
+opposite direction); a staff member scans it on the dashboard
+(`POST /redemptions/scan`). The scan is the **entire** verification and
+confirmation step — no location check, no separate approval tap, no
+headcount correction. A staff member physically scanning a code shown on a
+customer's phone is a stronger presence signal than either the old venue QR
+(proves someone's phone has the code, not which phone) or the GPS claim
+(proves phone location, not a human witness), while still costing the
+business only one tap.
+
+- `qr_signing_secret` is back as a Settings field, reintroduced after being
+  removed when the venue QR was dropped — separate from `jwt_secret` so a
+  leak of one token domain doesn't implicate the other; the production
+  validator now rejects the two secrets being equal, in addition to each
+  being individually strong.
+- The squad QR carries `business_id`, and `scan_squad_qr` checks it against
+  the scanning business's own id before anything else — a business can only
+  ever confirm its own Drops' squads. Live-verified: a second, unrelated
+  business scanning the first business's squad code gets a hard
+  `403 {"detail": "This code belongs to a different business"}`.
+- Re-fetching the QR (e.g. reopening the squad screen) issues a fresh token
+  each time (new nonce/timestamp) rather than caching one; both the old and
+  new tokens stay valid until the squad completes, since nothing expires
+  them explicitly. Scanning is idempotent — rescanning an already-confirmed
+  squad's code (staff double-tap, or scanning a stale token from before a
+  refresh) returns the same Redemption rather than erroring.
+- The `DISPUTE_WINDOW`/`dispute_redemption` mechanism from "Auto-confirm plus
+  a dispute window" above is unchanged — a scan-confirmed redemption can
+  still be disputed within 24h, records-only, no XP clawback.
+- **Lost** (again): no location signal is checked at all now — a squad
+  physically nowhere near the venue can still be confirmed if a staff member
+  scans their code, so this pushes the trust boundary entirely onto staff
+  behavior rather than any automated check. Accepted because the same was
+  already true of the *original* venue QR design (the very first one in this
+  document's history), and staff-in-the-loop was the actual fraud backstop
+  the whole time — the auto-confirm-by-GPS design was the one outlier that
+  removed it, and it's the one now being corrected.
+- **Kept/gained**: no printing/signage step for the business (the squad
+  generates its own code, not the venue), no camera/scanner UI on the
+  *mobile* side (only the dashboard needs to scan — the phone just displays
+  a QR, same complexity as the location-claim button it replaces), and the
+  fraud property the user specifically asked for: a business can't fabricate
+  a confirmation for a squad that never showed the code to its own staff.
+
+Removed: `check_in_group`, `_within_check_in_range`,
+`CHECK_IN_LOCATION_FRESHNESS`, `POST /groups/{id}/checkin`. Removed
+`CHECK_IN_RADIUS_M` from the env examples (no longer read by anything).
+
+Live-verified against the running stack: a squad member fetches a valid QR
+once `ready`; a different business attempting to scan it is rejected with
+the 403 above; the owning business scanning it confirms instantly
+(`status: "confirmed"` in the same response, Group `completed` in the same
+call, no separate approval step); XP lands via the existing async task
+shortly after; rescanning the same squad's code (including a second,
+independently-fetched token) is idempotent and returns the original
+Redemption; and disputing the confirmed redemption afterward still releases
+capacity without touching the awarded XP, exactly as before. The dashboard's
+`ScanPage` (camera capture via `html5-qrcode`) and the mobile `SquadScreen`
+QR display both type-check cleanly and were exercised at the code-path
+level; the actual camera-to-decode-to-API round trip was not physically
+verified, since this environment has no camera hardware to test against.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -381,19 +458,21 @@ notification too.
 - `venue_capacity` is captured once at business registration, not left as a
   freely-editable per-Drop field — otherwise a business could inflate rarity
   by declaring a tiny capacity on every Drop.
-- Check-in is a location claim, not a QR scan — a tight-radius geofence
-  check against the scanning member's last location, reusing the discovery
-  engine's `ST_DWithin` pattern with a 15-minute freshness window — longer
-  than the 5-minute assemble window, since walking to the venue after
-  assembling legitimately takes longer. See "Dropping the venue QR for a
-  location claim" above for the tradeoff this makes.
+- Check-in is a squad-generated, business-scanned QR, not a location claim
+  and not the original venue QR — each `ready` squad signs its own token
+  (`qr_signing_secret`, separate from `jwt_secret`); the business scans it,
+  and that scan is the entire verification+confirmation step, no location
+  check involved at all. See "Business scans a squad-generated QR" above for
+  the full history of how check-in got here and why GPS-only proved
+  insufficient.
 - One Redemption row per Group (`uq_redemption_group`), created lazily on
-  first check-in rather than eagerly when the squad becomes ready.
-- Check-in auto-confirms — no business approval gate, no headcount
-  correction — with a 24h dispute window as the only recourse, and disputing
-  never claws back XP already awarded. See "Auto-confirm plus a dispute
-  window" above for the full reasoning and the fraud-surface tradeoff it
-  accepts.
+  first scan rather than eagerly when the squad becomes ready.
+- Check-in (the scan) auto-confirms — no separate approval gate after it, no
+  headcount correction — with a 24h dispute window as the only recourse, and
+  disputing never claws back XP already awarded. See "Auto-confirm plus a
+  dispute window" above for the fraud-surface reasoning that led here, and
+  "Business scans a squad-generated QR" for what replaced the location check
+  itself.
 - A Drop cannot go live until its business is `active` — an unverified
   business can create and preview Drops in draft, but publish is gated.
 - No refresh-token flow yet; a business simply logs in again once its JWT
@@ -409,12 +488,11 @@ notification too.
 
 ## Next steps
 
-1. Decide whether the auto-confirm fraud surface (see "Auto-confirm plus a
-   dispute window" above) is acceptable past pilot scale, or whether it
-   needs a shorter dispute window or a pre-award human gate reintroduced.
-   `check_in_radius_m` has already been tightened once (20m → 10m); it's
-   close to the GPS accuracy floor, so it's not much more lever left to
-   pull on that specific knob.
+1. Physically verify the dashboard's camera scan flow (`ScanPage.tsx`,
+   `html5-qrcode`) against a real device camera and a real QR code rendered
+   on a phone screen — this environment has no camera hardware, so only the
+   underlying `/redemptions/scan` endpoint and both frontends' code paths
+   have been verified, not an actual camera-to-decode-to-API round trip.
 2. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
 3. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
@@ -423,17 +501,11 @@ notification too.
 4. Mobile: register a real FCM token via `POST /devices` and subscribe to the
    `territory.bonus_awarded` WS event, so push notifications and territory
    popups actually reach the phone.
-5. Mobile: add `cancelled_reason` to `GroupSnapshot` and give `SquadScreen` an
-   actual cancelled/expired layout — right now a squad that loses a capacity
-   race just looks stuck in the assembling/ready view with no explanation,
-   even though the backend has carried the reason since the capacity-race
-   fix. (`checked_in`/`completed` now have their own layout, added alongside
-   the claim button.)
-6. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
+5. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
    drop the package — right now it's a hand-mirrored placeholder nothing
    actually imports.
-7. Run `python -m app.scripts.seed_badges` once against a fresh database so
+6. Run `python -m app.scripts.seed_badges` once against a fresh database so
    badge criteria have real `Badge` rows to unlock against.
-8. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
+7. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
    secrets, domain, and TLS configuration, then start the supplied production
    Compose stack.

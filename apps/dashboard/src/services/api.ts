@@ -110,6 +110,13 @@ export const api = {
   // confirmed redemptions still inside the dispute window, not a queue
   // awaiting action. See apps/api/app/services/redemption.py.
   listRedemptions: () => request<Redemption[]>("/redemptions/queue"),
+  // Scanning a squad's code IS the confirmation — staff verify the squad is
+  // physically there by scanning, no separate approval step after.
+  scanRedemption: (qrToken: string) =>
+    request<Redemption>("/redemptions/scan", {
+      method: "POST",
+      body: JSON.stringify({ qr_token: qrToken }),
+    }),
   disputeRedemption: (redemptionId: string) =>
     request<Redemption>(`/redemptions/${redemptionId}/dispute`, {
       method: "POST",

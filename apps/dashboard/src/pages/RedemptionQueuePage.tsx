@@ -5,12 +5,13 @@ import { connectLiveSocket } from "../services/ws";
 import type { Redemption } from "../types";
 import "./RedemptionQueuePage.css";
 
-// Check-in auto-confirms on the spot now (a location claim, not a QR scan,
-// with no business approval gate — see apps/api/app/services/redemption.py).
-// This page lists confirmed redemptions still inside the dispute window, so
-// a business can flag one as fraudulent or mistaken after the fact. Disputing
-// releases the squad's reserved capacity back to the Drop but does not claw
-// back XP already awarded.
+// A redemption is confirmed the moment staff scan a squad's code on the
+// Scan page — there's no separate approval step here (see
+// apps/api/app/services/redemption.py). This page just lists confirmed
+// redemptions still inside the dispute window, so a business can flag one
+// as fraudulent or mistaken after the fact. Disputing releases the squad's
+// reserved capacity back to the Drop but does not claw back XP already
+// awarded.
 export function RedemptionQueuePage() {
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export function RedemptionQueuePage() {
       {error ? (
         <p className="page-error">{error}</p>
       ) : redemptions.length === 0 ? (
-        <p>No redemptions in the last 24 hours — they'll show up here the moment someone checks in at your venue.</p>
+        <p>No redemptions in the last 24 hours — scan a squad's code to confirm one.</p>
       ) : (
         <div className="redemption-list">
           {redemptions.map((redemption) => (

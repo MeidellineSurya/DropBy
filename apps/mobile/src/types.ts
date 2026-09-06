@@ -67,21 +67,6 @@ export interface GroupSnapshot {
   members: GroupMember[];
 }
 
-export interface RedemptionSnapshot {
-  id: string;
-  drop_id: string;
-  drop_title: string;
-  group_id: string;
-  business_id: string;
-  status: "pending" | "checked_in" | "confirmed" | "rejected" | "expired";
-  checked_in_at: string | null;
-  confirmed_at: string | null;
-  participant_count: number | null;
-  disputed_at: string | null;
-  member_count: number;
-  xp_reward_base: number;
-}
-
 export type ConnectionStatusView = "none" | "pending_outgoing" | "pending_incoming" | "connected" | "blocked";
 
 export interface UserSummary {

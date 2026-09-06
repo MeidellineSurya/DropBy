@@ -8,6 +8,7 @@ import { LiveQueuePage } from "./pages/LiveQueuePage";
 import { LoginPage } from "./pages/LoginPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { RedemptionQueuePage } from "./pages/RedemptionQueuePage";
+import { ScanPage } from "./pages/ScanPage";
 import { isLoggedIn } from "./services/auth";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,14 @@ function App() {
         element={
           <ProtectedLayout>
             <RedemptionQueuePage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/scan"
+        element={
+          <ProtectedLayout>
+            <ScanPage />
           </ProtectedLayout>
         }
       />

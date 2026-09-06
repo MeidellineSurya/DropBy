@@ -8,7 +8,6 @@ import type {
   GroupSnapshot,
   Message,
   RecentSquadmate,
-  RedemptionSnapshot,
   TokenResponse,
   UserProfile,
   UserSearchResult,
@@ -96,11 +95,11 @@ export const api = {
     request<GroupSnapshot>(`/groups/${groupId}/join`, { method: "POST" }),
   leaveGroup: (groupId: string) =>
     request<GroupSnapshot | null>(`/groups/${groupId}/leave`, { method: "POST" }),
-  // Check-in is a location claim, not a QR scan — the server verifies
-  // proximity from the user's last pinged location. See
+  // The business confirms a claim by scanning this — check-in isn't
+  // something the consumer does at all beyond displaying the code. See
   // apps/api/app/services/redemption.py.
-  checkIn: (groupId: string) =>
-    request<RedemptionSnapshot>(`/groups/${groupId}/checkin`, { method: "POST" }),
+  getSquadQr: (groupId: string) =>
+    request<{ qr_token: string }>(`/groups/${groupId}/qr`),
   searchUsers: (query: string) =>
     request<UserSearchResult[]>(`/connections/search?q=${encodeURIComponent(query)}`),
   getRecentSquadmates: () => request<RecentSquadmate[]>("/connections/recent-squadmates"),

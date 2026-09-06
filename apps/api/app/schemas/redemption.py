@@ -6,6 +6,14 @@ from pydantic import BaseModel, ConfigDict
 from app.models.redemption import RedemptionStatus
 
 
+class SquadQrResponse(BaseModel):
+    qr_token: str
+
+
+class ScanRequest(BaseModel):
+    qr_token: str
+
+
 class RedemptionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

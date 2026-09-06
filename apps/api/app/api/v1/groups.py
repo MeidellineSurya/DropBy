@@ -9,8 +9,8 @@ from app.models.drops import Drop, DropStatus, DropViewEvent
 from app.models.groups import GroupStatus
 from app.models.users import User
 from app.schemas.groups import GroupCreateRequest, GroupResponse
-from app.schemas.redemption import RedemptionResponse
-from app.services.redemption import build_response, check_in_group
+from app.schemas.redemption import SquadQrResponse
+from app.services.redemption import get_squad_qr
 from app.services.squad_state import (
     create_group as create_group_state,
 )
@@ -19,7 +19,6 @@ from app.services.squad_state import (
     join_group as join_group_state,
     leave_group as leave_group_state,
 )
-from app.workers.tasks.gamification import award_xp_for_redemption_task
 from app.workers.tasks.notifications import send_push_task
 from app.ws.manager import publish
 from ws_contracts.events import (
@@ -27,7 +26,6 @@ from ws_contracts.events import (
     GroupMemberJoined,
     GroupReady,
     GroupStateUpdate,
-    RedemptionCheckedIn,
 )
 
 router = APIRouter()
@@ -49,7 +47,7 @@ def _state_event(group: GroupResponse) -> GroupStateUpdate:
 
 async def _broadcast_group(
     group: GroupResponse,
-    event: GroupStateUpdate | GroupMemberJoined | GroupReady | RedemptionCheckedIn,
+    event: GroupStateUpdate | GroupMemberJoined | GroupReady,
 ) -> None:
     message = event.model_dump(mode="json")
     topics = {
@@ -186,24 +184,14 @@ async def leave_group(
     return group
 
 
-@router.post("/{group_id}/checkin", response_model=RedemptionResponse)
-async def checkin_group(
+@router.get("/{group_id}/qr", response_model=SquadQrResponse)
+def get_group_qr(
     group_id: UUID,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> RedemptionResponse:
-    """Any squad member claims check-in for the whole squad — verified by
-    proximity to the venue, not a QR scan (see services/redemption.py).
-    Auto-confirmed on the spot; award_xp_for_redemption_task publishes
-    redemption.confirmed once XP lands, shortly after this response."""
-    redemption = check_in_group(db, group_id, user)
-    group = get_group_for_member(db, group_id, user.id)
-    event = RedemptionCheckedIn(
-        group_id=group.id,
-        redemption_id=str(redemption.id),
-        checked_in_at=redemption.checked_in_at,
-    )
-    await _broadcast_group(group, event)
-    await publish(f"ws:business:{redemption.business_id}", event.model_dump(mode="json"))
-    award_xp_for_redemption_task.delay(str(redemption.id))
-    return build_response(db, redemption)
+) -> SquadQrResponse:
+    """Any squad member can pull up the squad's check-in code once ready —
+    show it to staff at the venue. Business confirms by scanning it (see
+    POST /redemptions/scan); there's nothing for the consumer to do beyond
+    displaying this."""
+    return SquadQrResponse(qr_token=get_squad_qr(db, group_id, user))

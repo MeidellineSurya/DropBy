@@ -28,6 +28,7 @@ export function Sidebar() {
           Drops
         </NavLink>
         <NavLink to="/drops/new">Create Drop</NavLink>
+        <NavLink to="/scan">Scan to confirm</NavLink>
         <NavLink to="/queue">Redemptions</NavLink>
         <NavLink to="/analytics">Analytics</NavLink>
       </nav>

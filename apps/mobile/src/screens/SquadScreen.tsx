@@ -1,5 +1,4 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import * as Location from "expo-location";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 
 import { useSession } from "../SessionContext";
 import type { RootStackParamList } from "../navigation/RootNavigator";
@@ -26,7 +26,7 @@ export function SquadScreen({ navigation, route }: Props) {
   const [group, setGroup] = useState<GroupSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
-  const [claiming, setClaiming] = useState(false);
+  const [qrToken, setQrToken] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,35 +68,17 @@ export function SquadScreen({ navigation, route }: Props) {
     });
   }
 
-  async function claimDrop() {
-    setClaiming(true);
-    setError(null);
-    try {
-      // Check-in is a location claim, not a QR scan — freshen the server's
-      // record of where we are right before claiming, so a stale location
-      // from minutes ago (or from before this screen was even opened)
-      // doesn't fail the venue-proximity check.
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status !== "granted") {
-        setError("Location permission is required to check in.");
-        return;
-      }
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      await api.locationPing(location.coords.latitude, location.coords.longitude);
-      await api.checkIn(groupId);
-      await refresh();
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Could not check in — move closer to the venue and try again.",
-      );
-    } finally {
-      setClaiming(false);
-    }
-  }
+  // The business confirms by scanning this — there's nothing for the
+  // consumer to tap. Fetched once the squad is ready; re-fetchable any
+  // number of times without invalidating a copy already on screen (it's
+  // stateless, see apps/api/app/services/redemption.py).
+  useEffect(() => {
+    if (group?.status !== "ready" || qrToken) return;
+    api
+      .getSquadQr(groupId)
+      .then((res) => setQrToken(res.qr_token))
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load your check-in code"));
+  }, [group?.status, groupId, qrToken]);
 
   async function leaveSquad() {
     setLeaving(true);
@@ -172,20 +154,18 @@ export function SquadScreen({ navigation, route }: Props) {
         <View style={styles.claimCard}>
           <Text style={styles.claimTitle}>At the venue?</Text>
           <Text style={styles.claimSubtitle}>
-            Check in once you've arrived — we'll confirm you're close enough, no
-            code to scan.
+            Show this code to staff — they scan it to confirm your squad.
           </Text>
-          <Pressable
-            disabled={claiming}
-            onPress={() => void claimDrop()}
-            style={styles.claimButton}
-          >
-            {claiming ? (
-              <ActivityIndicator color={colors.black} />
+          <View style={styles.qrWrapper}>
+            {qrToken ? (
+              // Deliberately black-on-white regardless of the app's dark
+              // theme — a scanner needs real contrast, not just "readable
+              // enough for a person."
+              <QRCode value={qrToken} size={200} backgroundColor="#ffffff" color="#000000" />
             ) : (
-              <Text style={styles.claimButtonText}>Check in now</Text>
+              <ActivityIndicator color={colors.lime} />
             )}
-          </Pressable>
+          </View>
         </View>
       )}
 
@@ -262,8 +242,7 @@ const styles = StyleSheet.create({
   claimCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
   claimTitle: { color: colors.text, fontSize: 17, fontWeight: "900" },
   claimSubtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 6 },
-  claimButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 11, marginTop: 14, paddingVertical: 14 },
-  claimButtonText: { color: colors.black, fontSize: 14, fontWeight: "900" },
+  qrWrapper: { alignItems: "center", backgroundColor: "#ffffff", borderRadius: 14, justifyContent: "center", marginTop: 14, minHeight: 220, padding: 10 },
   successCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
   successText: { color: colors.text, fontSize: 14, lineHeight: 20, fontWeight: "700" },
   endedCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.danger, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },

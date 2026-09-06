@@ -1,39 +1,43 @@
-"""Redemption module — location-claim check-in, auto-confirmed on the spot.
+"""Redemption module — a per-squad QR the business scans to confirm.
 
-Check-in is a location claim, not a QR scan: any squad member taps "Check in
-now" in the app, the server verifies their last known location is genuinely
-close to the venue (a much tighter radius than the Reveal distance — see
-settings.check_in_radius_m), and the whole squad both checks in AND is
-confirmed in the same step. There is no business approval gate and no
-"awaiting confirm" resting state — capacity was already first-come-first-
-served reserved when the squad became ready, so there is nothing left for a
-human to gate at check-in time.
+The business is the one that verifies and confirms a claim — not a location
+claim the consumer self-reports (that was tried; see STATUS.md's "Dropping
+the venue QR for a location claim" and "Auto-confirm plus a dispute window"
+for why it wasn't enough on its own — no human ever looked at a redemption
+before a reward was granted, and GPS alone is spoofable).
 
-This trades away real-time human verification for instant reward and zero
-business-side friction. The recourse that remains: a business can dispute a
-confirmed redemption within DISPUTE_WINDOW as fraudulent or mistaken.
-Disputing is a records-only flag — it releases the squad's reserved capacity
-back to the Drop, but does NOT claw back XP already awarded. A proper
-clawback would also need to unwind any badges/streaks/stats that redemption
-already contributed to, which isn't built. See STATUS.md's "Auto-confirm
-plus a dispute window" for the full reasoning; a printed QR or a return to a
-human pre-confirm gate are both still on the table if spoofed/abusive claims
-turn out to be a real problem beyond pilot scale.
+The QR now belongs to the *squad*, not the venue: once a Group reaches
+"ready", any member can pull up a signed, per-squad code in the app and show
+it to staff. Staff scan it (on the business dashboard, or eventually a
+business-side mobile scanner) — that scan itself both verifies the squad is
+genuinely standing in front of a business representative and confirms the
+redemption, in one action. No separate business "Confirm" tap needed after
+the fact, and no GPS check needed either: a staff member physically scanning
+a code held up by the squad is a stronger presence signal than either.
 
 Flow:
   1. Group reaches "ready" (app/services/squad_state.py) — capacity reserved.
-  2. Any member taps "Check in now" -> check_in_group() confirms membership,
-     confirms the group is ready, confirms the scanning member is within
-     check_in_radius_m of the Drop's venue, and transitions the Group
-     straight to completed / Redemption straight to confirmed. The caller
-     enqueues award_xp_for_redemption, whose Celery task publishes
-     redemption.confirmed over ws:group:{id} and ws:user:{id} for every
-     member, plus a push notification.
-  3. Business staff can instead tap "Flag as fraudulent" within
-     DISPUTE_WINDOW of confirmation -> dispute_redemption() -> records-only,
-     releases capacity, no XP clawback.
+  2. Any member calls GET /groups/{id}/qr -> get_squad_qr() returns a signed,
+     self-verifying token ({group_id, drop_id, business_id, iat, nonce}).
+     Stateless and re-fetchable any number of times without invalidating an
+     already-displayed code, same as the old venue QR.
+  3. Staff scan it on the dashboard -> POST /redemptions/scan ->
+     scan_squad_qr() verifies the signature and that it's this business's
+     own Drop, transitions the Group straight to completed / Redemption
+     straight to confirmed, and the caller enqueues award_xp_for_redemption,
+     whose Celery task publishes redemption.confirmed over ws:group:{id} and
+     ws:user:{id} for every member, plus a push notification.
+  4. Business staff can instead flag a confirmed redemption as fraudulent or
+     mistaken within DISPUTE_WINDOW -> dispute_redemption() -> records-only:
+     releases capacity, does NOT claw back XP already awarded. A proper
+     clawback would also need to unwind any badges/streaks/stats that
+     redemption already contributed to, which isn't built.
 """
 
+import hashlib
+import hmac
+import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -50,28 +54,28 @@ from app.models.users import User
 from app.schemas.redemption import RedemptionResponse
 from app.services.drop_lifecycle import release_capacity
 
-# A member's last location must be this fresh to check in — longer than the
-# 5-minute assemble window in squad_state.py because walking to the venue
-# after assembling a squad legitimately takes time.
-CHECK_IN_LOCATION_FRESHNESS = timedelta(minutes=15)
-
 # How long after confirmation a business can still dispute a redemption.
 DISPUTE_WINDOW = timedelta(hours=24)
 
 
-def _within_check_in_range(db: Session, user: User, drop: Drop) -> bool:
-    if user.last_location is None or user.last_location_at is None:
-        return False
-    if user.last_location_at < datetime.now(timezone.utc) - CHECK_IN_LOCATION_FRESHNESS:
-        return False
-    return bool(
-        db.scalar(
-            select(func.ST_DWithin(Drop.location, User.last_location, settings.check_in_radius_m))
-            .select_from(Drop)
-            .join(User, User.id == user.id)
-            .where(Drop.id == drop.id)
-        )
-    )
+def sign_squad_qr(group_id: str, drop_id: str, business_id: str) -> str:
+    nonce = uuid.uuid4().hex
+    iat = str(int(time.time()))
+    message = f"{group_id}:{drop_id}:{business_id}:{iat}:{nonce}"
+    signature = hmac.new(settings.qr_signing_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+    return f"{message}:{signature}"
+
+
+def verify_squad_qr(token: str) -> dict:
+    try:
+        group_id, drop_id, business_id, iat, nonce, signature = token.split(":")
+    except ValueError as exc:
+        raise ValueError("malformed QR token") from exc
+    message = f"{group_id}:{drop_id}:{business_id}:{iat}:{nonce}"
+    expected = hmac.new(settings.qr_signing_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        raise ValueError("invalid QR signature")
+    return {"group_id": group_id, "drop_id": drop_id, "business_id": business_id}
 
 
 def joined_member_count(db: Session, group_id: UUID) -> int:
@@ -83,50 +87,69 @@ def joined_member_count(db: Session, group_id: UUID) -> int:
     return int(count or 0)
 
 
-def check_in_group(db: Session, group_id: UUID, scanning_user: User) -> Redemption:
-    """Confirm membership and proximity, then auto-confirm the redemption —
-    there is no separate business approval step (see module docstring)."""
-    group = db.scalar(select(Group).where(Group.id == group_id).with_for_update())
+def get_squad_qr(db: Session, group_id: UUID, user: User) -> str:
+    """A squad member pulls up their squad's check-in code. Re-fetchable any
+    number of times — it's stateless, so nothing to invalidate."""
+    group = db.get(Group, group_id)
     if group is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Squad not found")
     member = db.scalar(
-        select(GroupMember).where(
+        select(GroupMember.id).where(
             GroupMember.group_id == group.id,
-            GroupMember.user_id == scanning_user.id,
+            GroupMember.user_id == user.id,
             GroupMember.status == GroupMemberStatus.joined,
         )
     )
     if member is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not in this squad")
+    if group.status != GroupStatus.ready:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Squad is not ready to check in (status={group.status.value})",
+        )
+    drop = db.get(Drop, group.drop_id)
+    if drop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Drop not found")
+    return sign_squad_qr(str(group.id), str(drop.id), str(drop.business_id))
+
+
+def scan_squad_qr(db: Session, qr_token: str, business: Business) -> Redemption:
+    """Business staff scan a squad's code — this both verifies and confirms
+    the redemption in one action. There is no further approval step."""
+    try:
+        claims = verify_squad_qr(qr_token)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    if claims["business_id"] != str(business.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This code belongs to a different business")
+
+    group_id = UUID(claims["group_id"])
+    group = db.scalar(select(Group).where(Group.id == group_id).with_for_update())
+    if group is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Squad not found")
+    if str(group.drop_id) != claims["drop_id"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This code is for a different Drop")
 
     existing = db.scalar(select(Redemption).where(Redemption.group_id == group.id))
     if existing is not None and existing.status == RedemptionStatus.confirmed:
-        return existing  # idempotent repeat claim by another member
+        return existing  # idempotent rescan
     if group.status != GroupStatus.ready:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Squad is not ready to check in (status={group.status.value})",
         )
 
-    drop = db.get(Drop, group.drop_id)
-    if drop is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Drop not found")
-    if not _within_check_in_range(db, scanning_user, drop):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "Move closer to the venue to check in"
-        )
-
     now = datetime.now(timezone.utc)
     member_count = joined_member_count(db, group.id)
     if existing is None:
         existing = Redemption(
-            drop_id=drop.id,
+            drop_id=group.drop_id,
             group_id=group.id,
-            business_id=drop.business_id,
+            business_id=business.id,
             status=RedemptionStatus.confirmed,
             checked_in_at=now,
             confirmed_at=now,
-            confirmed_by=drop.business_id,
+            confirmed_by=business.id,
             participant_count=member_count,
         )
         db.add(existing)
@@ -134,7 +157,7 @@ def check_in_group(db: Session, group_id: UUID, scanning_user: User) -> Redempti
         existing.status = RedemptionStatus.confirmed
         existing.checked_in_at = existing.checked_in_at or now
         existing.confirmed_at = now
-        existing.confirmed_by = drop.business_id
+        existing.confirmed_by = business.id
         existing.participant_count = member_count
     group.status = GroupStatus.completed
     group.checked_in_at = group.checked_in_at or now
