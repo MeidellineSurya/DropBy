@@ -34,7 +34,6 @@ def test_drop_funnel_combines_view_and_squad_counts() -> None:
     assert result.revealed_count == 3
     assert result.squads_forming == 2
     assert result.squads_ready == 1
-    assert result.squads_checked_in == 0
     assert result.reserved_count == 4
     assert result.max_capacity_participants == 12
 

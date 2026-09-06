@@ -1,10 +1,17 @@
 """Business-facing performance metrics.
 
-No Redemption table exists yet (owned by the redemption/gamification
-workstream), so "redemption counts" isn't literally available. Until that
-lands, squad progress (forming/ready/checked_in/completed counts) is the best
-available proxy for how a Drop is converting, alongside the detect->reveal
-funnel already recorded by the discovery engine in drop_view_events.
+Squad progress (forming/ready/completed counts) is the best available proxy
+for how a Drop is converting, alongside the detect->reveal funnel already
+recorded by the discovery engine in drop_view_events.
+
+There is deliberately no "checked in" bucket: an earlier design had check-in
+and confirmation as two separate steps (GroupStatus.checked_in sat between
+ready and completed), but the current flow (see services/redemption.py) is
+a single business-scans-the-squad's-QR action that verifies and confirms in
+one atomic step — a squad now goes straight from ready to completed, so
+GroupStatus.checked_in is never actually set and a "checked in" count would
+always read zero. Removed after a live check confirmed exactly that: a
+fully completed redemption still showed 0 in that bucket.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -48,7 +55,6 @@ def drop_funnel(db: Session, drop: Drop) -> DropFunnelResponse:
         max_capacity_participants=drop.max_capacity_participants,
         squads_forming=squads.get(GroupStatus.forming, 0),
         squads_ready=squads.get(GroupStatus.ready, 0),
-        squads_checked_in=squads.get(GroupStatus.checked_in, 0),
         squads_completed=squads.get(GroupStatus.completed, 0),
     )
 

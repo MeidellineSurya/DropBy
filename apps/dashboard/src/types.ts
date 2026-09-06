@@ -73,7 +73,6 @@ export interface DropFunnel {
   max_capacity_participants: number;
   squads_forming: number;
   squads_ready: number;
-  squads_checked_in: number;
   squads_completed: number;
 }
 
