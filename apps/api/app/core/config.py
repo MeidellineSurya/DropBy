@@ -22,8 +22,11 @@ class Settings(BaseSettings):
     # Check-in is a location claim, not a QR scan (see services/redemption.py) —
     # deliberately much tighter than the Reveal radius above, since "near
     # enough to see the offer" and "actually at the counter" need different
-    # thresholds.
-    check_in_radius_m: int = 20
+    # thresholds. 10m is close to the accuracy floor of consumer GPS in open
+    # sky (~3-5m) — tighter than that starts rejecting genuine claims on
+    # ordinary GPS drift, especially near buildings, rather than catching
+    # abuse. See STATUS.md if false rejections turn out to be a problem.
+    check_in_radius_m: int = 10
 
     # Comma-separated browser origins allowed to call the API (the business
     # dashboard, and any deployed equivalent). Defaults cover the dashboard's

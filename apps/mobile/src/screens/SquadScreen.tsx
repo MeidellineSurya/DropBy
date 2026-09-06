@@ -118,6 +118,28 @@ export function SquadScreen({ navigation, route }: Props) {
     );
   }
 
+  if (group?.status === "cancelled" || group?.status === "expired") {
+    const expired = group.status === "expired";
+    const fallback = expired
+      ? "This Drop ended before your squad could redeem it."
+      : "This squad was cancelled.";
+    return (
+      <View style={[styles.page, styles.content, { flex: 1 }]}>
+        <Text style={styles.eyebrow}>{expired ? "DROP EXPIRED" : "SQUAD CANCELLED"}</Text>
+        <Text style={styles.title}>Didn't make it this time</Text>
+        <View style={styles.endedCard}>
+          <Text style={styles.endedText}>{group.cancelled_reason ?? fallback}</Text>
+        </View>
+        <Pressable
+          onPress={() => navigation.popTo("Discover")}
+          style={styles.primaryButton}
+        >
+          <Text style={styles.primaryButtonText}>Back to Discover</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   const count = group?.current_count ?? 0;
   const maximum = group?.max_allowed ?? 4;
   const progress = `${Math.min(100, Math.round((count / maximum) * 100))}%` as const;
@@ -244,6 +266,8 @@ const styles = StyleSheet.create({
   claimButtonText: { color: colors.black, fontSize: 14, fontWeight: "900" },
   successCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
   successText: { color: colors.text, fontSize: 14, lineHeight: 20, fontWeight: "700" },
+  endedCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.danger, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
+  endedText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 18, borderWidth: 1, marginTop: 22, padding: 16 },
   cardTitle: { color: colors.text, fontSize: 18, fontWeight: "900", marginBottom: 8 },
   memberRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 60 },

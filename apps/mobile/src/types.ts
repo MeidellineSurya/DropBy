@@ -60,6 +60,10 @@ export interface GroupSnapshot {
   max_allowed: number;
   open_to_nearby: boolean;
   expires_at?: string;
+  // Set when status is cancelled/expired, so the app can explain why instead
+  // of just showing a dead-end status. Persisted server-side (not a one-time
+  // response field) — see apps/api/app/models/groups.py.
+  cancelled_reason?: string | null;
   members: GroupMember[];
 }
 

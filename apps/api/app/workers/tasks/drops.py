@@ -69,6 +69,7 @@ def expire_drops_sweep() -> dict[str, int]:
                 max_allowed=snapshot.max_allowed,
                 members=[member.model_dump(mode="json") for member in snapshot.members],
                 expires_at=snapshot.expires_at,
+                reason=snapshot.cancelled_reason,
             ).model_dump(mode="json")
             for topic in {
                 f"ws:group:{group_id}",

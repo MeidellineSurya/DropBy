@@ -1,11 +1,12 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (removed the business confirm/reject approval step
-— check-in now auto-confirms, with a business-side dispute window instead;
-reworked check-in from a QR scan to a location claim before that, and built
-the mobile claim screen — after merging the business/supply-side workstream
-with the independently-built redemption/gamification/notifications
-workstream)_
+_Last updated: 2026-09-06 (tightened the check-in radius, persisted
+Group.cancelled_reason so it survives more than one response, and gave the
+mobile app cancelled/expired squad screens — after removing the business
+confirm/reject approval step in favor of auto-confirm plus a dispute window,
+reworking check-in from a QR scan to a location claim before that, and
+merging the business/supply-side workstream with the independently-built
+redemption/gamification/notifications workstream)_
 
 ## Status
 
@@ -41,9 +42,11 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Business Drop performance and account overview analytics | Done |
 | CORS so the dashboard can call the API cross-origin | Done |
 | Automatic Drop expiry / scheduled-activation worker (Celery beat) | Done |
-| Check-in as a location claim — no QR at all, just a tight-radius (`check_in_radius_m`, default 20 m) geofence check against the scanning member's last known location | Done |
+| Check-in as a location claim — no QR at all, just a tight-radius (`check_in_radius_m`, default 10 m) geofence check against the scanning member's last known location | Done |
 | Mobile "Check in now" claim button on `SquadScreen`, wired to the check-in endpoint | Done |
 | Check-in auto-confirms on the spot (no business approval step); business can dispute a confirmed redemption within a 24h window, releasing capacity but not clawing back XP | Done |
+| `Group.cancelled_reason` persisted on the model, set on every path a squad ends without completing (capacity-race loss, a Drop being cancelled, a Drop expiring while forming/ready) | Done |
+| Mobile cancelled/expired squad screen showing the persisted reason, with distinct copy for "never found enough people" vs. "was ready but ran out of time" | Done |
 | XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
 | Powerups, level-milestone perks, weekly challenges, territory-exploration bonus | Done |
 | Push notifications (FCM) with graceful skip when unconfigured; notification log | Done |
@@ -53,19 +56,25 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
 | XP clawback on dispute | Not built — disputing a redemption is records-only (releases capacity, flags the record); already-awarded XP, badges, and streak progress are untouched, deliberately, since unwinding those correctly is real added scope |
 | Analytics funnel's "Checked in" vs "Completed" distinction | Now redundant for new data — auto-confirm means every redemption hits both at the same instant, so the two stay equal going forward. Left as-is (still meaningful for historical pre-auto-confirm data); not restructured |
-| Mobile UI for a cancelled/expired squad | Not built — `SquadScreen` has ready/completed layouts now, but still renders the assembling/ready layout for cancelled/expired, and the mobile `GroupSnapshot` type is missing `cancelled_reason` (the backend has carried it since the capacity-race fix; `packages/shared-types` already models it as `reason`) |
+| Business dashboard funnel showing cancelled/expired squads | Not built — `business_analytics.py`'s funnel only ever tracked forming/ready/checked_in/completed; a squad that never made it isn't visible there at all, only findable by absence |
 | `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
-**Verified (2026-09-06):** 188/188 backend tests pass (`pytest -q`); a single
-linear Alembic head (`0013_redemption_disputed`). Live-verified: the
+**Verified (2026-09-06):** 190/190 backend tests pass (`pytest -q`); a single
+linear Alembic head (`0014_group_cancelled_reason`). Live-verified: the
 business platform's full loop (registration → Drop creation with computed
 rarity/XP → a squad reaching the Drop → check-in that auto-confirms and
 awards real XP in the same flow → dispute that releases capacity without
-clawing back XP) against the Docker stack, including a claim attempt from
-~350m away correctly rejected by the tight check-in radius; and the
-gamification workstream's mechanics against a live Postgres/Redis/Celery
-stack (per its own verification notes, this caught a real `UserStats`
-initialization crash and a duplicate `CREATE TYPE` migration bug that unit
+clawing back XP) against the Docker stack, including a claim from ~15m away
+correctly rejected by the tightened 10m check-in radius (and one from the
+venue still succeeding); a real capacity-race loss whose `cancelled_reason`
+was confirmed to survive a later, separate `GET` (not just the one response
+that caused it); and the Celery expiry sweep correctly distinguishing a
+still-forming squad's reason from a ready-but-too-late squad's, both
+persisted the same way. Also verified: the gamification workstream's
+mechanics against a live Postgres/Redis/Celery stack (per its own
+verification notes, this
+caught a real `UserStats` initialization crash and a duplicate `CREATE TYPE`
+migration bug that unit
 tests didn't surface).
 
 ## Merging two independent redemption implementations
@@ -217,6 +226,63 @@ task shortly after, the redemption appears on `/redemptions/queue`, disputing
 it releases capacity while leaving the already-awarded XP untouched, and
 disputing twice is a no-op.
 
+## Tighter check-in radius, and a real cancelled/expired experience
+
+Two follow-ups, done together because the second depends on a fix the first
+prompted a closer look at.
+
+**`check_in_radius_m` dropped from 20 m to 10 m** — a real tightening, not
+just a number change: 10 m sits close to the accuracy floor of consumer GPS
+in open sky (~3-5 m), so this is close to as tight as it can go before
+ordinary GPS drift near buildings starts rejecting genuine claims rather
+than catching abuse. Live-verified: a claim from ~15 m away (inside the old
+radius, outside the new one) is now correctly rejected; one from the venue
+still succeeds.
+
+**`Group.cancelled_reason` was never actually persisted.** Before this, it
+only existed as a one-time field on the exact response that caused a
+cancellation — `create_group`/`join_group` would compute it and hand it back
+to the caller, but never write it to the row. Anyone who found out about the
+cancellation any other way (a WS-triggered refresh, checking back later, a
+different squad member) got `null`, regardless of what actually happened.
+This was already a real gap before mobile had any UI for it — building that
+UI is what surfaced it. Fixed by adding the column and setting it at every
+place a squad ends without completing:
+
+- A capacity-race loss in `create_group`/`join_group` (already computed a
+  reason via `describe_capacity_failure`; now it's assigned to the model
+  before commit instead of only threaded through the return value).
+- A business cancelling their Drop (`cancel_drop`'s bulk update) — "The
+  business cancelled this Drop."
+- The Celery expiry sweep (`expire_due`) — split into two update statements
+  instead of one so a squad that was still `forming` gets "This Drop ended
+  before your squad found enough people" while one that was `ready` gets
+  "This Drop ended before your squad could check in." These are genuinely
+  different situations (never found people vs. found people but ran out of
+  time) and deserve different copy, not one generic "expired."
+- Someone leaving a squad that had no one else left in it — "Everyone left
+  the squad."
+
+`group_snapshot()` now reads the persisted column directly instead of
+accepting an override parameter, so every code path that builds a
+`GroupResponse` — the two mutation endpoints, a plain `GET`, and the Celery
+sweep's WS broadcast — reports the same, correct reason.
+
+Live-verified: a genuine capacity-race loss (two squads competing for the
+last slots on a Drop, reproduced deterministically via sequential requests —
+`join_group`'s capacity check runs regardless of the Drop's own status,
+unlike `create_group`'s upfront gate, so this doesn't need real concurrency
+to trigger) shows its reason on the immediate response *and* on a completely
+separate, later `GET`. The expiry sweep was backdated a Drop's `ends_at` and
+run directly, confirming a still-forming squad and a ready squad each got
+their own distinct, persisted reason.
+
+**Mobile**: `SquadScreen` now has a dedicated cancelled/expired screen —
+distinct eyebrow ("SQUAD CANCELLED" / "DROP EXPIRED"), the persisted reason
+(with a generic fallback if one somehow isn't set), and a "Back to Discover"
+button. Previously there was no such screen at all; a cancelled or expired
+squad just kept rendering the assembling/ready layout with no explanation.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -234,6 +300,11 @@ disputing twice is a no-op.
 - Reserve participant capacity atomically when a squad becomes ready, then one
   place at a time as it fills to its maximum; a lost race gets an honest
   "someone else took the last spot" reason, not a generic failure.
+- `Group.cancelled_reason` is a persisted column, not a one-response-only
+  value — every path that ends a squad without completing (capacity race,
+  Drop cancelled, Drop expired) sets it on the model before commit, so it
+  survives a later, separate read the same way for everyone, not just
+  whoever triggered it.
 - Separate JWT audiences (`user` vs `business`) on the same token
   infrastructure, so a business token can never authenticate a consumer route
   or vice versa.
@@ -274,8 +345,10 @@ disputing twice is a no-op.
 
 1. Decide whether the auto-confirm fraud surface (see "Auto-confirm plus a
    dispute window" above) is acceptable past pilot scale, or whether it
-   needs a shorter dispute window, a tighter `check_in_radius_m`, or a
-   pre-award human gate reintroduced.
+   needs a shorter dispute window or a pre-award human gate reintroduced.
+   `check_in_radius_m` has already been tightened once (20m → 10m); it's
+   close to the GPS accuracy floor, so it's not much more lever left to
+   pull on that specific knob.
 2. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
 3. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a

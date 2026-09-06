@@ -11,6 +11,7 @@ from app.services.drop_lifecycle import (
     compute_rarity,
     compute_xp_reward,
     describe_capacity_failure,
+    expire_due,
     pause_drop,
     publish_drop,
     resume_drop,
@@ -113,6 +114,44 @@ def test_cancel_drop_returns_cascaded_group_ids() -> None:
 
     assert result == cascaded_ids
     db.commit.assert_called_once_with()
+
+
+def test_expire_due_gives_forming_and_ready_squads_different_reasons() -> None:
+    """Two separate UPDATEs (not one) so a squad that never found enough
+    people gets a different cancelled_reason than one that was ready but
+    ran out of time to check in — see services/drop_lifecycle.expire_due."""
+    db = MagicMock(spec=Session)
+    drop_ids = [uuid4()]
+    forming_group_ids = [uuid4()]
+    ready_group_ids = [uuid4(), uuid4()]
+
+    drops_result = MagicMock()
+    drops_result.all.return_value = drop_ids
+    forming_result = MagicMock()
+    forming_result.all.return_value = forming_group_ids
+    ready_result = MagicMock()
+    ready_result.all.return_value = ready_group_ids
+    db.scalars.side_effect = [drops_result, forming_result, ready_result]
+
+    returned_drop_ids, returned_group_ids = expire_due(db)
+
+    assert returned_drop_ids == drop_ids
+    assert returned_group_ids == forming_group_ids + ready_group_ids
+    assert db.scalars.call_count == 3
+    db.commit.assert_called_once_with()
+
+
+def test_expire_due_skips_group_queries_when_no_drops_expired() -> None:
+    db = MagicMock(spec=Session)
+    drops_result = MagicMock()
+    drops_result.all.return_value = []
+    db.scalars.return_value = drops_result
+
+    returned_drop_ids, returned_group_ids = expire_due(db)
+
+    assert returned_drop_ids == []
+    assert returned_group_ids == []
+    assert db.scalars.call_count == 1
 
 
 def test_describe_capacity_failure_distinguishes_paused_from_full() -> None:

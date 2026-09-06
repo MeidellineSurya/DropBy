@@ -86,6 +86,11 @@ class Group(Base):
     expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Set whenever this squad ends as cancelled or expired without
+    # completing, so a member checking back later (not just the one request
+    # that triggered it) can still see why. See services/squad_state.py and
+    # services/drop_lifecycle.py's expire_due/cancel paths.
+    cancelled_reason: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class GroupMember(Base):
