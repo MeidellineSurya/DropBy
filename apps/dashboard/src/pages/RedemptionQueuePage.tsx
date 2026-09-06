@@ -5,9 +5,10 @@ import { connectLiveSocket } from "../services/ws";
 import type { Redemption } from "../types";
 import "./RedemptionQueuePage.css";
 
-// The live queue of squads that have checked in at the venue (scanned the
-// Drop's QR) and are waiting on a business to confirm they're legitimate
-// before XP is awarded — see apps/api/app/services/redemption.py.
+// The live queue of squads that have checked in at the venue (a location
+// claim from the app, not a QR scan) and are waiting on a business to
+// confirm they're legitimate before XP is awarded — see
+// apps/api/app/services/redemption.py.
 export function RedemptionQueuePage() {
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +65,7 @@ export function RedemptionQueuePage() {
       {error ? (
         <p className="page-error">{error}</p>
       ) : redemptions.length === 0 ? (
-        <p>No squads checked in right now — they'll show up here the moment someone scans your Drop's QR.</p>
+        <p>No squads checked in right now — they'll show up here the moment someone checks in at your venue.</p>
       ) : (
         <div className="redemption-list">
           {redemptions.map((redemption) => (
