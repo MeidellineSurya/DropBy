@@ -160,3 +160,6 @@ npm run typecheck
 - [Cloudflare Quick Tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) expose the local API to Expo Go during development.
 - The map Pins, business details, offers, and user data used for the demo are fictional seeded data created for DropBy. No external dataset or UI template was used.
 
+## AI usage
+
+[OpenAI Codex](https://openai.com/codex/) and [Claude](https://www.anthropic.com/claude) were used as development assistants for implementation, debugging, refactoring, documentation, and testing guidance. Product decisions, validation on devices, final integration, and review were completed by the project team.
