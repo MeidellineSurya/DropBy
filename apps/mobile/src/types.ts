@@ -73,6 +73,7 @@ export interface RedemptionSnapshot {
   checked_in_at: string | null;
   confirmed_at: string | null;
   participant_count: number | null;
+  disputed_at: string | null;
   member_count: number;
   xp_reward_base: number;
 }
@@ -153,9 +154,20 @@ export interface GroupEvent {
   [key: string]: unknown;
 }
 
+// Check-in auto-confirms (see apps/api/app/services/redemption.py), so
+// redemption.checked_in fires immediately and redemption.confirmed follows
+// shortly after once award_xp_for_redemption's Celery task lands.
+export interface RedemptionEvent {
+  type: "redemption.checked_in" | "redemption.confirmed";
+  group_id: string;
+  redemption_id: string;
+  [key: string]: unknown;
+}
+
 export type LiveEvent =
   | DropStageEvent
   | GroupEvent
+  | RedemptionEvent
   | ConnectionRequestReceivedEvent
   | ConnectionRequestAcceptedEvent
   | MessageSentEvent

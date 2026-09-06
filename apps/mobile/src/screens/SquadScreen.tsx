@@ -16,7 +16,7 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 import { api } from "../services/api";
 import { connectLiveSocket } from "../services/ws";
 import { colors } from "../theme";
-import type { GroupEvent, GroupSnapshot } from "../types";
+import type { GroupEvent, GroupSnapshot, RedemptionEvent } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Squad">;
 
@@ -50,8 +50,11 @@ export function SquadScreen({ navigation, route }: Props) {
     const socket = connectLiveSocket(
       token,
       (event) => {
-        if (!event.type.startsWith("group.")) return;
-        if ((event as GroupEvent).group_id === groupId) void refresh();
+        // redemption.* covers check-in/confirm — check-in auto-confirms now
+        // (see api/app/services/redemption.py), so this is what tells other
+        // squad members the Drop was redeemed without them tapping anything.
+        if (!event.type.startsWith("group.") && !event.type.startsWith("redemption.")) return;
+        if ((event as GroupEvent | RedemptionEvent).group_id === groupId) void refresh();
       },
       setConnected,
     );
@@ -119,23 +122,14 @@ export function SquadScreen({ navigation, route }: Props) {
   const maximum = group?.max_allowed ?? 4;
   const progress = `${Math.min(100, Math.round((count / maximum) * 100))}%` as const;
   const ready = group?.status === "ready";
-  const checkedIn = group?.status === "checked_in";
   const completed = group?.status === "completed";
 
-  const eyebrow = completed
-    ? "REDEEMED"
-    : checkedIn
-      ? "CHECKED IN"
-      : ready
-        ? "SQUAD READY"
-        : "ASSEMBLING";
+  const eyebrow = completed ? "REDEEMED" : ready ? "SQUAD READY" : "ASSEMBLING";
   const subtitle = completed
-    ? "The business confirmed your squad. XP is on its way to everyone."
-    : checkedIn
-      ? "You're checked in — waiting for the business to confirm at the counter."
-      : ready
-        ? "Your minimum squad is ready. You can still fill the remaining spaces."
-        : `${Math.max(0, (group?.min_required ?? 2) - count)} more needed to unlock the Drop.`;
+    ? "Checked in and redeemed — XP is on its way to everyone in the squad."
+    : ready
+      ? "Your minimum squad is ready. You can still fill the remaining spaces."
+      : `${Math.max(0, (group?.min_required ?? 2) - count)} more needed to unlock the Drop.`;
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.page}>
@@ -173,11 +167,10 @@ export function SquadScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      {checkedIn && (
-        <View style={styles.waitingCard}>
-          <Text style={styles.waitingText}>
-            ✓ Checked in. Sit tight — the business confirms redemptions from their
-            counter. Tap "Refresh now" below to see when it lands.
+      {completed && (
+        <View style={styles.successCard}>
+          <Text style={styles.successText}>
+            ✓ Redeemed! Everyone in the squad earns XP for this one.
           </Text>
         </View>
       )}
@@ -204,7 +197,7 @@ export function SquadScreen({ navigation, route }: Props) {
         ))}
       </View>
 
-      {!checkedIn && !completed && (
+      {!completed && (
         <View style={styles.codeCard}>
           <Text style={styles.codeLabel}>SQUAD ID</Text>
           <Text selectable style={styles.code}>{groupId}</Text>
@@ -217,7 +210,7 @@ export function SquadScreen({ navigation, route }: Props) {
       <Pressable onPress={() => void refresh()} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Refresh now</Text>
       </Pressable>
-      {!checkedIn && !completed && (
+      {!completed && (
         <Pressable disabled={leaving} onPress={() => void leaveSquad()} style={styles.leaveButton}>
           {leaving ? (
             <ActivityIndicator color={colors.danger} />
@@ -249,8 +242,8 @@ const styles = StyleSheet.create({
   claimSubtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 6 },
   claimButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 11, marginTop: 14, paddingVertical: 14 },
   claimButtonText: { color: colors.black, fontSize: 14, fontWeight: "900" },
-  waitingCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.cyan, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
-  waitingText: { color: colors.text, fontSize: 14, lineHeight: 20 },
+  successCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
+  successText: { color: colors.text, fontSize: 14, lineHeight: 20, fontWeight: "700" },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 18, borderWidth: 1, marginTop: 22, padding: 16 },
   cardTitle: { color: colors.text, fontSize: 18, fontWeight: "900", marginBottom: 8 },
   memberRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 60 },

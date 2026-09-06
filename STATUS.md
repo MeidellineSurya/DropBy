@@ -1,9 +1,11 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (reworked check-in from a QR scan to a location
-claim, and built the mobile claim screen — after merging the business/
-supply-side workstream with the independently-built redemption/
-gamification/notifications workstream)_
+_Last updated: 2026-09-06 (removed the business confirm/reject approval step
+— check-in now auto-confirms, with a business-side dispute window instead;
+reworked check-in from a QR scan to a location claim before that, and built
+the mobile claim screen — after merging the business/supply-side workstream
+with the independently-built redemption/gamification/notifications
+workstream)_
 
 ## Status
 
@@ -41,7 +43,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Automatic Drop expiry / scheduled-activation worker (Celery beat) | Done |
 | Check-in as a location claim — no QR at all, just a tight-radius (`check_in_radius_m`, default 20 m) geofence check against the scanning member's last known location | Done |
 | Mobile "Check in now" claim button on `SquadScreen`, wired to the check-in endpoint | Done |
-| Redemption queue, confirm, and reject, with capacity correctly reconciled either way | Done |
+| Check-in auto-confirms on the spot (no business approval step); business can dispute a confirmed redemption within a 24h window, releasing capacity but not clawing back XP | Done |
 | XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
 | Powerups, level-milestone perks, weekly challenges, territory-exploration bonus | Done |
 | Push notifications (FCM) with graceful skip when unconfigured; notification log | Done |
@@ -49,20 +51,22 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
 | Business moderation endpoints (approve/reject registrations) | Not built — only direct DB/seed access sets `Business.status = active` |
 | Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
-| A push/live update to the squad when the business confirms or rejects | Not built — confirm/reject don't publish any WS event today, so the app only learns the outcome on a manual refresh |
-| Mobile UI for a cancelled/expired/completed squad | Not built — `SquadScreen` always renders the assembling/ready layout regardless of status, and the mobile `GroupSnapshot` type is missing `cancelled_reason` (the backend has carried it since the capacity-race fix; `packages/shared-types` already models it as `reason`) |
+| XP clawback on dispute | Not built — disputing a redemption is records-only (releases capacity, flags the record); already-awarded XP, badges, and streak progress are untouched, deliberately, since unwinding those correctly is real added scope |
+| Analytics funnel's "Checked in" vs "Completed" distinction | Now redundant for new data — auto-confirm means every redemption hits both at the same instant, so the two stay equal going forward. Left as-is (still meaningful for historical pre-auto-confirm data); not restructured |
+| Mobile UI for a cancelled/expired squad | Not built — `SquadScreen` has ready/completed layouts now, but still renders the assembling/ready layout for cancelled/expired, and the mobile `GroupSnapshot` type is missing `cancelled_reason` (the backend has carried it since the capacity-race fix; `packages/shared-types` already models it as `reason`) |
 | `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
-**Verified (2026-09-06):** 187/187 backend tests pass (`pytest -q`); a single
-linear Alembic head (`0012_connections_and_messages`). Live-verified: the
+**Verified (2026-09-06):** 188/188 backend tests pass (`pytest -q`); a single
+linear Alembic head (`0013_redemption_disputed`). Live-verified: the
 business platform's full loop (registration → Drop creation with computed
-rarity/XP → a squad reaching the Drop → claim-based check-in → confirm with
-an actual XP mutation → reject with capacity released) against the Docker
-stack, including a claim attempt from ~350m away correctly rejected by the
-tight check-in radius; and the gamification workstream's mechanics against a
-live Postgres/Redis/Celery stack (per its own verification notes, this
-caught a real `UserStats` initialization crash and a duplicate `CREATE TYPE`
-migration bug that unit tests didn't surface).
+rarity/XP → a squad reaching the Drop → check-in that auto-confirms and
+awards real XP in the same flow → dispute that releases capacity without
+clawing back XP) against the Docker stack, including a claim attempt from
+~350m away correctly rejected by the tight check-in radius; and the
+gamification workstream's mechanics against a live Postgres/Redis/Celery
+stack (per its own verification notes, this caught a real `UserStats`
+initialization crash and a duplicate `CREATE TYPE` migration bug that unit
+tests didn't surface).
 
 ## Merging two independent redemption implementations
 
@@ -137,10 +141,11 @@ This is a deliberate tradeoff, not a pure simplification:
   in a way a location claim alone does not (a location-mocking app can fake
   "I'm near this venue" far more easily than it can fake having scanned a
   code physically printed at a specific business).
-- **Kept**: the actual fraud backstop was never the QR — it's the business's
-  Confirm/Reject step on the Live Queue, where staff look at who's actually
-  there. That's identical either way. A bogus claim just becomes dashboard
-  noise a business rejects, same as a bogus scan would have.
+- **Kept** (at the time): the actual fraud backstop was never the QR — it
+  was the business's Confirm/Reject step on the Live Queue, where staff
+  looked at who's actually there. That step was itself removed shortly
+  after, in favor of auto-confirm plus a dispute window — see "Auto-confirm
+  plus a dispute window" below.
 - **Gained**: no printing/signage setup step for a business going live, and
   no mobile camera-scanner UI to build, test, or maintain — a meaningfully
   smaller surface for an early pilot with a handful of hand-onboarded
@@ -158,6 +163,59 @@ Live-verified: a claim from ~350 m away is rejected
 (`403 Move closer to the venue to check in`); a claim from at the venue
 succeeds and reaches the business's Live Queue with no QR involved at any
 point.
+
+## Auto-confirm plus a dispute window
+
+The Confirm/Reject step above didn't last long either. Capacity is already
+first-come-first-served — a squad reserves its spot the moment it becomes
+`ready`, before check-in even happens — so a human gate at check-in time
+wasn't actually deciding anything about capacity, only whether to trust the
+claim. Check-in now **auto-confirms**: the same call that verifies proximity
+also marks the Redemption `confirmed` and the Group `completed`, and
+enqueues XP in one step. There is no more "awaiting confirm" resting state,
+no headcount-correction step, and no Confirm button on the dashboard.
+
+**Correction to the record**: an earlier version of this document (and
+something said directly to the user) claimed confirming a redemption didn't
+publish any live update, so the app only learned the outcome via manual
+refresh. That was wrong — `award_xp_for_redemption_task` (the Celery task
+enqueued on confirm) always published `redemption.confirmed` over
+`ws:group:{id}`/`ws:user:{id}` and sent a push notification. The real bug
+was narrower: the mobile `SquadScreen`'s WS listener only reacted to
+`group.*`-prefixed events and silently dropped `redemption.*` ones, so the
+push was arriving and being ignored. Fixed alongside this change by widening
+that listener's filter (see `apps/mobile/src/types.ts`'s new
+`RedemptionEvent` type).
+
+What replaces the human check: a business can **dispute** a confirmed
+redemption within `DISPUTE_WINDOW` (24 hours) of confirmation —
+`POST /redemptions/{id}/dispute` — flagging it as fraudulent or mistaken.
+This is deliberately **records-only**:
+
+- Releases the squad's reserved capacity back to the Drop, so a disputed
+  slot doesn't stay wasted.
+- Does **not** claw back XP, badges, or streak progress already awarded. A
+  correct clawback would need to unwind everything that redemption
+  contributed to (badge unlocks, streak state, weekly-challenge progress),
+  which isn't built. A disputed redemption is a permanent audit flag on the
+  record, not an undo button.
+
+This trades away real-time human verification entirely — check-in was
+already the sole verification point once the QR was dropped, and now
+there's no verification at check-in time at all, only after-the-fact
+recourse. Accepted for the same reason as the QR removal: instant reward
+matters more than friction at this stage, and the fraud surface this opens
+(a spoofed or bad-faith claim earning real XP with no human ever looking at
+it before the reward lands) is a real cost worth watching, not a solved
+problem. If abuse becomes real, the lever to pull is either a shorter dispute
+window, tightening `check_in_radius_m` further, or reintroducing a pre-award
+human gate — not necessarily a full QR reversal.
+
+Live-verified: check-in returns `status: "confirmed"` directly (no separate
+confirm call), the Group is `completed` immediately, XP lands via the async
+task shortly after, the redemption appears on `/redemptions/queue`, disputing
+it releases capacity while leaving the already-awarded XP untouched, and
+disputing twice is a no-op.
 
 ## Key decisions
 
@@ -194,6 +252,11 @@ point.
   location claim" above for the tradeoff this makes.
 - One Redemption row per Group (`uq_redemption_group`), created lazily on
   first check-in rather than eagerly when the squad becomes ready.
+- Check-in auto-confirms — no business approval gate, no headcount
+  correction — with a 24h dispute window as the only recourse, and disputing
+  never claws back XP already awarded. See "Auto-confirm plus a dispute
+  window" above for the full reasoning and the fraud-surface tradeoff it
+  accepts.
 - A Drop cannot go live until its business is `active` — an unverified
   business can create and preview Drops in draft, but publish is gated.
 - No refresh-token flow yet; a business simply logs in again once its JWT
@@ -209,15 +272,15 @@ point.
 
 ## Next steps
 
-1. Publish a `redemption.confirmed`/`redemption.rejected` WS event when a
-   business acts on the Live Queue — right now the squad only learns the
-   outcome by manually refreshing, which is the one real gap the mobile
-   claim screen surfaced (see "Dropping the venue QR..." above).
+1. Decide whether the auto-confirm fraud surface (see "Auto-confirm plus a
+   dispute window" above) is acceptable past pilot scale, or whether it
+   needs a shorter dispute window, a tighter `check_in_radius_m`, or a
+   pre-award human gate reintroduced.
 2. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
 3. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
    Collection/Profile screen, and the powerup/perk/weekly-challenge
-   endpoints — check-in/confirm is now wired; gamification display isn't.
+   endpoints — check-in is now wired; gamification display isn't.
 4. Mobile: register a real FCM token via `POST /devices` and subscribe to the
    `territory.bonus_awarded` WS event, so push notifications and territory
    popups actually reach the phone.

@@ -98,6 +98,7 @@ export interface Redemption {
   confirmed_at: string | null;
   // Record-keeping only — see apps/api/app/services/redemption.py.
   participant_count: number | null;
+  disputed_at: string | null;
   member_count: number;
   xp_reward_base: number;
 }

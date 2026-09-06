@@ -19,6 +19,7 @@ from app.services.squad_state import (
     join_group as join_group_state,
     leave_group as leave_group_state,
 )
+from app.workers.tasks.gamification import award_xp_for_redemption_task
 from app.workers.tasks.notifications import send_push_task
 from app.ws.manager import publish
 from ws_contracts.events import (
@@ -192,7 +193,9 @@ async def checkin_group(
     db: Session = Depends(get_db),
 ) -> RedemptionResponse:
     """Any squad member claims check-in for the whole squad — verified by
-    proximity to the venue, not a QR scan (see services/redemption.py)."""
+    proximity to the venue, not a QR scan (see services/redemption.py).
+    Auto-confirmed on the spot; award_xp_for_redemption_task publishes
+    redemption.confirmed once XP lands, shortly after this response."""
     redemption = check_in_group(db, group_id, user)
     group = get_group_for_member(db, group_id, user.id)
     event = RedemptionCheckedIn(
@@ -202,4 +205,5 @@ async def checkin_group(
     )
     await _broadcast_group(group, event)
     await publish(f"ws:business:{redemption.business_id}", event.model_dump(mode="json"))
+    award_xp_for_redemption_task.delay(str(redemption.id))
     return build_response(db, redemption)

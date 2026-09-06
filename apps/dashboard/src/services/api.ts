@@ -106,16 +106,12 @@ export const api = {
   dropFunnel: (dropId: string) =>
     request<DropFunnel>(`/business/analytics/drops/${dropId}`),
 
-  // /redemptions/queue only ever returns checked_in ones (awaiting
-  // confirm/reject) — there's no status filter to pass.
+  // Check-in auto-confirms now (no business approval step) — this returns
+  // confirmed redemptions still inside the dispute window, not a queue
+  // awaiting action. See apps/api/app/services/redemption.py.
   listRedemptions: () => request<Redemption[]>("/redemptions/queue"),
-  confirmRedemption: (redemptionId: string, participantCount?: number) =>
-    request<Redemption>(`/redemptions/${redemptionId}/confirm`, {
-      method: "POST",
-      body: JSON.stringify({ participant_count: participantCount ?? null }),
-    }),
-  rejectRedemption: (redemptionId: string) =>
-    request<Redemption>(`/redemptions/${redemptionId}/reject`, {
+  disputeRedemption: (redemptionId: string) =>
+    request<Redemption>(`/redemptions/${redemptionId}/dispute`, {
       method: "POST",
     }),
 };

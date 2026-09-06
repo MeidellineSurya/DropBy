@@ -20,9 +20,14 @@ class RedemptionStatus(str, enum.Enum):
 class Redemption(Base):
     """Owned by the redemption/gamification module.
 
-    One Redemption per Group: it is created (or found) the moment a member
-    scans the venue QR, and later transitions to confirmed once the business
-    taps Confirm on their queue.
+    One Redemption per Group: it is created and auto-confirmed in the same
+    step the moment a member claims check-in (see services/redemption.py) —
+    there is no business approval gate. A business can instead dispute a
+    confirmed redemption within DISPUTE_WINDOW as a fraud/mistake flag;
+    disputing does NOT claw back XP already awarded (that would also need to
+    unwind badges/streaks/stats derived from it, which isn't built — see
+    STATUS.md). `checked_in`/`rejected` are legacy values from the old
+    QR-scan-then-business-confirms flow, unused by new redemptions.
     """
 
     __tablename__ = "redemptions"
@@ -38,5 +43,6 @@ class Redemption(Base):
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     confirmed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     participant_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    disputed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

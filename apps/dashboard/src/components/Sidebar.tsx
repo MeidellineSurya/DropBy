@@ -28,7 +28,7 @@ export function Sidebar() {
           Drops
         </NavLink>
         <NavLink to="/drops/new">Create Drop</NavLink>
-        <NavLink to="/queue">Live Queue</NavLink>
+        <NavLink to="/queue">Redemptions</NavLink>
         <NavLink to="/analytics">Analytics</NavLink>
       </nav>
       <button type="button" className="sidebar__logout" onClick={logout}>
