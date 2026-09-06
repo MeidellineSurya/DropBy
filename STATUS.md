@@ -51,7 +51,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Check-in is a squad-generated, signed QR scanned by the business — `GET /groups/{id}/qr` (member-facing) and `POST /redemptions/scan` (business-facing); no GPS/location check at all | Done |
 | Mobile `SquadScreen` shows a black-on-white QR once the squad is `ready`, replacing the old "Check in now" claim button | Done |
 | The scan itself both verifies (proves physical presence in front of staff) and confirms (awards XP) in one action — no business approval step, no headcount correction; business can still dispute a confirmed redemption within a 24h window, releasing capacity but not clawing back XP | Done |
-| Business dashboard camera-based Scan page (`/scan`, `html5-qrcode`) to confirm a squad's code | Done — backend/API path live-verified end-to-end; the actual camera-to-decode round trip could not be physically verified in this environment (no camera hardware) |
+| Business dashboard camera-based Scan page (`/scan`, `html5-qrcode`) to confirm a squad's code, with secure-context/permission-denied/no-camera detection, a camera picker for devices with more than one, and a manual code-entry fallback | Done — backend/API path live-verified end-to-end; the actual camera-to-decode round trip could not be physically verified in this environment (no camera hardware) |
 | `Group.cancelled_reason` persisted on the model, set on every path a squad ends without completing (capacity-race loss, a Drop being cancelled, a Drop expiring while forming/ready) | Done |
 | Mobile cancelled/expired squad screen showing the persisted reason, with distinct copy for "never found enough people" vs. "was ready but ran out of time" | Done |
 | XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
@@ -492,7 +492,12 @@ verified, since this environment has no camera hardware to test against.
    `html5-qrcode`) against a real device camera and a real QR code rendered
    on a phone screen — this environment has no camera hardware, so only the
    underlying `/redemptions/scan` endpoint and both frontends' code paths
-   have been verified, not an actual camera-to-decode-to-API round trip.
+   have been verified, not an actual camera-to-decode-to-API round trip. The
+   page now distinguishes insecure-origin/unsupported-browser/no-camera/
+   permission-denied failures with distinct guidance, offers a camera picker
+   when `Html5Qrcode.getCameras()` returns more than one device, and has a
+   manual code-entry fallback for any of those cases — but none of that
+   branching has been exercised against a real getUserMedia prompt either.
 2. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
 3. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
