@@ -32,9 +32,9 @@
   align-self: flex-start;
   background: none;
   border: none;
-  color: var(--color-cyan);
+  color: var(--color-primary);
+  font-family: var(--font-display);
   font-size: 0.75rem;
-  font-weight: 700;
   cursor: pointer;
   padding: 0;
 }
@@ -49,7 +49,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem 1rem;
   padding: 0.75rem;
-  background: var(--color-surface-raised);
+  background: var(--color-bg);
   border-radius: var(--radius-sm);
 }
 
@@ -79,7 +79,7 @@
 }
 
 .drop-card__rarity {
-  color: var(--color-lime);
+  /* Colour comes from the rarity-{tier} utility class in theme.css. */
   text-transform: capitalize;
 }
 
@@ -91,21 +91,21 @@
 
 .drop-card__actions button {
   border: 1px solid var(--color-border);
-  background: var(--color-surface-raised);
+  background: var(--color-bg);
   color: var(--color-text);
   border-radius: var(--radius-sm);
   padding: 0.35rem 0.75rem;
+  font-family: var(--font-display);
   font-size: 0.8rem;
-  font-weight: 600;
   cursor: pointer;
 }
 
 .drop-card__actions button:hover {
-  border-color: var(--color-lime);
+  border-color: var(--color-primary);
 }
 
 .drop-card__actions .drop-card__cancel {
   color: var(--color-danger);
-  border-color: rgba(255, 120, 110, 0.35);
-  background: rgba(255, 120, 110, 0.1);
+  border-color: var(--color-primary-tint);
+  background: var(--color-primary-tint);
 }

@@ -1,91 +1,95 @@
+/* A dark "ink" panel, same surface the mobile app reserves for its bottom
+   tab bar (see apps/mobile/src/navigation/BottomTabBar.tsx) — this sidebar
+   is the same kind of persistent navigation, so it gets the same inverse
+   treatment rather than reading as just another light panel. */
 .sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--color-surface-inverse);
+  color: var(--color-text-inverse);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   padding: 1.5rem 1rem;
   box-sizing: border-box;
-  border-right: 1px solid var(--color-border);
 }
 
 .sidebar__brand {
   display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  margin-bottom: 2rem;
+  align-items: baseline;
+  gap: 2px;
+  margin-bottom: 0.35rem;
   padding: 0 0.25rem;
 }
 
-.sidebar__brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  background: var(--color-lime);
-  color: var(--color-black);
-  font-weight: 900;
-  font-size: 1.1rem;
-  transform: rotate(-5deg);
-  flex-shrink: 0;
+/* "DROP" + a pin glyph + "BY" — the same wordmark treatment as the mobile
+   app's Home screen header (see HomeScreen.tsx's wordmark styles). */
+.sidebar__brand-drop {
+  color: var(--color-primary);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
 }
 
-.sidebar__brand-eyebrow {
-  display: block;
-  color: var(--color-violet);
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+.sidebar__brand-pin {
+  color: var(--color-primary);
+  font-size: 1rem;
 }
 
-.sidebar__brand-name {
+.sidebar__brand-by {
+  color: var(--color-text-inverse);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+}
+
+.sidebar__brand-subtitle {
   display: block;
-  font-weight: 700;
-  font-size: 0.95rem;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 2rem 0.3rem;
 }
 
 .sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.3rem;
   flex: 1;
 }
 
 .sidebar__nav a {
-  color: var(--color-muted);
+  color: var(--color-text-inverse);
+  opacity: 0.7;
   text-decoration: none;
-  padding: 0.6rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-  font-weight: 600;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-2xl);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
 }
 
 .sidebar__nav a:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
+  opacity: 1;
+  background: rgba(255, 250, 240, 0.08);
 }
 
 .sidebar__nav a.active {
-  background: var(--color-lime);
-  color: var(--color-black);
-  font-weight: 800;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  opacity: 1;
 }
 
 .sidebar__logout {
   background: none;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(255, 250, 240, 0.2);
   color: var(--color-muted);
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-2xl);
+  padding: 0.6rem 0.85rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
 }
 
 .sidebar__logout:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: rgba(255, 250, 240, 0.08);
+  color: var(--color-text-inverse);
 }

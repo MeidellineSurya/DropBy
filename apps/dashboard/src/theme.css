@@ -6,8 +6,16 @@
    https://www.figma.com/design/hRuRdZOdURH15HCCuVnsBq/DropBy
 
    The design is a light "paper" theme with dark accent surfaces (the Drop
-   screen background and the bottom nav use --color-ink). Lilita One
-   stands in for Figma's "BBH Bartle" display face; Candal is the body face. */
+   screen background and the bottom nav use --color-ink — the dashboard's
+   Sidebar reuses that same ink surface, as the equivalent persistent nav).
+   Lilita One stands in for Figma's "BBH Bartle" display face; Candal is
+   the body face — both are single-weight, like the real fonts, so no
+   component in this app should set font-weight on text.
+
+   Every page has now been migrated off the old dark-theme token names
+   (--color-lime/--color-cyan/--color-violet/--color-surface-raised) onto
+   the tokens below directly, so those deprecated aliases have been
+   removed rather than kept around unused. */
 
 @import url("https://fonts.googleapis.com/css2?family=Candal&family=Lilita+One&display=swap");
 
@@ -36,6 +44,10 @@
   /* Accent text on tints */
   --color-gold: #ff9601;
   --color-purple: #8f5da6;
+  /* Rarity accent, "uncommon" tier only — not yet in theme.ts (the mobile
+     app's own rarity display hasn't shipped), sourced from the design
+     reference at apps/api/demo/mobile.html's --teal instead. */
+  --color-teal: #2f9c86;
 
   /* Semantic aliases */
   --color-bg: var(--color-paper);
@@ -62,13 +74,6 @@
 
   --color-shadow: rgba(0, 0, 0, 0.25);
   --color-overlay: rgba(0, 0, 0, 0.1);
-
-  /* Deprecated — kept so pre-restyle pages keep rendering. Removed per page
-     as each is migrated to the tokens above. */
-  --color-surface-raised: var(--color-paper);
-  --color-lime: var(--color-green);
-  --color-cyan: var(--color-green);
-  --color-violet: var(--color-purple);
 
   /* Typography */
   --font-display: "Lilita One", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -104,4 +109,26 @@
 
   /* Elevation — the design uses a single card shadow */
   --shadow-card: 0 4px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Rarity accent per tier — common through legendary, five distinct colours
+   (not a single accent) so a Drop's computed rarity reads the same way here
+   as it will once the mobile app's own Explore/Profile screens ship theirs
+   (see apps/api/demo/mobile.html, the design reference these were taken
+   from). Applied as `rarity-${drop.rarity}` alongside a component's own
+   class, e.g. className="drop-card__rarity rarity-epic". */
+.rarity-common {
+  color: var(--color-secondary);
+}
+.rarity-uncommon {
+  color: var(--color-teal);
+}
+.rarity-rare {
+  color: var(--color-gold);
+}
+.rarity-epic {
+  color: var(--color-primary);
+}
+.rarity-legendary {
+  color: var(--color-purple);
 }

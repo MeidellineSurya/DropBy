@@ -14,12 +14,13 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <span className="sidebar__brand-mark">D</span>
-        <div>
-          <span className="sidebar__brand-eyebrow">DROPBY</span>
-          <span className="sidebar__brand-name">Partner</span>
-        </div>
+        <span className="sidebar__brand-drop">DROP</span>
+        <span aria-hidden="true" className="sidebar__brand-pin">
+          📍
+        </span>
+        <span className="sidebar__brand-by">BY</span>
       </div>
+      <span className="sidebar__brand-subtitle">Partner</span>
       <nav className="sidebar__nav">
         <NavLink to="/" end>
           Overview

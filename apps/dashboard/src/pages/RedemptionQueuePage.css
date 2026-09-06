@@ -30,7 +30,7 @@
 
 .redemption-card__time {
   font-size: 0.72rem;
-  color: var(--color-cyan);
+  color: var(--color-secondary);
   white-space: nowrap;
 }
 
@@ -42,8 +42,8 @@
 
 .redemption-card__disputed {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 0.78rem;
-  font-weight: 700;
   color: var(--color-danger);
 }
 
@@ -55,12 +55,12 @@
 
 .redemption-card__actions button {
   border: 1px solid var(--color-border);
-  background: var(--color-lime);
-  color: var(--color-black);
+  background: var(--color-bg);
+  color: var(--color-text);
   border-radius: var(--radius-sm);
   padding: 0.4rem 0.9rem;
+  font-family: var(--font-display);
   font-size: 0.8rem;
-  font-weight: 700;
   cursor: pointer;
 }
 
@@ -71,6 +71,6 @@
 
 .redemption-card__actions .redemption-card__reject {
   color: var(--color-danger);
-  border-color: rgba(255, 120, 110, 0.35);
-  background: rgba(255, 120, 110, 0.1);
+  border-color: var(--color-primary-tint);
+  background: var(--color-primary-tint);
 }

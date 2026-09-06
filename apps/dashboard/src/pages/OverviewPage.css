@@ -16,8 +16,10 @@
 }
 
 .stat-card__value {
+  /* Big numbers use the body face at a larger size (matches
+     typography.stat in apps/mobile/src/theme.ts) rather than the display
+     face — the display face is reserved for headings/labels/buttons. */
   font-size: 1.75rem;
-  font-weight: 900;
   color: var(--color-text);
 }
 

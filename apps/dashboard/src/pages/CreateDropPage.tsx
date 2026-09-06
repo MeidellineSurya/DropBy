@@ -168,8 +168,11 @@ export function CreateDropPage() {
               "Loading estimate…"
             ) : (
               <>
-                Estimated tier: <strong className="rarity-preview">{estimatedRarity}</strong> (
-                {estimatedXp} XP)
+                Estimated tier:{" "}
+                <strong className={`rarity-preview rarity-${estimatedRarity}`}>
+                  {estimatedRarity}
+                </strong>{" "}
+                ({estimatedXp} XP)
               </>
             )}
           </p>

@@ -27,13 +27,13 @@
 }
 
 .scan-frame .page-error button {
-  background: var(--color-lime);
+  background: var(--color-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-black);
+  color: var(--color-on-primary);
   cursor: pointer;
+  font-family: var(--font-display);
   font-size: 0.8rem;
-  font-weight: 700;
   margin-top: 0.6rem;
   padding: 0.4rem 0.9rem;
 }
@@ -84,13 +84,13 @@
 }
 
 .scan-manual__row button {
-  background: var(--color-lime);
+  background: var(--color-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-black);
+  color: var(--color-on-primary);
   cursor: pointer;
+  font-family: var(--font-display);
   font-size: 0.8rem;
-  font-weight: 700;
   padding: 0.45rem 0.9rem;
 }
 
@@ -107,19 +107,18 @@
 }
 
 .scan-result--ok {
-  background: rgba(217, 255, 67, 0.08);
-  border: 1px solid var(--color-lime);
+  background: var(--color-secondary-tint);
+  border: 1px solid var(--color-secondary);
 }
 
 .scan-result--error {
-  background: rgba(255, 120, 110, 0.08);
-  border: 1px solid rgba(255, 120, 110, 0.35);
+  background: var(--color-primary-tint);
+  border: 1px solid var(--color-danger);
 }
 
 .scan-result__title {
   color: var(--color-text);
   font-size: 1rem;
-  font-weight: 700;
   margin: 0;
 }
 
@@ -130,13 +129,13 @@
 }
 
 .scan-result button {
-  background: var(--color-lime);
+  background: var(--color-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-black);
+  color: var(--color-on-primary);
   cursor: pointer;
+  font-family: var(--font-display);
   font-size: 0.8rem;
-  font-weight: 700;
   margin-top: 0.75rem;
   padding: 0.4rem 0.9rem;
 }

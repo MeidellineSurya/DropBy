@@ -12,13 +12,17 @@ body {
   margin: 0;
   color: var(--color-text);
   background: var(--color-bg);
+  font-family: var(--font-body);
 }
 
+/* Display face (see theme.css) — a single-weight face, same as the mobile
+   app: emphasis comes from the typeface itself, not from bolding it. */
 h1,
 h2,
 h3 {
-  font-weight: 700;
-  letter-spacing: -0.3px;
+  font-family: var(--font-display);
+  font-weight: normal;
+  letter-spacing: var(--tracking-display);
 }
 
 p {

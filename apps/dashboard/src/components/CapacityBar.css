@@ -8,13 +8,13 @@
   flex: 1;
   height: 6px;
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
+  background: var(--color-border);
   overflow: hidden;
 }
 
 .capacity-bar__fill {
   height: 100%;
-  background: var(--color-lime);
+  background: var(--color-secondary);
   border-radius: var(--radius-pill);
   transition: width 0.3s ease;
 }

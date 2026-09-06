@@ -1,6 +1,10 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (a cross-cutting consistency audit after the
+_Last updated: 2026-09-06 (restyled the business dashboard to match the
+mobile app's real design system — paper/ink/pink/green palette, Lilita
+One/Candal fonts, per-tier rarity colours, an ink Sidebar mirroring the
+mobile bottom nav — see "Restyling the dashboard to match the mobile app"
+below; before that, a cross-cutting consistency audit after the
 squad-QR-scan redesign found and fixed three real gaps it had introduced: a
 dashboard analytics stat permanently stuck at zero, duplicate push
 notifications on a rescan, and the business dashboard never actually
@@ -68,6 +72,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Business dashboard: login/register, Overview, Drops, Create Drop, Analytics, Live Queue | Done |
 | Create Drop's min/max squad size are range sliders (2–10) instead of unbounded number inputs — the backend schema still allows up to 100 (unchanged), the slider just keeps the common case fast to set and out of unrealistic territory | Done |
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
+| Dashboard restyled to match the mobile app's actual design system — paper/ink/pink/green palette, Lilita One/Candal fonts, per-tier rarity colours, an ink-panelled Sidebar mirroring the mobile bottom nav — replacing a placeholder dark theme that predated the mobile redesign | Done |
 | Business moderation endpoints (approve/reject registrations) | Not built — only direct DB/seed access sets `Business.status = active` |
 | Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
 | XP clawback on dispute | Not built — disputing a redemption is records-only (releases capacity, flags the record); already-awarded XP, badges, and streak progress are untouched, deliberately, since unwinding those correctly is real added scope |
@@ -518,6 +523,88 @@ only appears after a manual refresh or re-navigation, never live. This
 predates the squad-QR-scan work and is a gap in the separate friends/
 messaging workstream, not something this audit's fixes touch.
 
+## Restyling the dashboard to match the mobile app
+
+A teammate rebuilt the mobile app's visual design from scratch off a Figma
+file — a light "paper" theme (cream background, pink/green brand colours,
+dark "ink" accent surfaces for the Drop screen and bottom nav) with two
+custom display/body typefaces, replacing what had been a generic dark
+theme. They also built `apps/dashboard/src/theme.css` as a direct mirror of
+`apps/mobile/src/theme.ts` (same token names, same values) and left a
+"Deprecated — removed per page as each is migrated" alias block
+(`--color-lime`/`--color-cyan`/`--color-violet`/`--color-surface-raised`
+pointing at the new palette) so existing dashboard pages kept rendering
+without a big-bang rewrite. Every dashboard page was still built against
+the old dark-theme token names underneath that alias layer, and nothing
+in the dashboard applied the new fonts at all — this is the migration that
+finishes that job.
+
+What changed, across every dashboard page and component:
+
+- **Colour**: every reference to the deprecated aliases replaced with the
+  real semantic tokens they were standing in for — `--color-lime` split
+  into `--color-primary` (pink, actual CTAs/brand actions) or
+  `--color-secondary` (green, "live"/positive/success status) depending on
+  which the old lime was actually doing at each call site;
+  `--color-violet`/`--color-cyan` mapped to `--color-info`/`--color-secondary`
+  the same way; hardcoded dark-theme `rgba(...)` tint colours (status
+  pills, danger buttons) replaced with the proper `--color-*-tint` +
+  `--color-*` pairs the token system already defines for exactly this. The
+  deprecated alias block itself is now deleted from `theme.css` — nothing
+  references it anymore.
+- **A genuine bug this surfaced**: the login page's active-tab pill used
+  `--color-surface-raised` for its background, which the alias mapping had
+  quietly made identical to `--color-bg` — the *track* it sits on. The
+  active tab was rendering, just invisibly, indistinguishable from the
+  inactive track around it. Fixed by giving it the card's own white
+  instead, which is genuinely a different shade from the track.
+- **Typography**: `apps/mobile/src/theme.ts` documents both custom
+  typefaces as single-weight — "emphasis comes from the typeface, not the
+  weight" — and the mobile app's own navigator config confirms this by
+  pinning every font-weight slot (regular/medium/bold/heavy) to `400`
+  regardless of what's requested. The dashboard had never applied either
+  font at all (plain system UI font throughout) and had ~20 `font-weight:
+  700-900` declarations doing the emphasis work instead. Set `--font-body`
+  (Candal) as the base font, `--font-display` (Lilita One) on every
+  heading, button, pill, and label — matching which of the two the actual
+  mobile screens use for each — and removed every `font-weight` override
+  in the dashboard's CSS to match the single-weight design; a boosted
+  weight on a single-weight web font either does nothing or triggers a
+  synthetic-bold render, neither of which is what the design intends.
+- **Rarity colour**: DropCard and the Create Drop rarity preview both
+  showed rarity as a single flat colour. The real mobile app doesn't have
+  a rarity colour system shipped yet, but the design reference at
+  `apps/api/demo/mobile.html` (a Figma-accurate HTML prototype a teammate
+  built and just fixed a broken rarity-colour bug in) does: common=green,
+  uncommon=teal, rare=gold, epic=pink, legendary=purple. Added `.rarity-*`
+  utility classes using that mapping (plus a new `--color-teal` token,
+  since teal doesn't otherwise exist in the token set) so a Drop's
+  computed rarity reads the same way here as it will once the mobile app's
+  own rarity display ships. Flagged as provisional in code comments since
+  it's sourced from a prototype, not the shipped app, in case the real
+  implementation lands with different colours.
+- **Sidebar restyled as a dark "ink" panel**, the same surface
+  `BottomTabBar.tsx` reserves for the mobile app's persistent bottom nav —
+  reasoned as the dashboard's equivalent persistent navigation, not just a
+  colour swap. Nav items are pill-shaped, the active item is a solid pink
+  pill with cream text, exactly mirroring the bottom tab bar's
+  `pillActive` treatment. The brand mark (a plain "D" square on both the
+  Sidebar and the login page) was replaced with the same "DROP" + pin +
+  "BY" wordmark HomeScreen.tsx uses for the mobile app's own header.
+
+Not done: no visual/screenshot verification — this sandboxed environment
+has no browser or headless-rendering tool available, so every change here
+was verified by (1) cross-checking every `var(--...)` reference used
+anywhere in the dashboard's CSS against what's actually defined in
+`theme.css` (a scripted diff — zero mismatches after fixing one, a
+`--radius-xxl` typo that should have been `--radius-2xl` and would have
+silently rendered as a square corner), (2) `tsc --noEmit` and `vite build`
+both clean, and (3) reasoning each colour/contrast pairing directly off a
+real, already-shipped precedent in the mobile app's own screens (e.g. every
+primary button pairs `colors.primary` background with `colors.onPrimary`
+text in both places) rather than picking colours freehand. None of this is
+a substitute for actually looking at the rendered page.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -583,6 +670,19 @@ messaging workstream, not something this audit's fixes touch.
   loss-aversion mechanic).
 - There's no city/region model yet, so exploration progress is tracked as
   coarse lat/lng grid cells per user rather than named cities.
+- The dashboard's design tokens (`theme.css`) are a direct mirror of the
+  mobile app's (`theme.ts`) — same names, same values, no independent
+  dashboard-only palette — so the two keep reading as one product as the
+  mobile design evolves. Both fonts (Lilita One display, Candal body) are
+  treated as single-weight everywhere, matching the mobile app's own
+  navigator config, which pins every font-weight slot to 400 regardless of
+  what's requested — no dashboard CSS sets `font-weight`.
+- Rarity gets five distinct colours (common through legendary), sourced
+  from the Figma-accurate HTML design reference at
+  `apps/api/demo/mobile.html` rather than the shipped mobile app, since the
+  mobile app doesn't have its own rarity colour system built yet. Treated
+  as provisional — revisit if the real implementation lands with different
+  colours.
 
 ## Next steps
 
@@ -596,19 +696,27 @@ messaging workstream, not something this audit's fixes touch.
    when `Html5Qrcode.getCameras()` returns more than one device, and has a
    manual code-entry fallback for any of those cases — but none of that
    branching has been exercised against a real getUserMedia prompt either.
-2. Business moderation UI/endpoints for approving a pending registration —
+2. Visually verify the restyled dashboard in a real browser — this
+   sandboxed environment has no headless browser or screenshot tool, so
+   the restyle was verified by scripted CSS-variable cross-checking,
+   `tsc`/`vite build`, and reasoning off the mobile app's own real usage
+   patterns, not by looking at the rendered page. Also reconsider the
+   rarity colours once the mobile app ships its own rarity display (see
+   "Restyling the dashboard to match the mobile app" above) — they're
+   currently sourced from a prototype, not the shipped app.
+3. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
-3. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
+4. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
    Collection/Profile screen, and the powerup/perk/weekly-challenge
    endpoints — check-in is now wired; gamification display isn't.
-4. Mobile: register a real FCM token via `POST /devices` and subscribe to the
+5. Mobile: register a real FCM token via `POST /devices` and subscribe to the
    `territory.bonus_awarded` WS event, so push notifications and territory
    popups actually reach the phone.
-5. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
+6. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
    drop the package — right now it's a hand-mirrored placeholder nothing
    actually imports.
-6. Run `python -m app.scripts.seed_badges` once against a fresh database so
+7. Run `python -m app.scripts.seed_badges` once against a fresh database so
    badge criteria have real `Badge` rows to unlock against.
-7. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
+8. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
    secrets, domain, and TLS configuration, then start the supplied production
    Compose stack.

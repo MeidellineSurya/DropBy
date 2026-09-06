@@ -36,7 +36,7 @@ export function DropCard({ drop, onPublish, onPause, onResume, onCancel, busy }:
         {drop.drop_type === "solo"
           ? "Solo"
           : `${drop.min_group_size}-${drop.max_group_size} people`}{" "}
-        &middot; {drop.rarity}
+        &middot; <span className={`rarity-${drop.rarity}`}>{drop.rarity}</span>
       </p>
       <CapacityBar reserved={drop.reserved_count} capacity={drop.max_capacity_participants} />
 
@@ -70,7 +70,7 @@ export function DropCard({ drop, onPublish, onPause, onResume, onCancel, busy }:
           </div>
           <div className="drop-card__details-row">
             <dt>Rarity (computed)</dt>
-            <dd className="drop-card__rarity">{drop.rarity}</dd>
+            <dd className={`drop-card__rarity rarity-${drop.rarity}`}>{drop.rarity}</dd>
           </div>
           <div className="drop-card__details-row">
             <dt>Detect radius</dt>

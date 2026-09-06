@@ -7,10 +7,9 @@
 
 .funnel h2 {
   font-size: 0.85rem;
-  font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-violet);
+  color: var(--color-info);
   margin: 0.5rem 0 0;
 }
 
@@ -32,13 +31,13 @@
   flex: 1;
   height: 10px;
   border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
+  background: var(--color-border);
   overflow: hidden;
 }
 
 .funnel-stage__bar-fill {
   height: 100%;
-  background: var(--color-cyan);
+  background: var(--color-secondary);
   border-radius: var(--radius-pill);
 }
 
