@@ -63,7 +63,11 @@ Manual, non-Docker setup is documented in
 | `packages/shared-types` | TypeScript types mirroring `ws-contracts` |
 | `infra/` | Docker Compose stacks (dev and production) |
 
-## Try the full consumer flow
+## Try the consumer frontend
+
+Run `demo.cmd` (or `mobile.cmd`) to open the standalone browser frontend.
+It uses local fictional Melbourne Drop data, so it needs no backend, Docker,
+Expo Go, account, or API configuration.
 
 1. Sign in with the filled demo account, or create one to see onboarding.
 2. On **Nearby Drops**, press **Detect** and **Reveal**.
@@ -72,16 +76,17 @@ Manual, non-Docker setup is documented in
 5. Open **Profile → Discovery engine lab** for lifecycle, capacity, and
    real-time event tools.
 
-To run the real mobile client on a phone (same network as your computer):
+The Expo/React Native client is an Expo Go wrapper around that same browser
+demo, so its interface and interactions match `demo.cmd`. It needs internet
+access to load the demo, but no Docker, tunnel, or API account. To run it:
 
-```bat
-dev.cmd
-mobile.cmd
+```bash
+cd apps/mobile
+npm install
+npm start -- --lan --clear
 ```
 
-Install Expo Go, then scan the QR code `mobile.cmd` prints. See
-[`apps/mobile/README.md`](apps/mobile/README.md) for troubleshooting and a
-two-phone live-squad walkthrough.
+Install Expo Go, then scan the QR code Expo prints.
 
 ## Business dashboard
 
