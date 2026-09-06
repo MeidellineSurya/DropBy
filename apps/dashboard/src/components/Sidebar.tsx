@@ -26,11 +26,11 @@ export function Sidebar() {
           Overview
         </NavLink>
         <NavLink to="/drops" end>
-          Drops
+          Manage Drops
         </NavLink>
         <NavLink to="/drops/new">Create Drop</NavLink>
         <NavLink to="/scan">Scan to confirm</NavLink>
-        <NavLink to="/queue">Redemptions</NavLink>
+        <NavLink to="/queue">Redemption Log</NavLink>
         <NavLink to="/analytics">Analytics</NavLink>
       </nav>
       <button type="button" className="sidebar__logout" onClick={logout}>

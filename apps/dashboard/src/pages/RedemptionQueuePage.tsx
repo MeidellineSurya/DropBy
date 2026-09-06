@@ -5,9 +5,11 @@ import { connectLiveSocket } from "../services/ws";
 import type { Redemption } from "../types";
 import "./RedemptionQueuePage.css";
 
-// A redemption is confirmed the moment staff scan a squad's code on the
-// Scan page — there's no separate approval step here (see
-// apps/api/app/services/redemption.py). This page just lists confirmed
+// "Redemption Log" in the sidebar — a history of what's already been
+// confirmed, not a queue of things waiting on this business. A redemption
+// is confirmed the moment staff scan a squad's code on the Scan page —
+// there's no separate approval step here (see
+// apps/api/app/services/redemption.py). This page lists confirmed
 // redemptions still inside the dispute window, so a business can flag one
 // as fraudulent or mistaken after the fact. Disputing releases the squad's
 // reserved capacity back to the Drop but does not claw back XP already
@@ -48,11 +50,15 @@ export function RedemptionQueuePage() {
 
   return (
     <div>
-      <h1>Redemptions</h1>
+      <h1>Redemption Log</h1>
       {error ? (
         <p className="page-error">{error}</p>
       ) : redemptions.length === 0 ? (
-        <p>No redemptions in the last 24 hours — scan a squad's code to confirm one.</p>
+        <p>
+          No redemptions confirmed in the last 24 hours. Scan a squad's code
+          on the Scan page to confirm one — it'll show up here to review or
+          flag afterward.
+        </p>
       ) : (
         <div className="redemption-list">
           {redemptions.map((redemption) => (

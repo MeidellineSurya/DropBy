@@ -4,8 +4,8 @@ import "./App.css";
 import { Sidebar } from "./components/Sidebar";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { CreateDropPage } from "./pages/CreateDropPage";
-import { LiveQueuePage } from "./pages/LiveQueuePage";
 import { LoginPage } from "./pages/LoginPage";
+import { ManageDropsPage } from "./pages/ManageDropsPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { RedemptionQueuePage } from "./pages/RedemptionQueuePage";
 import { ScanPage } from "./pages/ScanPage";
@@ -37,7 +37,7 @@ function App() {
         path="/drops"
         element={
           <ProtectedLayout>
-            <LiveQueuePage />
+            <ManageDropsPage />
           </ProtectedLayout>
         }
       />

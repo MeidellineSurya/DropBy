@@ -1,9 +1,12 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (fixed a real bug the user found by actually
-opening the Scan page: the camera preview was never visible, because the
-video container was hidden while `html5-qrcode` measured it — see "The
-camera preview was never visible" below; before that, restyled the
+_Last updated: 2026-09-06 (renamed confusing dashboard pages — "Redemptions"
+to "Redemption Log", "Drops" to "Manage Drops", and its file from the
+stale, actively-misleading `LiveQueuePage.tsx` — see "Renamed dashboard
+pages for clarity" below; before that, fixed a real bug the user found by
+actually opening the Scan page: the camera preview was never visible,
+because the video container was hidden while `html5-qrcode` measured it —
+see "The camera preview was never visible" below; before that, restyled the
 business dashboard to match the mobile app's real design system —
 paper/ink/pink/green palette, Lilita One/Candal fonts, per-tier rarity
 colours, an ink Sidebar mirroring the mobile bottom nav — see "Restyling
@@ -73,7 +76,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Push notifications (FCM) with graceful skip when unconfigured; notification log | Done |
 | Notification-driven discovery: every user with a known location is notified when any Drop activates (not just Rare+, not gated by proximity/freshness); notification shows category + distance only | Done |
 | Immediate-publish Drops (`create_drop(publish=True)` / `publish_drop`) trigger the new-Drop notification directly, not just the scheduled→active sweep | Done |
-| Business dashboard: login/register, Overview, Drops, Create Drop, Analytics, Live Queue | Done |
+| Business dashboard: login/register, Overview, Manage Drops, Create Drop, Scan to confirm, Redemption Log, Analytics | Done |
 | Create Drop's min/max squad size are range sliders (2–10) instead of unbounded number inputs — the backend schema still allows up to 100 (unchanged), the slider just keeps the common case fast to set and out of unrealistic territory | Done |
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
 | Dashboard restyled to match the mobile app's actual design system — paper/ink/pink/green palette, Lilita One/Candal fonts, per-tier rarity colours, an ink-panelled Sidebar mirroring the mobile bottom nav — replacing a placeholder dark theme that predated the mobile redesign | Done |
@@ -644,6 +647,33 @@ environment" caveat in every prior entry couldn't have caught — verifying
 the API round-trip and the code paths in isolation doesn't catch a library
 internal like this measuring the wrong thing at the wrong time. Live user
 verification is what found it.
+
+## Renamed dashboard pages for clarity
+
+The user asked what the Redemptions page was for — a sign the name itself
+wasn't doing its job, since the actual answer ("a history of already-
+confirmed redemptions you can flag after the fact, not a queue of things
+waiting on you") is not what "Redemptions" on its own suggests. Renamed to
+**Redemption Log**, both the sidebar link and the page's own heading.
+
+Looking at it surfaced a second, worse instance of the same problem: the
+"Drops" page (list/publish/pause/resume/cancel your Drops) was implemented
+in a file still called `LiveQueuePage.tsx`, left over from before
+redemption confirmation existed as its own page — its own top comment
+still said "once that [redemption] workstream lands, a confirm action...
+belongs here," which had already happened, elsewhere, and was just never
+updated. Renamed the sidebar link to **Manage Drops** (also distinguishes
+it more clearly from the separate "Create Drop" page) and renamed the file
+itself to `ManageDropsPage.tsx`/`.css`, since the stale name was actively
+misleading to read, not just an internal detail.
+
+Left unchanged: Overview, Create Drop, Scan to confirm, and Analytics —
+none of these were confusing on their own terms.
+
+Verified: `tsc --noEmit` and `vite build` both clean; grepped for every
+remaining reference to `LiveQueuePage` across the dashboard source (one
+left, the historical note in `ManageDropsPage.tsx`'s own comment
+explaining the rename).
 
 ## Key decisions
 

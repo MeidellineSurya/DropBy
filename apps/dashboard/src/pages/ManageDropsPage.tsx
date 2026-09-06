@@ -4,13 +4,14 @@ import { DropCard } from "../components/DropCard";
 import { ApiError, api } from "../services/api";
 import { connectLiveSocket } from "../services/ws";
 import type { BusinessDrop } from "../types";
-import "./LiveQueuePage.css";
+import "./ManageDropsPage.css";
 
-// There's no Redemption model yet (owned by the redemption/gamification
-// workstream), so this is a live capacity/status board rather than a
-// redemption-confirmation queue. Once that workstream lands, a "confirm"
-// action per checked-in squad belongs here.
-export function LiveQueuePage() {
+// Every Drop this business owns, with publish/pause/resume/cancel actions —
+// a management list, not a queue of things awaiting confirmation. That's a
+// separate page now (RedemptionQueuePage, "Redemption Log" in the sidebar);
+// this file used to be called LiveQueuePage from when the two were still
+// one page and redemption confirmation hadn't been built yet.
+export function ManageDropsPage() {
   const [drops, setDrops] = useState<BusinessDrop[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export function LiveQueuePage() {
 
   return (
     <div>
-      <h1>Drops</h1>
+      <h1>Manage Drops</h1>
       {drops.length === 0 ? (
         <p>No Drops yet — create one to get started.</p>
       ) : (
