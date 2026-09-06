@@ -55,8 +55,12 @@ export function CreateDropPage() {
   const [category, setCategory] = useState<DropCategory>("food_dining");
   const [discountPercent, setDiscountPercent] = useState(20);
   const [dropType, setDropType] = useState<DropType>("solo");
-  const [minGroupSize, setMinGroupSize] = useState(1);
-  const [maxGroupSize, setMaxGroupSize] = useState(1);
+  // Only meaningful once dropType !== "solo" (the form hides these controls,
+  // and submission forces both back to 1, for solo) — defaulted to a
+  // realistic squad size rather than 1 so the sliders below don't open at
+  // their floor.
+  const [minGroupSize, setMinGroupSize] = useState(2);
+  const [maxGroupSize, setMaxGroupSize] = useState(4);
   const [maxCapacity, setMaxCapacity] = useState(10);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
@@ -183,25 +187,45 @@ export function CreateDropPage() {
           </label>
           {dropType !== "solo" && (
             <div className="form-row">
-              <label>
-                Min group size
+              <label className="slider-field">
+                <span>
+                  Min squad size <span className="slider-field__value">{minGroupSize}</span>
+                </span>
                 <input
-                  type="number"
+                  type="range"
                   min={2}
+                  max={10}
                   value={minGroupSize}
-                  onChange={(e) => setMinGroupSize(Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setMinGroupSize(value);
+                    // Keep the range valid from this side too — dragging min
+                    // past the current max should drag max along with it,
+                    // not silently produce an invalid min > max Drop.
+                    if (value > maxGroupSize) setMaxGroupSize(value);
+                  }}
                 />
               </label>
-              <label>
-                Max group size
+              <label className="slider-field">
+                <span>
+                  Max squad size <span className="slider-field__value">{maxGroupSize}</span>
+                </span>
                 <input
-                  type="number"
+                  type="range"
                   min={minGroupSize}
+                  max={10}
                   value={maxGroupSize}
                   onChange={(e) => setMaxGroupSize(Number(e.target.value))}
                 />
               </label>
             </div>
+          )}
+          {dropType !== "solo" && (
+            <p className="form-hint">
+              How many people must assemble before the squad can redeem — from
+              a pair up to a small crowd. Reaching min unlocks check-in; the
+              squad can keep growing up to max while it waits.
+            </p>
           )}
           <label>
             Max total participants

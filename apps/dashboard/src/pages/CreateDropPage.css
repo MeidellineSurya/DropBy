@@ -63,6 +63,26 @@
   border-color: var(--color-lime);
 }
 
+/* Range sliders (squad size) get their own reset — the bordered/padded box
+   above is for text-like inputs and looks wrong wrapped around a native
+   slider track. */
+.create-drop-form input[type="range"] {
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: var(--color-lime);
+}
+
+.slider-field span:first-child {
+  display: flex;
+  justify-content: space-between;
+}
+
+.slider-field__value {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
 .form-row {
   display: flex;
   gap: 0.75rem;

@@ -60,6 +60,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Notification-driven discovery: every user with a known location is notified when any Drop activates (not just Rare+, not gated by proximity/freshness); notification shows category + distance only | Done |
 | Immediate-publish Drops (`create_drop(publish=True)` / `publish_drop`) trigger the new-Drop notification directly, not just the scheduled→active sweep | Done |
 | Business dashboard: login/register, Overview, Drops, Create Drop, Analytics, Live Queue | Done |
+| Create Drop's min/max squad size are range sliders (2–10) instead of unbounded number inputs — the backend schema still allows up to 100 (unchanged), the slider just keeps the common case fast to set and out of unrealistic territory | Done |
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
 | Business moderation endpoints (approve/reject registrations) | Not built — only direct DB/seed access sets `Business.status = active` |
 | Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
