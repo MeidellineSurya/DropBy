@@ -340,6 +340,13 @@
       .section-row h2 { margin: 0; font-size: 1.25rem; }
       .section-hint { color: var(--muted); font-size: 0.75rem; }
       .signal-list { display: grid; gap: 9px; }
+      .proximity-demo { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; margin: 14px 0 12px; padding: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--secondary-tint); }
+      .proximity-demo-copy { min-width: 0; }
+      .proximity-demo-label { display: block; color: var(--secondary); font-family: var(--font-display); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; }
+      .proximity-demo-distance { display: block; margin-top: 2px; color: var(--text); font-size: 0.78rem; }
+      .proximity-demo button { border: 0; border-radius: 999px; cursor: pointer; font-family: var(--font-display); font-size: 0.7rem; padding: 9px 11px; }
+      .proximity-demo-move { color: var(--paper); background: var(--secondary); }
+      .proximity-demo-reset { color: var(--subtle); background: var(--surface); }
       .empty { padding: 17px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; text-align: center; }
       .signal-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; align-items: center; width: 100%; padding: 13px; border: 1px solid var(--border); border-radius: 16px; color: var(--text); background: var(--surface); cursor: pointer; text-align: left; }
       .signal-copy { display: grid; min-width: 0; }
@@ -1004,6 +1011,15 @@
                 <button class="ex-post" id="exPost" type="button">Post Drop</button>
                 <p class="ex-note">Only 1 of 3 tables left at this discount</p>
               </div>
+            </div>
+
+            <div class="proximity-demo" aria-label="Proximity demo controls">
+              <div class="proximity-demo-copy">
+                <span class="proximity-demo-label">Proximity demo</span>
+                <span class="proximity-demo-distance" id="proximityDistance">850 m away · signal hidden</span>
+              </div>
+              <button class="proximity-demo-move" id="moveCloser" type="button">Move closer</button>
+              <button class="proximity-demo-reset" id="resetProximity" type="button">Reset</button>
             </div>
 
             <div class="signal-list" id="signalList" aria-live="polite"></div>
@@ -1693,6 +1709,11 @@
         if (avatarEl) avatarEl.textContent = state.name.slice(0, 1).toUpperCase();
         $$('[data-distance]').forEach((button) => button.classList.toggle("active", Number(button.dataset.distance) === state.distance));
         const snapshots = visibleSnapshots();
+        const proximity = $("#proximityDistance");
+        if (proximity) {
+          const stage = stageFor(drops[0]);
+          proximity.textContent = `${state.distance} m away · ${stage === "reveal" ? "full Drop revealed" : stage === "detect" ? "signal detected" : "move closer to detect"}`;
+        }
         $("#signalHeading").textContent = snapshots.length ? `${snapshots.length} drop${snapshots.length === 1 ? "" : "s"} live` : "No drops live";
         const hero = $("#exploreHero");
         const near = snapshots[0];
@@ -2365,6 +2386,17 @@
       });
 
       $$('[data-distance]').forEach((button) => button.addEventListener("click", () => { stopTrackingDemo(); setDistance(Number(button.dataset.distance)); }));
+      $("#moveCloser")?.addEventListener("click", () => {
+        stopTrackingDemo();
+        setDistance(Math.max(0, state.distance - 200));
+        toast(state.distance <= 100 ? "You are close enough — the full Drop is revealed!" : "You moved closer. More details will unlock as you approach.");
+      });
+      $("#resetProximity")?.addEventListener("click", () => {
+        stopTrackingDemo();
+        state.revealed.clear();
+        setDistance(850);
+        toast("Proximity demo reset.");
+      });
       $("#openProfile")?.addEventListener("click", () => showScreen("profile"));
       $("#openEngine")?.addEventListener("click", () => showScreen("engine"));
       $("#profileEngine")?.addEventListener("click", () => showScreen("engine"));
