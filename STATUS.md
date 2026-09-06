@@ -1,10 +1,12 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (tightened the check-in radius, persisted
-Group.cancelled_reason so it survives more than one response, and gave the
-mobile app cancelled/expired squad screens — after removing the business
-confirm/reject approval step in favor of auto-confirm plus a dispute window,
-reworking check-in from a QR scan to a location claim before that, and
+_Last updated: 2026-09-06 (made discovery notification-driven — every user
+with a known location is notified when a Drop activates, not just people
+already nearby — after tightening the check-in radius, persisting
+Group.cancelled_reason so it survives more than one response, and giving
+the mobile app cancelled/expired squad screens; before that, removing the
+business confirm/reject approval step in favor of auto-confirm plus a
+dispute window, reworking check-in from a QR scan to a location claim, and
 merging the business/supply-side workstream with the independently-built
 redemption/gamification/notifications workstream)_
 
@@ -50,6 +52,8 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
 | Powerups, level-milestone perks, weekly challenges, territory-exploration bonus | Done |
 | Push notifications (FCM) with graceful skip when unconfigured; notification log | Done |
+| Notification-driven discovery: every user with a known location is notified when any Drop activates (not just Rare+, not gated by proximity/freshness); notification shows category + distance only | Done |
+| Immediate-publish Drops (`create_drop(publish=True)` / `publish_drop`) trigger the new-Drop notification directly, not just the scheduled→active sweep | Done |
 | Business dashboard: login/register, Overview, Drops, Create Drop, Analytics, Live Queue | Done |
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
 | Business moderation endpoints (approve/reject registrations) | Not built — only direct DB/seed access sets `Business.status = active` |
@@ -59,7 +63,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Business dashboard funnel showing cancelled/expired squads | Not built — `business_analytics.py`'s funnel only ever tracked forming/ready/checked_in/completed; a squad that never made it isn't visible there at all, only findable by absence |
 | `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
-**Verified (2026-09-06):** 190/190 backend tests pass (`pytest -q`); a single
+**Verified (2026-09-06):** 193/193 backend tests pass (`pytest -q`); a single
 linear Alembic head (`0014_group_cancelled_reason`). Live-verified: the
 business platform's full loop (registration → Drop creation with computed
 rarity/XP → a squad reaching the Drop → check-in that auto-confirms and
@@ -68,13 +72,16 @@ clawing back XP) against the Docker stack, including a claim from ~15m away
 correctly rejected by the tightened 10m check-in radius (and one from the
 venue still succeeding); a real capacity-race loss whose `cancelled_reason`
 was confirmed to survive a later, separate `GET` (not just the one response
-that caused it); and the Celery expiry sweep correctly distinguishing a
+that caused it); the Celery expiry sweep correctly distinguishing a
 still-forming squad's reason from a ready-but-too-late squad's, both
-persisted the same way. Also verified: the gamification workstream's
-mechanics against a live Postgres/Redis/Celery stack (per its own
-verification notes, this
-caught a real `UserStats` initialization crash and a duplicate `CREATE TYPE`
-migration bug that unit
+persisted the same way; and notification-driven discovery — a Common-rarity
+Drop still notifies (previously silently skipped), a user ~5km away gets
+notified with the correct distance (no proximity gate), a user with zero
+location history is correctly excluded, and an immediately-published Drop
+fires the notification without needing the scheduled sweep. Also verified:
+the gamification workstream's mechanics against a live Postgres/Redis/Celery
+stack (per its own verification notes, this caught a real `UserStats`
+initialization crash and a duplicate `CREATE TYPE` migration bug that unit
 tests didn't surface).
 
 ## Merging two independent redemption implementations
@@ -283,6 +290,59 @@ distinct eyebrow ("SQUAD CANCELLED" / "DROP EXPIRED"), the persisted reason
 button. Previously there was no such screen at all; a cancelled or expired
 squad just kept rendering the assembling/ready layout with no explanation.
 
+## Notification-driven discovery
+
+Discovery used to be purely proximity-triggered: the only way to ever hear
+about a Drop was to already be within its Detect radius (700 m + a
+level-scaled bonus) with a location ping in the last 30 minutes, at the
+exact moment a ping happened to land. That's now a secondary path. Every
+user with a known location gets a push notification the instant a Drop goes
+active, regardless of distance or how stale their last ping is — the
+notification IS the primary discovery mechanism now, not a Rare+-only bonus
+on top of proximity.
+
+What changed:
+
+- `find_nearby_users_for_drop` (radius + 30-minute freshness gate,
+  Rare+-only) replaced with `find_users_to_notify_for_drop` — every user
+  with *any* known location, no radius or freshness filter, paired with
+  their distance to the Drop. The only reason to exclude someone at all is
+  that a distance can't be shown for a user who has never pinged once.
+- `notify_users_of_new_drop` fires for **every** Drop now, not just Rare or
+  better — under the old model, Common/Uncommon staying silent was a
+  deliberate choice ("exploration, not notification spam, drives
+  discovery" — see the git history on this function). That reasoning
+  doesn't hold once notification is the only way most people ever find out
+  a Drop exists at all.
+- The notification body is deliberately thin: category and distance,
+  rounded to the nearest 50 m below 1 km — matching the same anti-
+  triangulation rounding Detect already uses in-app
+  (`proximity.snapshot_for`) — then whole-km above that. Never the title,
+  offer, or business name; those still require actually reaching Reveal
+  range (100 m).
+- **Fixed a real gap this surfaced**: neither `create_drop` (with
+  `publish=True` and a `starts_at` already in the past) nor the manual
+  `publish_drop` endpoint ever enqueued this notification — only the
+  periodic `scheduled → active` sweep did. That was a minor miss under the
+  old proximity-first model; under this one it meant the single most common
+  real case — a business publishing a Drop that's immediately live —
+  notified nobody at all. Both routes now enqueue
+  `notify_users_of_new_drop` directly when the Drop comes back `active`.
+
+Not changed: the in-app Detect/Reveal ping mechanic itself
+(`services/proximity.py`) is untouched — a user who's already walking
+around still detects/reveals Drops exactly as before. The notification is
+an additional channel that gets people who *aren't* already nearby to find
+out a Drop exists at all, not a replacement for the walk-closer-to-reveal
+loop once they act on it.
+
+Live-verified: a Common-rarity Drop (previously silently skipped) triggers
+notifications; a user ~5 km away gets notified with the correct distance
+(no proximity gate); a user with zero location history is correctly
+excluded (no distance to show); and a Drop created directly into `active`
+status (immediate publish, not via the scheduled sweep) fires the
+notification too.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -292,8 +352,14 @@ squad just kept rendering the assembling/ready layout with no explanation.
   runner; REST discovery continues from PostgreSQL during a Redis outage.
 - Keep all state mutations in protected REST endpoints. WebSockets are a
   read-only notification channel and clients re-fetch snapshots after reconnect.
-- Every active Drop is detectable regardless of distance. Detect exposes its
-  rarity, specific interest type, distance, and required group size.
+- Every active Drop is detectable regardless of distance (in-app, via a
+  location ping). Detect exposes its rarity, specific interest type,
+  distance, and required group size. Push notifications now *also* alert
+  every user with a known location the moment a Drop goes active, so
+  discovery doesn't require already being nearby and pinging at the right
+  moment — see "Notification-driven discovery" below. The push itself is
+  deliberately thinner than the in-app Detect payload: category and rounded
+  distance only, no rarity/group-size/title.
 - The full Reveal unlocks at 100 m. The legacy radius database fields are
   retained for migration compatibility.
 - Once revealed, a Drop stays unlocked for that user for the Drop lifetime.

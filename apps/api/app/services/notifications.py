@@ -7,7 +7,7 @@ confirm, XP award) never fails because push delivery isn't set up.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -113,34 +113,20 @@ def register_device(db: Session, user_id: UUID, fcm_token: str, platform: str) -
     return device
 
 
-# Higher-level users get a wider "something's nearby" awareness radius for
-# the Rare+ Drop push alert, capped so it stays a bonus rather than global reach.
-NOTIFICATION_RADIUS_BONUS_PER_LEVEL_M = 50
-NOTIFICATION_RADIUS_BONUS_CAP_M = 1000
-
-
-def find_nearby_users_for_drop(
-    db: Session, drop_id: UUID, freshness: timedelta = timedelta(minutes=30)
-) -> list[UUID]:
-    """Users whose last known location is within a Drop's Detect radius
-    (plus a level-scaled bonus) and recent enough to plausibly still be
-    nearby — feeds the "Rare+ Drop activated near you" push alert."""
-    cutoff = datetime.now(timezone.utc) - freshness
-    level_bonus_m = func.least(
-        (User.level - 1) * NOTIFICATION_RADIUS_BONUS_PER_LEVEL_M,
-        NOTIFICATION_RADIUS_BONUS_CAP_M,
-    )
+def find_users_to_notify_for_drop(db: Session, drop_id: UUID) -> list[tuple[UUID, float]]:
+    """Every user with a known location, paired with their distance to the
+    Drop — feeds the "new Drop" push alert sent to everyone, not just people
+    already nearby (discovery is notification-driven now; see
+    STATUS.md). No radius or freshness filter: a user doesn't have to be
+    in range, or have pinged recently, to be told a Drop exists — they only
+    need *some* last known location so a distance can be shown at all.
+    Distance here is whatever their last ping says, however old; it's just
+    for the notification's "X away" text, not a proximity gate."""
+    distance = func.ST_Distance(Drop.location, User.last_location).label("distance_m")
     return list(
-        db.scalars(
-            select(User.id)
+        db.execute(
+            select(User.id, distance)
             .select_from(User, Drop)
-            .where(
-                Drop.id == drop_id,
-                User.last_location.isnot(None),
-                User.last_location_at >= cutoff,
-                func.ST_DWithin(
-                    Drop.location, User.last_location, Drop.discovery_radius_m + level_bonus_m
-                ),
-            )
+            .where(Drop.id == drop_id, User.last_location.isnot(None))
         ).all()
     )
