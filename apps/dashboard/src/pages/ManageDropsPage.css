@@ -1,3 +1,26 @@
+.manage-drops__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.manage-drops__delete {
+  background: var(--color-primary-tint);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+}
+
+.manage-drops__delete:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .drop-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

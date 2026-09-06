@@ -1,6 +1,10 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (added a Settings page — `PATCH /business/auth/me`
+_Last updated: 2026-09-06 (added permanent multi-select delete to Manage
+Drops and Redemption Log — a Drop only deletes if no squad has ever formed
+against it (409 otherwise), a Redemption always can (records-only, no XP
+clawback) — see "Permanent delete on Manage Drops and Redemption Log"
+below; before that, added a Settings page — `PATCH /business/auth/me`
 lets a business edit its own name, category, description, address, phone,
 venue capacity, and location; caught and fixed a real bug in the process
 where a naive update would have silently corrupted `category` to an enum
@@ -98,6 +102,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Notification-driven discovery: every user with a known location is notified when any Drop activates (not just Rare+, not gated by proximity/freshness); notification shows category + distance only | Done |
 | Immediate-publish Drops (`create_drop(publish=True)` / `publish_drop`) trigger the new-Drop notification directly, not just the scheduled→active sweep | Done |
 | Business dashboard: login/register, Overview, Manage Drops, Create Drop, Scan to confirm, Redemption Log, Analytics, Settings | Done |
+| Permanent multi-select delete on Manage Drops and Redemption Log (`DELETE /business/drops/{id}`, `DELETE /redemptions/{id}`) | Done — a Drop can only be deleted if no squad has ever formed against it (409 otherwise, with the count); a Redemption can always be deleted (records-only, no XP clawback) |
 | `PATCH /business/auth/me` — a business can edit its own name, category, description, address, phone, venue capacity, and location after registering (partial update; owner_email/password excluded on purpose, a separate concern) | Done |
 | Dashboard visual charts: a reusable dependency-free `DonutChart` (SVG ring, no charting library) powering a Drops-by-status breakdown + a "fullest live Drops" capacity list on Overview, and a squad-progress ring + capacity gauge on Analytics (replacing plain stat-card numbers) | Done |
 | Create Drop's min/max squad size are range sliders (2–10) instead of unbounded number inputs — the backend schema still allows up to 100 (unchanged), the slider just keeps the common case fast to set and out of unrealistic territory | Done |
@@ -803,7 +808,11 @@ pattern. Findings, not yet acted on beyond the Detect radius fix above:
 all yet, not just a missing dashboard page):
 - **No way to edit a Drop after creating it, not even in `draft`.** Only
   create/publish/pause/resume/cancel exist — a typo in the title or the
-  wrong discount means cancel-and-recreate, not fix-in-place.
+  wrong discount still means delete-and-recreate, not fix-in-place. Delete
+  is now built (see "Permanent delete on Manage Drops and Redemption Log"
+  below) and covers this for a Drop with no squad activity yet, but that's
+  delete, not edit — the underlying gap (no `PATCH` for a Drop at all) is
+  still open.
 - ~~No business profile page~~ **Fixed — see "Added a Settings page" below.**
 - ~~`phone` is collect-only, into a void~~ **Fixed in the same change** —
   `BusinessResponse` now returns it and Settings can edit it.
@@ -923,6 +932,58 @@ account to its original values afterward so nothing was left mutated.
 `pytest -q` 202/202 (4 new schema tests), `tsc --noEmit` and `vite build`
 both clean, single Alembic head (no schema change — every field already
 existed on `Business`).
+
+## Permanent delete on Manage Drops and Redemption Log
+
+Asked for the ability to delete selected Drops/redemptions. Asked back
+whether "delete" meant hiding from the list (reversible, data stays intact
+for Analytics/audit) or a real database delete (irreversible) — the answer
+was permanent, with a warning before it happens.
+
+**Drops** (`DELETE /business/drops/{id}`, `services/drop_lifecycle.delete_drop`):
+a real `DELETE`, not a status change like `cancel_drop`. Checked the actual
+foreign keys before writing this: `groups.drop_id` and `redemptions.drop_id`
+both reference `drops.id` with no `ON DELETE CASCADE`, so Postgres would
+already refuse to delete a Drop with real squad/redemption history —
+correct default behavior, but a raw `IntegrityError` isn't a fit response
+for a business clicking a button. Made the check explicit instead: if any
+`Group` has ever formed against the Drop, the route returns `409` with the
+count and points at `cancel_drop` as the right tool once there's real
+history to keep. A Drop with zero squads (an unused draft, or one that
+expired/got cancelled with no one ever engaging) deletes cleanly, along
+with its own `DropViewEvent` rows (page-view-level telemetry, not
+audit-worthy).
+
+**Redemptions** (`DELETE /redemptions/{id}`, `services/redemption.delete_redemption`):
+always deletable, no activity check — a confirmed redemption doesn't cascade
+into anything else the way a Drop's squads do.
+`UserXpTransaction.related_redemption_id`/`granted_from_redemption_id` are
+plain UUID columns, not real foreign keys, so deleting a Redemption doesn't
+hit a constraint; it just leaves those ledger rows' "which redemption"
+lookup unresolvable while the amount/user/timestamp on them stay correct.
+Same rule as disputing (see "Auto-confirm plus a dispute window" above):
+does **not** claw back XP already awarded — deleting the log entry doesn't
+undo the reward.
+
+**Dashboard**: both Manage Drops and the Redemption Log gained a checkbox
+per card and a "Delete N selected" button that appears once something's
+checked, `window.confirm()`-gated with a message spelling out that it's
+permanent (and, for Drops, that anything with squad activity will be
+skipped rather than silently succeeding). Deletes run in parallel
+(`Promise.allSettled`) so one blocked Drop in a batch doesn't stop the
+rest from going through; any failures are reported with a count
+("3 of 5 couldn't be deleted: ...").
+
+Live-verified against the running stack: a squad-free draft Drop deletes
+and then genuinely 404s on a follow-up `GET`; a Drop with a real squad
+formed against it is rejected with `409` and the exact count; a redemption
+delete removes it from `/redemptions/queue` while confirming the
+associated user's `xp_total` is byte-for-byte unchanged before and after;
+a different business attempting to delete the first business's Drop gets
+`404` (the same ownership-scoped-query pattern every other business route
+already uses, not a new access-control mechanism). `pytest -q` 208/208 (6
+new tests), `tsc --noEmit` and `vite build` both clean, single Alembic
+head (no schema change).
 
 ## Key decisions
 

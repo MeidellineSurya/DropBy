@@ -12,6 +12,7 @@ from app.schemas.business_drops import BusinessDropCreateRequest, BusinessDropRe
 from app.services.drop_lifecycle import (
     cancel_drop as cancel_drop_lifecycle,
     create_drop as create_drop_lifecycle,
+    delete_drop as delete_drop_lifecycle,
     pause_drop as pause_drop_lifecycle,
     publish_drop as publish_drop_lifecycle,
     resume_drop as resume_drop_lifecycle,
@@ -231,3 +232,20 @@ async def cancel_drop(
             await publish(topic, event)
 
     return _drop_response(_owned_drop_or_404(db, drop_id, business))
+
+
+@router.delete("/{drop_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_drop(
+    drop_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> None:
+    """Permanent — a real delete, not a status change (see cancel_drop
+    above for that). Only allowed when no squad has ever formed against
+    this Drop; see services/drop_lifecycle.delete_drop for why."""
+    try:
+        deleted = delete_drop_lifecycle(db, drop_id, business.id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    if not deleted:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Drop not found")

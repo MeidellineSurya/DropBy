@@ -119,6 +119,12 @@ export const api = {
     request<BusinessDrop>(`/business/drops/${dropId}/resume`, { method: "POST" }),
   cancelDrop: (dropId: string) =>
     request<BusinessDrop>(`/business/drops/${dropId}/cancel`, { method: "POST" }),
+  // Permanent — the API rejects this with a 409 if any squad has ever
+  // formed for the Drop (see services/drop_lifecycle.delete_drop). Cancel
+  // is the right action once there's real history; this is for cleaning
+  // up a draft or a Drop nobody ever engaged with.
+  deleteDrop: (dropId: string) =>
+    request<void>(`/business/drops/${dropId}`, { method: "DELETE" }),
 
   overview: () => request<BusinessOverview>("/business/analytics/overview"),
   dropFunnel: (dropId: string) =>
@@ -139,6 +145,10 @@ export const api = {
     request<Redemption>(`/redemptions/${redemptionId}/dispute`, {
       method: "POST",
     }),
+  // Permanent — removes the record from the log entirely. Does not claw
+  // back XP already awarded; see services/redemption.py.
+  deleteRedemption: (redemptionId: string) =>
+    request<void>(`/redemptions/${redemptionId}`, { method: "DELETE" }),
 };
 
 export { ApiError };

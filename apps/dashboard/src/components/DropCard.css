@@ -8,6 +8,10 @@
   gap: 0.6rem;
 }
 
+.drop-card--selected {
+  border-color: var(--color-primary);
+}
+
 .drop-card__header {
   display: flex;
   align-items: center;
@@ -15,10 +19,21 @@
   gap: 0.75rem;
 }
 
+.drop-card__select {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  cursor: pointer;
+}
+
 .drop-card__header h3 {
   margin: 0;
   font-size: 1rem;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .drop-card__meta {

@@ -1,13 +1,19 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_business, get_db
 from app.models.businesses import Business
 from app.models.groups import Group
 from app.schemas.redemption import RedemptionResponse, ScanRequest
-from app.services.redemption import build_response, dispute_redemption, list_recent_redemptions, scan_squad_qr
+from app.services.redemption import (
+    build_response,
+    delete_redemption,
+    dispute_redemption,
+    list_recent_redemptions,
+    scan_squad_qr,
+)
 from app.services.squad_state import group_snapshot
 from app.workers.tasks.gamification import award_xp_for_redemption_task
 from app.ws.manager import publish
@@ -78,3 +84,14 @@ def dispute(
     already awarded — see services/redemption.py."""
     redemption = dispute_redemption(db, redemption_id, business)
     return build_response(db, redemption)
+
+
+@router.delete("/{redemption_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete(
+    redemption_id: UUID,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> None:
+    """Permanent — removes the record from the Redemption Log entirely.
+    Does not claw back XP already awarded; see services/redemption.py."""
+    delete_redemption(db, redemption_id, business)

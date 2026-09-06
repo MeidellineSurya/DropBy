@@ -13,11 +13,14 @@ import "./RedemptionQueuePage.css";
 // redemptions still inside the dispute window, so a business can flag one
 // as fraudulent or mistaken after the fact. Disputing releases the squad's
 // reserved capacity back to the Drop but does not claw back XP already
-// awarded.
+// awarded. Deleting a redemption (below) is separate and permanent — it
+// removes the record entirely, also without clawing back XP.
 export function RedemptionQueuePage() {
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   function reload() {
     api
@@ -35,6 +38,14 @@ export function RedemptionQueuePage() {
     return () => socket?.close();
   }, []);
 
+  useEffect(() => {
+    const redemptionIds = new Set(redemptions.map((r) => r.id));
+    setSelectedIds((current) => {
+      const next = new Set([...current].filter((id) => redemptionIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [redemptions]);
+
   async function dispute(id: string) {
     setBusyId(id);
     setError(null);
@@ -48,9 +59,56 @@ export function RedemptionQueuePage() {
     }
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function deleteSelected() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const confirmed = window.confirm(
+      ids.length === 1
+        ? "Permanently delete this redemption record? This can't be undone, and it does not claw back any XP already awarded."
+        : `Permanently delete these ${ids.length} redemption records? This can't be undone, and it does not claw back any XP already awarded.`,
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    setDeleting(true);
+    const results = await Promise.allSettled(ids.map((id) => api.deleteRedemption(id)));
+    const failures = results.filter((result) => result.status === "rejected");
+    if (failures.length > 0) {
+      const first = failures[0] as PromiseRejectedResult;
+      const message = first.reason instanceof ApiError ? first.reason.message : "Failed to delete";
+      setError(
+        failures.length === ids.length ? message : `${failures.length} of ${ids.length} couldn't be deleted: ${message}`,
+      );
+    }
+    setSelectedIds(new Set());
+    setDeleting(false);
+    reload();
+  }
+
   return (
     <div>
-      <h1>Redemption Log</h1>
+      <div className="redemption-log__header">
+        <h1>Redemption Log</h1>
+        {selectedIds.size > 0 && (
+          <button
+            type="button"
+            className="redemption-log__delete"
+            disabled={deleting}
+            onClick={() => void deleteSelected()}
+          >
+            {deleting ? "Deleting…" : `Delete ${selectedIds.size} selected`}
+          </button>
+        )}
+      </div>
       {error ? (
         <p className="page-error">{error}</p>
       ) : redemptions.length === 0 ? (
@@ -62,9 +120,20 @@ export function RedemptionQueuePage() {
       ) : (
         <div className="redemption-list">
           {redemptions.map((redemption) => (
-            <div key={redemption.id} className="redemption-card">
+            <div
+              key={redemption.id}
+              className={`redemption-card ${selectedIds.has(redemption.id) ? "redemption-card--selected" : ""}`}
+            >
               <div className="redemption-card__header">
-                <h3>{redemption.drop_title}</h3>
+                <label className="redemption-card__select">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(redemption.id)}
+                    onChange={() => toggleSelected(redemption.id)}
+                    aria-label={`Select redemption for ${redemption.drop_title}`}
+                  />
+                  <h3>{redemption.drop_title}</h3>
+                </label>
                 <span className="redemption-card__time">
                   Confirmed{" "}
                   {redemption.confirmed_at
@@ -76,10 +145,11 @@ export function RedemptionQueuePage() {
                 {redemption.participant_count ?? redemption.member_count} redeemed &middot;{" "}
                 {redemption.xp_reward_base} XP each
               </p>
-              {redemption.disputed_at ? (
+              {redemption.disputed_at && (
                 <p className="redemption-card__disputed">Flagged as fraudulent/mistaken</p>
-              ) : (
-                <div className="redemption-card__actions">
+              )}
+              <div className="redemption-card__actions">
+                {!redemption.disputed_at && (
                   <button
                     disabled={busyId === redemption.id}
                     className="redemption-card__reject"
@@ -87,8 +157,8 @@ export function RedemptionQueuePage() {
                   >
                     Flag as fraudulent
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))}
         </div>

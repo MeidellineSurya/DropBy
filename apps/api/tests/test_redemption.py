@@ -11,6 +11,7 @@ from app.models.groups import Group, GroupMember, GroupMemberStatus, GroupStatus
 from app.models.redemption import Redemption, RedemptionStatus
 from app.models.users import User
 from app.services.redemption import (
+    delete_redemption,
     dispute_redemption,
     get_squad_qr,
     scan_squad_qr,
@@ -275,3 +276,43 @@ def test_dispute_redemption_rejects_after_the_window_has_passed() -> None:
 
     assert exc_info.value.status_code == 409
     assert "window" in exc_info.value.detail
+
+
+def test_delete_redemption_removes_it() -> None:
+    business_id = uuid4()
+    redemption = Redemption(
+        id=uuid4(), drop_id=uuid4(), group_id=uuid4(), business_id=business_id,
+        status=RedemptionStatus.confirmed, confirmed_at=datetime.now(timezone.utc),
+    )
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [redemption]
+
+    delete_redemption(db, redemption.id, _business(business_id))
+
+    db.delete.assert_called_once_with(redemption)
+    db.commit.assert_called_once()
+
+
+def test_delete_redemption_rejects_a_different_businesss_redemption() -> None:
+    redemption = Redemption(
+        id=uuid4(), drop_id=uuid4(), group_id=uuid4(), business_id=uuid4(),
+        status=RedemptionStatus.confirmed,
+    )
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [redemption]
+
+    with pytest.raises(HTTPException) as exc_info:
+        delete_redemption(db, redemption.id, _business(uuid4()))
+
+    assert exc_info.value.status_code == 403
+    db.delete.assert_not_called()
+
+
+def test_delete_redemption_404s_when_not_found() -> None:
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [None]
+
+    with pytest.raises(HTTPException) as exc_info:
+        delete_redemption(db, uuid4(), _business(uuid4()))
+
+    assert exc_info.value.status_code == 404

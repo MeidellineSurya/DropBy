@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -14,6 +14,7 @@ from app.models.drops import (
     DropRarity,
     DropStatus,
     DropType,
+    DropViewEvent,
 )
 from app.models.groups import Group, GroupStatus
 
@@ -355,6 +356,39 @@ def cancel_drop(
     )
     db.commit()
     return group_ids
+
+
+def delete_drop(db: Session, drop_id: UUID, business_id: UUID) -> bool:
+    """Permanently remove a Drop — a real DELETE, not a status change like
+    cancel_drop above. Returns False if the Drop doesn't exist or isn't
+    owned by this business. Raises ValueError if any squad has ever formed
+    against it: a Group with real activity implies a real Redemption and
+    real awarded XP downstream, and a single "delete" click destroying
+    that audit trail (or, since drops<->groups is a real foreign key,
+    simply failing with a raw IntegrityError) isn't acceptable — cancel_drop
+    is the right tool once there's real history, this one is for cleaning
+    up a draft or a Drop nobody ever engaged with.
+
+    DropViewEvent rows (who merely detected/revealed it) are deleted along
+    with the Drop — that's page-view-level telemetry, not something worth
+    blocking a delete over."""
+    drop = db.scalar(
+        select(Drop).where(Drop.id == drop_id, Drop.business_id == business_id)
+    )
+    if drop is None:
+        return False
+    squad_count = db.scalar(
+        select(func.count()).select_from(Group).where(Group.drop_id == drop_id)
+    )
+    if squad_count:
+        raise ValueError(
+            f"Can't delete — {squad_count} squad(s) have formed for this Drop, "
+            "including any that redeemed it. Cancel it instead to keep the record."
+        )
+    db.execute(delete(DropViewEvent).where(DropViewEvent.drop_id == drop_id))
+    db.delete(drop)
+    db.commit()
+    return True
 
 
 def activate_scheduled(db: Session) -> list[UUID]:

@@ -212,6 +212,29 @@ def dispute_redemption(db: Session, redemption_id: UUID, business: Business) -> 
     return redemption
 
 
+def delete_redemption(db: Session, redemption_id: UUID, business: Business) -> None:
+    """Permanently remove a redemption from the business's own Redemption
+    Log — a real DELETE, not a status change (dispute_redemption above is
+    the records-only flag for "this looked fraudulent/mistaken"; this is
+    "get it off my log entirely"). This does NOT claw back XP already
+    awarded, same rule as disputing. Safe to delete outright:
+    UserXpTransaction.related_redemption_id is a plain UUID column, not a
+    real foreign key, so this doesn't hit a constraint — it leaves that
+    ledger row's "which redemption" lookup unresolvable, but the
+    amount/user/timestamp on it stay correct."""
+    redemption = db.scalar(
+        select(Redemption).where(Redemption.id == redemption_id).with_for_update()
+    )
+    if redemption is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Redemption not found")
+    if redemption.business_id != business.id:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "This redemption belongs to a different business"
+        )
+    db.delete(redemption)
+    db.commit()
+
+
 def list_recent_redemptions(db: Session, business: Business) -> list[Redemption]:
     """Confirmed redemptions still inside the dispute window — the business
     dashboard's redemptions list, disputable while shown here."""

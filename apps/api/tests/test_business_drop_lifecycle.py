@@ -10,6 +10,7 @@ from app.services.drop_lifecycle import (
     cancel_drop,
     compute_rarity,
     compute_xp_reward,
+    delete_drop,
     describe_capacity_failure,
     expire_due,
     pause_drop,
@@ -113,6 +114,41 @@ def test_cancel_drop_returns_cascaded_group_ids() -> None:
     result = cancel_drop(db, uuid4(), uuid4())
 
     assert result == cascaded_ids
+    db.commit.assert_called_once_with()
+
+
+def test_delete_drop_returns_false_when_not_found_or_not_owned() -> None:
+    db = MagicMock(spec=Session)
+    db.scalar.return_value = None
+
+    assert delete_drop(db, uuid4(), uuid4()) is False
+    db.commit.assert_not_called()
+    db.delete.assert_not_called()
+
+
+def test_delete_drop_rejects_a_drop_with_squad_activity() -> None:
+    # A real Group implies a real Redemption and real awarded XP downstream
+    # — deleting it out from under that history isn't something one click
+    # should do. cancel_drop is the right tool once there's real activity.
+    db = MagicMock(spec=Session)
+    drop = make_drop()
+    db.scalar.side_effect = [drop, 2]  # drop lookup, then the squad-count query
+
+    with pytest.raises(ValueError, match="2 squad"):
+        delete_drop(db, drop.id, drop.business_id)
+    db.commit.assert_not_called()
+    db.delete.assert_not_called()
+
+
+def test_delete_drop_removes_a_drop_with_no_squad_activity() -> None:
+    db = MagicMock(spec=Session)
+    drop = make_drop()
+    db.scalar.side_effect = [drop, 0]
+
+    result = delete_drop(db, drop.id, drop.business_id)
+
+    assert result is True
+    db.delete.assert_called_once_with(drop)
     db.commit.assert_called_once_with()
 
 

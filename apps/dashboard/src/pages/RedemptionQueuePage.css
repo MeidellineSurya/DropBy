@@ -1,3 +1,26 @@
+.redemption-log__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.redemption-log__delete {
+  background: var(--color-primary-tint);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+}
+
+.redemption-log__delete:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .redemption-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -15,6 +38,10 @@
   gap: 0.6rem;
 }
 
+.redemption-card--selected {
+  border-color: var(--color-primary);
+}
+
 .redemption-card__header {
   display: flex;
   align-items: baseline;
@@ -22,10 +49,21 @@
   gap: 0.75rem;
 }
 
+.redemption-card__select {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+  cursor: pointer;
+}
+
 .redemption-card__header h3 {
   margin: 0;
   font-size: 1rem;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .redemption-card__time {

@@ -21,15 +21,34 @@ interface DropCardProps {
   onResume: (id: string) => void;
   onCancel: (id: string) => void;
   busy?: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }
 
-export function DropCard({ drop, onPublish, onPause, onResume, onCancel, busy }: DropCardProps) {
+export function DropCard({
+  drop,
+  onPublish,
+  onPause,
+  onResume,
+  onCancel,
+  busy,
+  selected,
+  onToggleSelect,
+}: DropCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="drop-card">
+    <div className={`drop-card ${selected ? "drop-card--selected" : ""}`}>
       <div className="drop-card__header">
-        <h3>{drop.title}</h3>
+        <label className="drop-card__select">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Select ${drop.title}`}
+          />
+          <h3>{drop.title}</h3>
+        </label>
         <StatusPill status={drop.status} />
       </div>
       <p className="drop-card__meta">
