@@ -178,7 +178,22 @@ export function ScanPage() {
       </p>
 
       <div className="scan-frame">
-        <div id={READER_ID} hidden={status !== "ready"} />
+        {/* Must stay in the DOM and visible (not display:none) from the
+            very first render — Html5Qrcode.start() measures this element's
+            width to size the video feed the moment it's called, and a
+            hidden element measures 0×0. Only the genuine dead-end states
+            (no camera will ever attach) hide it in favour of just the
+            status text below. */}
+        <div
+          id={READER_ID}
+          hidden={
+            status === "insecure" ||
+            status === "unsupported" ||
+            status === "unavailable" ||
+            status === "denied" ||
+            status === "error"
+          }
+        />
 
         {status === "requesting" && (
           <p className="scan-status">Requesting camera access…</p>

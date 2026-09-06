@@ -16,8 +16,16 @@
 }
 
 .scan-frame #dropby-qr-reader {
+  /* Reserves real space from the first render, before any video attaches —
+     see the comment in ScanPage.tsx on why this element must never be
+     display:none while the camera is starting. */
+  min-height: 280px;
   border-radius: var(--radius-md);
   overflow: hidden;
+}
+
+.scan-frame #dropby-qr-reader video {
+  border-radius: var(--radius-md);
 }
 
 .scan-status {

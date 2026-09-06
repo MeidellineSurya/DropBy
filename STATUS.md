@@ -1,10 +1,14 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (restyled the business dashboard to match the
-mobile app's real design system — paper/ink/pink/green palette, Lilita
-One/Candal fonts, per-tier rarity colours, an ink Sidebar mirroring the
-mobile bottom nav — see "Restyling the dashboard to match the mobile app"
-below; before that, a cross-cutting consistency audit after the
+_Last updated: 2026-09-06 (fixed a real bug the user found by actually
+opening the Scan page: the camera preview was never visible, because the
+video container was hidden while `html5-qrcode` measured it — see "The
+camera preview was never visible" below; before that, restyled the
+business dashboard to match the mobile app's real design system —
+paper/ink/pink/green palette, Lilita One/Candal fonts, per-tier rarity
+colours, an ink Sidebar mirroring the mobile bottom nav — see "Restyling
+the dashboard to match the mobile app" below; before that, a cross-cutting
+consistency audit after the
 squad-QR-scan redesign found and fixed three real gaps it had introduced: a
 dashboard analytics stat permanently stuck at zero, duplicate push
 notifications on a rescan, and the business dashboard never actually
@@ -61,7 +65,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Check-in is a squad-generated, signed QR scanned by the business — `GET /groups/{id}/qr` (member-facing) and `POST /redemptions/scan` (business-facing); no GPS/location check at all | Done |
 | Mobile `SquadScreen` shows a black-on-white QR once the squad is `ready`, replacing the old "Check in now" claim button | Done |
 | The scan itself both verifies (proves physical presence in front of staff) and confirms (awards XP) in one action — no business approval step, no headcount correction; business can still dispute a confirmed redemption within a 24h window, releasing capacity but not clawing back XP | Done |
-| Business dashboard camera-based Scan page (`/scan`, `html5-qrcode`) to confirm a squad's code, with secure-context/permission-denied/no-camera detection, a camera picker for devices with more than one, and a manual code-entry fallback | Done — backend/API path live-verified end-to-end; the actual camera-to-decode round trip could not be physically verified in this environment (no camera hardware) |
+| Business dashboard camera-based Scan page (`/scan`, `html5-qrcode`) to confirm a squad's code, with secure-context/permission-denied/no-camera detection, a camera picker for devices with more than one, and a manual code-entry fallback | Done — user-reported the camera feed wasn't actually visible; found and fixed a real bug (see "The camera preview was never visible" below) |
 | `Group.cancelled_reason` persisted on the model, set on every path a squad ends without completing (capacity-race loss, a Drop being cancelled, a Drop expiring while forming/ready) | Done |
 | Mobile cancelled/expired squad screen showing the persisted reason, with distinct copy for "never found enough people" vs. "was ready but ran out of time" | Done |
 | XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
@@ -605,6 +609,42 @@ primary button pairs `colors.primary` background with `colors.onPrimary`
 text in both places) rather than picking colours freehand. None of this is
 a substitute for actually looking at the rendered page.
 
+## The camera preview was never visible
+
+The user actually opened the Scan page and confirmed what the last several
+entries in this document have been flagging as unverified: the camera
+feed never showed up on screen. This was a real, findable bug, not
+something that needed a physical device to catch in hindsight.
+
+The reader element (`<div id="dropby-qr-reader">`, the container
+`html5-qrcode` attaches its `<video>` into) was rendered with
+`hidden={status !== "ready"}` — hidden for the entire "requesting camera
+access" phase, only unhidden once `Html5Qrcode.start()` had *already*
+resolved. But `start()` measures the container's width the moment it's
+called, to size the video feed: `element.clientWidth ? element.clientWidth
+: Constants.DEFAULT_WIDTH` (checked directly in the installed
+`html5-qrcode` package, `DEFAULT_WIDTH = 300`). A `display:none` element's
+`clientWidth` is always `0`, so every single call was falling through to
+that hardcoded 300px default instead of actually sizing to the real
+container — and it was doing that while the whole element was invisible
+regardless, since `hidden` doesn't get removed until after this
+measurement already happened.
+
+Fixed by only hiding the reader element for the states where a camera
+will genuinely never attach (insecure origin, unsupported browser, no
+camera, permission denied, a hard error) — during "requesting" and
+"ready" it now stays in the DOM and visible from the very first render, so
+by the time `start()` actually measures it, it has real dimensions to
+measure. Also gave it a `min-height: 280px` in CSS so it reserves visible
+space immediately rather than collapsing to nothing before any video
+attaches.
+
+This is exactly the class of bug the "no camera hardware in this
+environment" caveat in every prior entry couldn't have caught — verifying
+the API round-trip and the code paths in isolation doesn't catch a library
+internal like this measuring the wrong thing at the wrong time. Live user
+verification is what found it.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -686,16 +726,14 @@ a substitute for actually looking at the rendered page.
 
 ## Next steps
 
-1. Physically verify the dashboard's camera scan flow (`ScanPage.tsx`,
-   `html5-qrcode`) against a real device camera and a real QR code rendered
-   on a phone screen — this environment has no camera hardware, so only the
-   underlying `/redemptions/scan` endpoint and both frontends' code paths
-   have been verified, not an actual camera-to-decode-to-API round trip. The
-   page now distinguishes insecure-origin/unsupported-browser/no-camera/
-   permission-denied failures with distinct guidance, offers a camera picker
-   when `Html5Qrcode.getCameras()` returns more than one device, and has a
-   manual code-entry fallback for any of those cases — but none of that
-   branching has been exercised against a real getUserMedia prompt either.
+1. Confirm the camera preview fix (see "The camera preview was never
+   visible" above) actually shows a live picture now — the specific bug
+   found (a hidden container measured as 0-width) is fixed and reasoned
+   through against the `html5-qrcode` source directly, but this sandbox
+   still has no camera hardware, so the fix itself hasn't been watched
+   render. The insecure-origin/unsupported-browser/no-camera/
+   permission-denied branching and the manual code-entry fallback are also
+   still unexercised against a real getUserMedia prompt.
 2. Visually verify the restyled dashboard in a real browser — this
    sandboxed environment has no headless browser or screenshot tool, so
    the restyle was verified by scripted CSS-variable cross-checking,
