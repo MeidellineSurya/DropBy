@@ -11,7 +11,7 @@ import {
 
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { api } from "../services/api";
-import { colors } from "../theme";
+import { colors, fonts, radius, shadows } from "../theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DropDetail">;
 
@@ -78,7 +78,7 @@ export function DropDetailScreen({ navigation, route }: Props) {
             style={[styles.primaryButton, (!drop.can_assemble || loading) && styles.disabled]}
           >
             {loading ? (
-              <ActivityIndicator color={colors.black} />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
               <Text style={styles.primaryButtonText}>
                 {drop.can_assemble ? "Create squad" : "Capacity reached"}
@@ -89,7 +89,7 @@ export function DropDetailScreen({ navigation, route }: Props) {
       )}
 
       {!isRevealed && (
-        <Pressable onPress={() => navigation.popTo("Discover")} style={styles.primaryButton}>
+        <Pressable onPress={() => navigation.navigate("Main", { screen: "Explore" })} style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Return to the map</Text>
         </Pressable>
       )}
@@ -118,25 +118,25 @@ function Detail({
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: colors.background },
+  page: { backgroundColor: colors.surfaceInverse },
   content: { padding: 20, paddingBottom: 40 },
-  stageBadge: { alignSelf: "flex-start", backgroundColor: colors.violet, borderRadius: 99, paddingHorizontal: 13, paddingVertical: 7 },
-  stageBadgeRevealed: { backgroundColor: colors.lime },
-  stageText: { color: colors.black, fontSize: 11, fontWeight: "900", letterSpacing: 1 },
-  distance: { color: colors.muted, fontSize: 13, marginTop: 18 },
-  title: { color: colors.text, fontSize: 32, fontWeight: "900", marginTop: 5, textTransform: "capitalize" },
-  explanation: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 10 },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 18, borderWidth: 1, marginTop: 24, paddingHorizontal: 16 },
+  stageBadge: { alignSelf: "flex-start", backgroundColor: colors.info, borderRadius: radius.pill, paddingHorizontal: 13, paddingVertical: 7 },
+  stageBadgeRevealed: { backgroundColor: colors.secondary },
+  stageText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 11, letterSpacing: 1 },
+  distance: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 18 },
+  title: { color: colors.textInverse, fontFamily: fonts.display, fontSize: 32, marginTop: 5, textTransform: "capitalize" },
+  explanation: { color: colors.muted, fontFamily: fonts.body, fontSize: 16, lineHeight: 24, marginTop: 10 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, marginTop: 24, paddingHorizontal: 16, ...shadows.card },
   detailRow: { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 14 },
-  detailLabel: { color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 0.9, textTransform: "uppercase" },
-  detailValue: { color: colors.text, fontSize: 15, lineHeight: 21, marginTop: 5, textTransform: "capitalize" },
-  hidden: { color: colors.violet, fontStyle: "italic" },
-  squadCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 18 },
-  squadEyebrow: { color: colors.lime, fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
-  squadTitle: { color: colors.text, fontSize: 21, fontWeight: "900", marginTop: 6 },
-  squadBody: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 7 },
-  primaryButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 12, marginTop: 18, minHeight: 50, justifyContent: "center", paddingHorizontal: 18 },
-  primaryButtonText: { color: colors.black, fontSize: 15, fontWeight: "900" },
+  detailLabel: { color: colors.muted, fontFamily: fonts.display, fontSize: 11, letterSpacing: 0.9, textTransform: "uppercase" },
+  detailValue: { color: colors.text, fontFamily: fonts.body, fontSize: 15, lineHeight: 21, marginTop: 5, textTransform: "capitalize" },
+  hidden: { color: colors.info, fontStyle: "italic" },
+  squadCard: { backgroundColor: colors.surface, borderRadius: radius.lg, marginTop: 18, padding: 18, ...shadows.card },
+  squadEyebrow: { color: colors.primary, fontFamily: fonts.display, fontSize: 11, letterSpacing: 1 },
+  squadTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 21, marginTop: 6 },
+  squadBody: { color: colors.subtle, fontFamily: fonts.body, fontSize: 14, lineHeight: 20, marginTop: 7 },
+  primaryButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, marginTop: 18, minHeight: 50, justifyContent: "center", paddingHorizontal: 18 },
+  primaryButtonText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 15 },
   disabled: { opacity: 0.45 },
-  error: { color: colors.danger, fontSize: 14, marginTop: 14 },
+  error: { color: colors.danger, fontFamily: fonts.body, fontSize: 14, marginTop: 14 },
 });

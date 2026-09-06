@@ -16,7 +16,7 @@ import { useSession } from "../SessionContext";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { api } from "../services/api";
 import { connectLiveSocket } from "../services/ws";
-import { colors } from "../theme";
+import { colors, fonts, radius } from "../theme";
 import type { Message } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ChatThread">;
@@ -92,7 +92,7 @@ export function ChatThreadScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.lime} size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
@@ -141,13 +141,13 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 24 },
   bubbleRow: { flexDirection: "row", marginBottom: 8 },
   bubbleRowMine: { justifyContent: "flex-end" },
-  bubble: { backgroundColor: colors.surface, borderRadius: 16, maxWidth: "78%", paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleMine: { backgroundColor: colors.lime },
-  bubbleText: { color: colors.text, fontSize: 15 },
-  bubbleTextMine: { color: colors.black },
+  bubble: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, maxWidth: "78%", paddingHorizontal: 14, paddingVertical: 10 },
+  bubbleMine: { backgroundColor: colors.primary, borderColor: colors.primary },
+  bubbleText: { color: colors.text, fontFamily: fonts.body, fontSize: 15 },
+  bubbleTextMine: { color: colors.onPrimary },
   composer: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 10, padding: 12 },
-  input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 20, borderWidth: 1, color: colors.text, flex: 1, fontSize: 15, paddingHorizontal: 16, paddingVertical: 10 },
-  sendButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 20, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 11 },
-  sendButtonText: { color: colors.black, fontSize: 14, fontWeight: "900" },
-  error: { color: colors.danger, fontSize: 13, marginTop: 8, textAlign: "center" },
+  input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, color: colors.text, flex: 1, fontFamily: fonts.body, fontSize: 15, paddingHorizontal: 16, paddingVertical: 10 },
+  sendButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.md, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 11 },
+  sendButtonText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 14 },
+  error: { color: colors.danger, fontFamily: fonts.body, fontSize: 13, marginTop: 8, textAlign: "center" },
 });

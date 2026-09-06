@@ -6,37 +6,91 @@
     <meta name="description" content="DropBy mobile product demo" />
     <title>DropBy Mobile Demo</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Candal&display=swap"
+    />
     <style>
-      :root {
-        color-scheme: dark;
-        --bg: #090b0f;
-        --surface: #131821;
-        --raised: #1a202b;
-        --border: #2b3442;
-        --text: #f5f7fb;
-        --muted: #98a3b3;
-        --lime: #d9ff43;
-        --cyan: #52e6d8;
-        --violet: #9b87ff;
-        --danger: #ff786e;
-        --black: #0b0d09;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      /* Real "BBH Bartle" (apps/fonts/BBHBartle-Regular.ttf), embedded so the
+         demo works from file://. It carries its own squashed proportions — no
+         CSS scaleY needed any more. */
+      @font-face {
+        font-family: "BBH Bartle";
+        font-weight: 400;
+        font-display: swap;
+        src: url("data:font/ttf;base64,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/78AUf+/AFP/2QBV//QAW//WAF3/1gBi/9QAY//UAGT/7wALAEL/7gBD/+4ARv/uAEv/8QBU/+sAWP/0AFn/7gBa/+4AX//zAGD/8wBjABMADgA3/9sAO//eAD3/2gA//98AS//vAE//0ABQ/9AAUf/QAFP/4QBb/94AXf/eAGL/3gBj/98AZP/tAA0AQv/zAEP/8wBG//MASwAJAFT/2gBW/+EAWP/ZAFn/8wBa//MAX//yAGD/8gBjABAAZAAKAB4AN//UADj/9AA6/+wAO//cADz/4wA9/9MAP//ZAED/4QBC/+gAQ//oAET/6QBF/+kARv/oAEv/0gBP/8sAUP/LAFH/ywBT/9oAVf/rAFn/6ABa/+gAW//WAFz/6gBd/9YAXv/qAF//7ABg/+wAYv/VAGP/1wBk/9kABQA3/5oAPf+bAD7/owA//60AQf/aAAoAOf/wADr/5gA8/+oAPv+WAED/8ABL/+cAVP/LAFb/0ABX//QAWP+/AAUAN//eAD3/3gA+/8AAP//wAE7/igAQADf/3gA4/+sAOv/nADv/zAA8/78APf/aAD//2ABA/+4AQv+2AEP/tgBE/+gARf/oAEb/tgBN/4oAWf+2AFr/tgABADz/8AAdADcACQA4//MAOv/nADv/0wA8/8YAPgApAD//8gBAAB4AQv+lAEP/pQBG/6UASwAhAE//5gBQ/+YAUf/mAFMACQBU/9IAVf/wAFb/7gBY//AAWf+lAFr/pQBbAAkAXAALAF0ACQBeAAsAYv/LAGMADwBkABwABQA5/+sAOv/kADsABgA8/+kAPv/WAAgARwAIAEgAEgBLACQAVP/VAFb/3ABY/9cAWf9JAFr/SQABAEgADQACAE7/6ABU/+kADQA3/+wAPf/uAD7/fwBB/98ASP84AEv/pQBO/7YAU//zAFT/9wBV/+4AW/+/AF3/vwBk/44ACwA3/+wAPf/uAD7/fwBB/98ASP84AEv/pQBO/7YAU//zAFT/6ABV/+4AZP+OAAkAQv/fAEP/3wBG/98ASP/oAFL/2gBZ/98AWv/fAF//7QBg/+0AFwA4//gAOf/uADr/4wA7//sAPP/kAD7/9QA///kAQv/iAEP/4gBG/+IASP/hAEsADQBN/9cATv/gAFL/kgBU/9MAVv/aAFj/zABZ/+IAWv/iAF//8wBg//MAZf/WABQAPv/x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ABAAEQALABMADgAUACMAFQAFABb/7AAX/+4AGP/gABn/1QAb/7AAHP+HAB4ACQAiABAAJAAHACX/6wAqABAALAALAC4ADgAvACMAMAAFADH/7AAy/+4AM//gADT/1QA2/7AAFAAB/78AAwAVAAcAFQAPABUAEQAVABQAEQAW/8AAF//DABj/xwAZ/6MAHP+/AB4AFQAiABUAKgAVACwAFQAvABEAMf/AADL/wwAz/8cANP+jABwAAQASAAP/7QAH/+0ACv/VAA//7QAR/+0AE//hABT/oAAV/+IAFv+KABf/kQAYABwAGf9nABv/1wAcABIAHv/tACL/7QAl/9UAKv/tACz/7QAu/+EAL/+gADD/4gAx/4oAMv+RADMAHAA0/2cANv/XABAAAf+uAAr/6gAW/8gAF//KABj/yAAZ/60AGv/uABv/3AAc/64AJf/qADH/yAAy/8oAM//IADT/rQA1/+4ANv/cAA4AA//NAAf/zQAP/80AEf/NABP/7wAYAAoAG//lAB7/zQAi/80AKv/NACz/zQAu/+8AMwAKADb/5QAOAAP/2wAH/9sAD//bABH/2wAT/+8AGAAIABv/5wAe/9sAIv/bACr/2wAs/9sALv/vADMACAA2/+cAJgAC//MAA//UAAT/8wAF//MABv/zAAf/1AAI//MACv/rAAv/8wAM//MADf/zAA7/8wAP/9QAEP/zABH/1AAS//MAE//hABX/6AAb/+IAHf/zAB7/1AAf//MAIP/zACH/8wAi/9QAI//zACX/6wAm//MAJ//zACj/8wAp//MAKv/UACv/8wAs/9QALf/zAC7/4QAw/+gANv/iABgAA/+aAAf/mgAK/74AD/+aABH/lQAT/84AFP9rABX/lwAW/3IAF/97ABn/aAAb/78AHv+aACL/mgAl/74AKv+aACz/lQAu/84AL/9rADD/lwAx/3IAMv97ADT/aAA2/78AFgABABUAA//dAAf/3QAP/90AEf/bABT/wwAV/9UAFv+yABf/tQAYAB8AGf+rABwAFQAe/90AIv/dACr/3QAs/9sAL//DADD/1QAx/7IAMv+1ADMAHwA0/6sAGAAB/7EAA//dAAf/3QAK/+oAD//dABH/3wAT/+kAFgAWABcAEwAYAB8AGQATABv/wgAc/7EAHv/dACL/3QAl/+oAKv/dACz/3wAu/+kAMQAWADIAEwAzAB8ANAATADb/wgAeAAH/hQADAAsABwALAAkACwAK/+cADwALABEADQATABIAFAAnABUACQAW/98AF//hABj/zQAZ/8EAG/+1ABz/hQAeAAsAIgALACQACwAl/+cAKgALACwADQAuABIALwAnADAACQAx/98AMv/hADP/zQA0/8EANv+1ABwAAf+0AAMABQAHAAUACf/zAAr/8AAPAAUAEQAFABT/5AAW/6kAF/+vABj/ngAZ/3MAGv/qABv/7gAc/7QAHgAFACIABQAk//MAJf/wACoABQAsAAUAL//kADH/qQAy/68AM/+eADT/cwA1/+oANv/uABYAAf+oAAn/8wAK/+YAFv+sABf/sgAY/48AGf93ABr/4AAb/94AHP+oACT/8wAl/+YAMf+sADL/sgAz/48ANP93ADX/4AA2/94AOf/iADr/3AA8/+EAPv/sAA4AAf/hABT/5gAW/+EAF//iABj/6QAZ/+EAG//hABz/4QAv/+YAMf/hADL/4gAz/+kANP/hADb/4QAWAAH/sQAJ//YACv/tABP/+wAU//oAFv+8ABf/wAAY/7UAGf+aABr/6wAb/+UAHP+xACT/9gAl/+0ALv/7AC//+gAx/7wAMv/AADP/tQA0/5oANf/rADb/5QAQAAH/0AAR//sAFP/yABX/+AAW/74AF//AABj/zwAZ/6MAHP/QACz/+wAv//IAMP/4ADH/vgAy/8AAM//PADT/owAbAAH/cQAD/+MAB//jAAr/8gAP/+MAEf/mABP/+gAUAAYAFgATABcAEAAYABwAGQAQABv/SAAc/3EAHv/jACL/4wAl//IAKv/jACz/5gAu//oALwAGADEAEwAyABAAMwAcADQAEAA2/0gASf+/AAwAAf/JABP/+wAW/+gAF//nABj/8AAZ/9wAHP/JAC7/+wAx/+gAMv/nADP/8AA0/9wADgAB/8sAE//4ABT/+AAW/+sAF//rABj/9gAZ/+UAHP/LAC7/+AAv//gAMf/rADL/6wAz//YANP/lABIAAf/iAAoAEQAU/5cAFf/5ABb/nQAX/6kAGP/QABn/YAAbABQAHP/iACUAEQAv/5cAMP/5ADH/nQAy/6kAM//QADT/YAA2ABQADgAB/88AE//5ABT/7AAW/90AF//dABj/6gAZ/9UAHP/PAC7/+QAv/+wAMf/dADL/3QAz/+oANP/VAAwACgAHABb/xwAX/8kAGAAGABn/qwAbAAoAJQAHADH/xwAy/8kAMwAGADT/qwA2AAoAGgABABQAA//0AAf/9AAKABkAD//0ABH/8AAU/1EAFf/kABb/fQAX/4sAGAAdABn/QAAbABsAHAAUAB7/9AAi//QAJQAZACr/9AAs//AAL/9RADD/5AAx/30AMv+LADMAHQA0/0AANgAbABQAAf+4AAn/9wAK//MAFP/3ABb/uQAX/70AGP+3ABn/lAAa//AAG//vABz/uAAk//cAJf/zAC//9wAx/7kAMv+9ADP/twA0/5QANf/wADb/7wAFADf/8wA9//MASAAMAEn/6ABK//AAGQA3/5QAOP++ADn/2AA6/9wAO/93ADz/gQA9/40APgAIAD//owBA/68AQf/hAEcAHABIABkASf93AEr/cwBL/8IATf+rAE4AEwBS/2gAYf+aAGL/oQBj/6MAZP/VAGUANQBr/1IAGQA3/7cAOAAMADkACwA7/9EAPP/yAD3/tAA+ABQAP//PAED/7ABB/+kARwAoAEgAIwBJ/48ASv+eAEv/zQBNAB8ATgAfAFYACABYAAoAYf/PAGL/zwBj/8cAZP/gAGUAQQBr/6oAGQA3/70AOP/XADn/6QA6/+QAO/+nADz/nAA9/7gAPgAIAD//wQBA/9IAQf/iAEcAHQBIACwASf+yAEr/rwBL/+MATf+1AE4AFABS/3sAYf+9AGL/rABj/8MAZP/uAGUANQBr/5kAGQA3/7kAOP/VADn/6AA6/+QAO/+eADz/mQA9/7QAPgALAD//vgBA/8wAQf/hAEcAIABIACwASf+sAEr/qQBL/+EATf+yAE4AFgBS/3IAYf+5AGL/qwBj/8AAZP/sAGUAOABr/5EADAA4//sAOv/wADv/9wA8/98AP//4AEgAFABLAAkATf/VAFL/lwBU/+gAYv/yAGQABQAVADf/9wA4//sAOv/0ADv/twA8/8UAPf/zAD4ABgA///IAQf/mAEcACQBIADIASv/kAEsAJwBN/8MAUv9rAGH/9ABi/7oAYwARAGQAIwBlACIAa/+zAAsAPv/7AED/+gBIABgAS//xAE3/8ABO//IAUv+uAFT/4ABW//EAWP/sAGUADQAGADf/+AA9//cAPv/5AEj/9ABO/+cAVP/xAAgAPv/1AEj/5ABLABQATv/gAFT/7wBjABQAZAARAGX/0wARADr/8QA7//IAPP/fAD//+QBB/+cARwAKAEgADwBLACgATf/UAFL/eABU/98AVv/sAFj/5ABi/+gAYwAaAGQAJABlABQAEQA4//oAOf/xADr/6AA8/+oAPv/xAEj/2gBKAAUASwALAE3/3QBO/90AUv+aAFT/1ABW/9sAWP/NAGMAFQBkAAkAZf/UAAsAN//3ADwABQA9//gAPv+PAEH/5gBI/0IAS/+bAE7/wwBk/4wAZf9tAGsABgAbADf/rQA4AB4AOQAeADv/0AA8//gAPf+rAD4ACAA//8oAQP/sAEH/5gBHAB0ASAALAEn/eQBK/5IAS/+5AE0AMgBOABMAVAAKAFYAGwBYABwAYf/OAGL/zgBj/78AZP/UAGUANQBnAA4Aa/+nAAkAOv/xADv/+gA8/+MAP//6AEgAEgBLAAcATf/XAFL/mwBU/+gACAA3//cAPf/2AEgAFgBJ//MASv/zAEsACwBkAAcAZQAGAAIASAAHAFT/8wAIAD7/9wBI/+YASwAGAE7/4QBU/+0AYwAHAGQACgBl/9UAEgA3//kAOv/1ADv/2QA8/84APf/2AD//9QBB/+gARwAFAEgALQBK/+0ASwAjAE3/ygBS/4oAYv/TAGMADABkAB8AZQAeAGv/0QAJADf/8QA9/+8ASAAZAEn/4gBK/+kASwAHAGQACwBlAAoAa//vAA8AOf/2ADr/7gA8/+0APv/2AEj/4gBLAA4ATf/hAE7/4QBS/8AAVP/XAFb/3gBY/9IAYwASAGQACQBl/9kAEAA6//oAOwAFADz/+QBHABYASgAJAEsAMwBN/+4ATv/uAFL/oQBU/90AVv/jAFj/1gBjAB0AZAAvAGX/3ABrABMABgA3//sAPf/6AE7/6wBU/+EAVv/wAFj/6wAVADf/uAA6//AAO//iADz/8QA9/7gAPv+dAD//0ABA/+UAQf/hAEj/bABJ/6gASv+0AEv/hQBNABUATv+xAGH/yQBi/9YAY/+/AGT/hwBl/2YAa/+7") format("truetype");
       }
+      /* Design tokens from the DropBy Figma file
+         (figma.com/design/hRuRdZOdURH15HCCuVnsBq/DropBy) — kept in sync with
+         apps/mobile/src/theme.ts. Light "paper" theme; the legacy var names
+         (--lime/--cyan/--violet/--black) are aliased so existing rules
+         re-theme in place. */
+      :root {
+        color-scheme: light;
+        font-synthesis: none;
+
+        --paper: #fffaf0;
+        --ink: #2b2527;
+        --pink: #e0526e;
+        --green: #6d9c42;
+
+        --bg: var(--paper);
+        --surface: #ffffff;
+        --raised: var(--paper);
+        --border: #eae3d6;
+        --text: var(--ink);
+        --muted: #b1b1b1;
+        --subtle: #5f5f5f;
+        --primary: var(--pink);
+        --primary-tint: #ffe1e7;
+        --secondary: var(--green);
+        --secondary-tint: #eff2d8;
+        --on-primary: var(--paper);
+
+        --lime: var(--pink);
+        --cyan: var(--green);
+        --violet: #8f5da6;
+        --danger: var(--pink);
+        --black: var(--paper); /* every use is text on a coloured fill */
+
+        --shadow-card: 0 4px 4px rgb(0 0 0 / 25%);
+        --font-body: "Candal", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-display: "BBH Bartle", var(--font-body);
+        font-family: var(--font-body);
+      }
+
+      h1, h2, h3,
+      .auth-title, .onboarding-title, .detail-title, .squad-title, .header-title,
+      .checkin-title, .completed-title, .nav-title, .section-row h2,
+      .streak-count, .eyebrow, .explore-hero-title, .explore-section,
+      .primary, .secondary, .danger-button, .logo-text {
+        font-family: var(--font-display);
+        font-weight: 400;
+        letter-spacing: 0.02em;
+      }
+
+      .logo-text { display: inline-block; }
 
       * { box-sizing: border-box; }
       html, body { min-width: 320px; min-height: 100%; }
       body {
-        display: grid;
+        display: flex;
         min-height: 100vh;
         margin: 0;
         padding: 22px;
-        place-items: start center;
+        justify-content: center;
+        align-items: flex-start;
         color: var(--text);
         background:
-          radial-gradient(circle at 18% 8%, rgb(155 135 255 / 20%), transparent 28%),
-          radial-gradient(circle at 85% 88%, rgb(217 255 67 / 10%), transparent 25%),
-          #05070a;
-        overflow: hidden;
+          radial-gradient(circle at 18% 8%, rgb(224 82 110 / 10%), transparent 30%),
+          radial-gradient(circle at 85% 88%, rgb(109 156 66 / 10%), transparent 28%),
+          #f2ebdd;
+        background-attachment: fixed;
+        overflow: auto;
       }
 
       button, input { font: inherit; }
@@ -46,13 +100,14 @@
 
       .phone {
         position: relative;
-        width: min(430px, 100%);
+        flex: 0 0 auto;
+        width: 430px;
         height: min(900px, calc(100vh - 44px));
         overflow: hidden;
-        border: 1px solid #303846;
+        border: 1px solid var(--border);
         border-radius: 38px;
         background: var(--bg);
-        box-shadow: 0 40px 100px rgb(0 0 0 / 65%), 0 0 0 8px #0e1218;
+        box-shadow: 0 40px 100px rgb(0 0 0 / 20%), 0 0 0 8px #efe7d8;
       }
 
       .screen {
@@ -74,6 +129,10 @@
 
       .auth-screen { align-content: center; }
       .auth-screen.active { display: grid; }
+      .auth-logo { display: block; margin: 0 0 18px; font-size: 1.7rem; letter-spacing: 0.06em; text-align: left; }
+      .auth-logo .lp { color: var(--primary); }
+      .auth-logo .lb { color: var(--text); }
+      .auth-logo i { margin: 0 -0.08em; color: var(--primary); font-size: 1.35rem; vertical-align: -0.14em; }
       .brand-mark {
         display: grid;
         width: 54px;
@@ -98,8 +157,8 @@
       }
 
       h1, h2, h3, p { margin-top: 0; }
-      .auth-title { margin: 8px 0 10px; font-size: 2.25rem; line-height: 1.04; letter-spacing: -0.04em; }
-      .subtitle { margin-bottom: 26px; color: var(--muted); font-size: 1rem; line-height: 1.5; }
+      .auth-title { margin: 8px 0 10px; font-size: 1.5rem; line-height: 1.08; letter-spacing: 0.01em; overflow-wrap: anywhere; }
+      .subtitle { margin-bottom: 26px; color: var(--muted); font-size: 0.92rem; line-height: 1.5; overflow-wrap: anywhere; }
       .card { border: 1px solid var(--border); border-radius: 22px; background: var(--surface); }
       .auth-card { padding: 18px; }
       .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 12px; background: var(--bg); }
@@ -133,13 +192,13 @@
       .guided { margin-top: 14px; color: var(--muted); font-size: 0.82rem; text-align: center; }
       .guided button { color: var(--lime); }
 
-      .onboarding-title { margin: 8px 0 10px; font-size: 2.1rem; line-height: 1.08; letter-spacing: -0.04em; }
+      .onboarding-title { margin: 8px 0 10px; font-size: 1.5rem; line-height: 1.1; letter-spacing: 0.01em; overflow-wrap: anywhere; }
       .field-label { display: block; margin: 18px 0 9px; color: var(--text); font-size: 0.9rem; font-weight: 800; }
       .interest-group { margin-top: 15px; }
       .group-title { margin-bottom: 8px; color: var(--muted); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
       .chips { display: flex; flex-wrap: wrap; gap: 8px; }
       .chip { min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--surface); cursor: pointer; }
-      .chip[aria-pressed="true"] { border-color: var(--violet); color: var(--text); background: #28233e; }
+      .chip[aria-pressed="true"] { border-color: var(--primary); color: var(--primary); background: var(--primary-tint); }
       .permission-card { display: flex; gap: 13px; margin: 25px 0 16px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
       .permission-icon { color: var(--lime); font-size: 0.8rem; font-weight: 900; }
       .permission-title { margin-bottom: 4px; font-weight: 800; }
@@ -154,7 +213,7 @@
         justify-content: space-between;
         min-height: 76px;
         padding: max(17px, env(safe-area-inset-top)) 20px 13px;
-        background: linear-gradient(180deg, #090b0f 78%, rgb(9 11 15 / 88%) 90%, transparent);
+        background: linear-gradient(180deg, var(--paper) 78%, rgb(255 250 240 / 88%) 90%, transparent);
         backdrop-filter: blur(14px);
       }
 
@@ -208,7 +267,7 @@
         padding: 16px;
         border: 1px solid var(--lime);
         border-radius: 16px;
-        background: linear-gradient(135deg, rgb(217 255 67 / 16%), rgb(155 135 255 / 14%));
+        background: linear-gradient(135deg, rgb(224 82 110 / 14%), rgb(109 156 66 / 14%));
         cursor: pointer;
         text-align: left;
       }
@@ -228,24 +287,37 @@
       .host { margin-left: auto; font-size: 0.7rem; }
       .map-frame { position: relative; height: 300px; margin: 0 -6px; overflow: hidden; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); }
       #mobileMap { width: 100%; height: 100%; }
-      .map-legend { position: absolute; z-index: 500; right: 9px; bottom: 9px; display: grid; gap: 5px; padding: 8px 10px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 10px; color: var(--text); background: rgb(8 11 16 / 88%); font-size: 0.66rem; pointer-events: none; }
+      .map-legend { position: absolute; z-index: 500; right: 9px; bottom: 9px; display: grid; gap: 5px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: rgb(255 255 255 / 92%); box-shadow: var(--shadow-card); font-size: 0.66rem; pointer-events: none; }
       .legend-row { display: flex; align-items: center; gap: 6px; }
       .legend-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--violet); }
       .legend-dot.revealed { background: var(--lime); }
       .legend-ring { width: 12px; height: 12px; border: 1px solid var(--violet); border-radius: 50%; background: rgb(155 135 255 / 12%); }
-      .leaflet-tile-pane { filter: saturate(0.82) contrast(1.06); }
-      .leaflet-control-attribution { color: #687383 !important; background: rgb(8 11 16 / 82%) !important; }
-      .leaflet-control-attribution a { color: #aeb8c7 !important; }
+      .leaflet-container { background: var(--ink); }
+      .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.7) contrast(1.05) saturate(0.4) grayscale(0.5); }
+      .leaflet-control-attribution { color: #6b6b6b !important; background: rgb(255 255 255 / 82%) !important; }
+      .leaflet-control-attribution a { color: #4a4a4a !important; }
       .drop-pin, .user-pin { border: 0; background: transparent; }
       .drop-pin-core, .user-pin-core { display: grid; place-items: center; }
-      .drop-pin-core { display: flex; width: max-content; max-width: 138px; min-height: 34px; align-items: center; gap: 6px; padding: 4px 9px 4px 5px; overflow: hidden; border: 2px solid rgb(255 255 255 / 35%); border-radius: 999px; color: var(--black); background: var(--lime); box-shadow: 0 5px 18px rgb(0 0 0 / 50%); font-size: 0.68rem; font-weight: 900; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+      .drop-pin-core { display: inline-flex; width: max-content; min-height: 32px; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border: 2px solid rgb(255 255 255 / 45%); border-radius: 999px; color: var(--paper); background: var(--secondary); box-shadow: 0 5px 18px rgb(0 0 0 / 45%); font-size: 0.64rem; font-weight: 900; line-height: 1; white-space: nowrap; }
+      .drop-pin-core[data-rarity="uncommon"] { background: #2f9c86; }
+      .drop-pin-core[data-rarity="rare"] { background: var(--gold); }
+      .drop-pin-core[data-rarity="epic"] { background: var(--primary); }
+      .drop-pin-core[data-rarity="legendary"] { background: var(--purple); }
+      .drop-pin-core .pin-symbol { background: rgb(255 255 255 / 22%); color: var(--paper); font-size: 0.9rem; }
+      .drop-pin-core .pin-symbol i { font-size: 0.95rem; }
+      .drop-pin-core .pin-rar { padding: 1px 6px; border-radius: 999px; background: rgb(255 255 255 / 92%); font: 400 0.46rem/1.4 var(--font-body); text-transform: uppercase; letter-spacing: 0.04em; }
+      .pin-rar.rar-common { color: var(--secondary); }
+      .pin-rar.rar-uncommon { color: #2f9c86; }
+      .pin-rar.rar-rare { color: var(--gold); }
+      .pin-rar.rar-epic { color: var(--primary); }
+      .pin-rar.rar-legendary { color: var(--purple); }
       .pin-symbol { display: grid; width: 23px; height: 23px; flex: 0 0 23px; place-items: center; border-radius: 50%; background: rgb(0 0 0 / 16%); font-size: 0.9rem; }
       .pin-symbol.store-logo { color: white; background: #111722; font: 900 0.57rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.02em; }
       .pin-type { overflow: hidden; text-overflow: ellipsis; text-transform: capitalize; }
-      .drop-pin-core.detect { background: var(--violet); }
-      .drop-pin-core.reveal { background: var(--lime); }
+      .drop-pin-core.detect { opacity: 0.92; }
+      .drop-pin-core.squad { background: var(--secondary); }
       .drop-pin-core.outside { opacity: 0.28; filter: grayscale(1); }
-      .user-pin-core { width: 21px; height: 21px; border: 5px solid white; border-radius: 50%; background: #367dff; box-shadow: 0 4px 16px #000; }
+      .user-pin-core { width: 21px; height: 21px; border: 5px solid white; border-radius: 50%; background: var(--secondary); box-shadow: 0 4px 16px rgb(0 0 0 / 35%); }
       .location-button { margin-top: 14px; }
       .demo-label { margin: 20px 0 9px; color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.11em; }
       .demo-positions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -261,9 +333,8 @@
       .empty { padding: 17px; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); font-size: 0.86rem; line-height: 1.45; text-align: center; }
       .signal-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; align-items: center; width: 100%; padding: 13px; border: 1px solid var(--border); border-radius: 16px; color: var(--text); background: var(--surface); cursor: pointer; text-align: left; }
       .signal-copy { display: grid; min-width: 0; }
-      .signal-orb { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; color: var(--black); background: var(--violet); font-size: 0.76rem; font-weight: 900; }
-      .signal-card[data-stage="reveal"] .signal-orb { background: var(--lime); }
-      .signal-stage { display: block; color: var(--muted); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+      .signal-orb { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; color: var(--paper); font-size: 0.76rem; font-weight: 900; }
+      .signal-stage { display: block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
       .signal-title { display: block; margin-top: 3px; overflow: hidden; font-size: 0.98rem; font-weight: 800; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
       .signal-meta { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 0.77rem; text-overflow: ellipsis; text-transform: capitalize; white-space: nowrap; }
       .signal-distance { color: var(--lime); font: 800 0.72rem/1 ui-monospace, monospace; }
@@ -279,6 +350,14 @@
       .history-date { display: block; margin-top: 4px; color: var(--muted); font-size: 0.68rem; }
       .history-empty { padding: 40px 16px; color: var(--muted); text-align: center; }
 
+      /* The Drop screen is a dark surface in the Figma design. */
+      .screen[data-screen="detail"] { background: var(--ink); color: var(--paper); }
+      .screen[data-screen="detail"] .app-header {
+        background: linear-gradient(180deg, var(--ink) 78%, rgb(43 37 39 / 88%) 90%, transparent);
+      }
+      .screen[data-screen="detail"] .back,
+      .screen[data-screen="detail"] .nav-title,
+      .detail-title { color: var(--paper); }
       .detail-content { padding: 12px 20px 40px; }
       .stage-badge { display: inline-flex; min-height: 30px; align-items: center; padding: 0 13px; border-radius: 999px; color: var(--black); background: var(--violet); font-size: 0.7rem; font-weight: 900; letter-spacing: 0.08em; }
       .stage-badge.reveal { background: var(--lime); }
@@ -363,7 +442,7 @@
       .metric { padding: 13px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
       .metric-label { color: var(--muted); font-size: 0.72rem; }
       .metric-value { margin-top: 5px; font-size: 1rem; font-weight: 850; }
-      .capacity-track { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: #252c37; }
+      .capacity-track { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: var(--border); }
       .capacity-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--lime)); }
       .engine-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .engine-actions button { min-height: 43px; border: 1px solid var(--border); border-radius: 10px; background: var(--raised); cursor: pointer; font-size: 0.8rem; }
@@ -371,10 +450,10 @@
       .event-list { display: grid; gap: 7px; max-height: 280px; margin: 0; padding: 0; overflow: auto; list-style: none; }
       .event-list li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; padding: 10px 11px; border-radius: 10px; background: var(--bg); font: 0.7rem/1.35 ui-monospace, monospace; }
       .event-type { color: var(--violet); }
-      .event-message { grid-column: 1 / -1; color: #c8d0dc; }
-      .event-time { color: #687383; }
+      .event-message { grid-column: 1 / -1; color: var(--text); }
+      .event-time { color: var(--muted); }
 
-      .toast { position: absolute; z-index: 3000; right: 20px; bottom: 20px; left: 20px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 12px; color: var(--text); background: rgb(26 32 43 / 96%); box-shadow: 0 12px 40px #000; font-size: 0.85rem; text-align: center; transform: translateY(20px); opacity: 0; pointer-events: none; transition: 180ms ease; }
+      .toast { position: absolute; z-index: 3000; right: 20px; bottom: 20px; left: 20px; padding: 13px 15px; border: 1px solid var(--ink); border-radius: 12px; color: var(--paper); background: var(--ink); box-shadow: 0 12px 40px rgb(0 0 0 / 35%); font-size: 0.85rem; text-align: center; transform: translateY(20px); opacity: 0; pointer-events: none; transition: 180ms ease; }
       .toast.show { transform: none; opacity: 1; }
 
       .rewards-content { padding: 10px 20px 40px; }
@@ -429,18 +508,326 @@
       .chat-composer .input { flex: 1; min-height: 44px; margin: 0; }
       .chat-send { width: auto; min-width: 78px; min-height: 44px; padding: 0 16px; }
 
-      @media (max-width: 520px) {
-        body { display: block; padding: 0; }
-        .phone { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+      /* Persistent bottom tab bar (Figma: dark rounded bar, active tab = pink pill) */
+      .tab-bar {
+        position: absolute;
+        z-index: 1500;
+        right: 16px;
+        bottom: 14px;
+        left: 16px;
+        display: flex;
+        gap: 4px;
+        padding: 10px;
+        border-radius: 35px;
+        background: var(--ink);
       }
+      .phone.no-tabs .tab-bar { display: none; }
+      .tab-btn {
+        display: grid;
+        flex: 1;
+        justify-items: center;
+        gap: 2px;
+        padding: 6px 0;
+        border: 0;
+        border-radius: 28px;
+        color: var(--paper);
+        background: transparent;
+        cursor: pointer;
+        font: 400 10px/1.1 var(--font-body);
+      }
+      .tab-btn .tab-ico { font-size: 22px; }
+      .tab-btn.active { color: var(--on-primary); background: var(--primary); }
+
+      /* Home screen — matches Figma "Home v1" */
+      .home-content { padding: 14px 20px 108px; }
+      .home-logo { display: block; width: 100%; margin: 4px 0 0; font-size: 1.5rem; letter-spacing: 0.06em; text-align: center; }
+      .home-logo.logo-text { display: block; }
+      .home-logo .lp { color: var(--primary); }
+      .home-logo .lb { color: var(--text); }
+      .home-logo i { margin: 0 -0.08em; color: var(--primary); font-size: 1.5rem; vertical-align: -0.16em; }
+      .home-hgroup { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 20px; }
+      .home-greeting { flex: 1 1 auto; min-width: 0; color: var(--secondary); font-family: var(--font-display); font-size: 1.2rem; letter-spacing: 0.02em; }
+      .home-streak { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 7px 15px; border-radius: 16px; color: var(--gold); background: #fff5e6; font: 400 1.3rem/1 var(--font-body); }
+      .home-streak i { font-size: 1.4rem; }
+      .home-prompt { margin: 2px 0 0; color: var(--text); font-size: 0.92rem; letter-spacing: 0.02em; }
+      .home-challenge { display: flex; gap: 12px; margin-top: 18px; padding: 14px; border-radius: var(--radius-md); background: var(--secondary-tint); }
+      .home-challenge-ico { flex: 0 0 auto; align-self: center; color: var(--secondary); font-size: 2.6rem; }
+      .home-challenge-main { flex: 1; min-width: 0; }
+      .home-challenge-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+      .home-challenge-label { color: var(--secondary); font: 400 0.86rem/1 var(--font-body); }
+      .home-challenge-count { color: var(--muted); font: 400 0.6rem/1 var(--font-body); white-space: nowrap; }
+      .home-challenge-body { margin: 4px 0 0; color: var(--text); font-size: 0.7rem; }
+      .home-bar { height: 8px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: var(--surface); }
+      .home-bar span { display: block; height: 100%; border-radius: inherit; background: var(--secondary); }
+      .home-claim { display: block; width: max-content; margin: 12px auto 0; padding: 7px 24px; border: 0; border-radius: 999px; color: var(--on-primary); background: var(--primary); font-size: 0.8rem; letter-spacing: 0.03em; cursor: pointer; transform: translateX(-24px); }
+      .home-claim:disabled { opacity: 0.55; cursor: not-allowed; }
+      .home-map { position: relative; margin-top: 16px; overflow: hidden; border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+      .home-map-canvas {
+        height: 380px;
+        background:
+          repeating-linear-gradient(118deg, #363030 0 1.5px, transparent 1.5px 30px),
+          repeating-linear-gradient(28deg, #363030 0 1.5px, transparent 1.5px 40px),
+          var(--ink);
+      }
+      .home-drop { position: absolute; right: 0; bottom: 0; left: 0; padding: 14px 18px 18px; background: var(--ink); }
+      .home-drop-row { display: flex; align-items: center; justify-content: space-between; }
+      .home-drop-live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: 400 0.6rem/1 var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; }
+      .home-drop-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+      .home-drop-clock { color: var(--muted); font: 400 0.6rem/1 var(--font-body); }
+      .home-drop-title { margin: 6px 0 0; color: var(--paper); font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.03em; }
+      .home-drop-body { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+      .home-drop-meta p { margin: 3px 0 0; color: var(--muted); font: 400 0.6rem/1.35 var(--font-body); }
+      .home-drop-meta p:first-child { margin-top: 0; }
+      .home-drop-meta i { margin-right: 5px; color: var(--muted); vertical-align: -0.1em; }
+      .home-hunt { flex: 0 0 auto; padding: 9px 26px; border: 0; border-radius: 999px; color: var(--paper); background: var(--primary); font-size: 0.8rem; letter-spacing: 0.03em; cursor: pointer; }
+
+      .phone:not(.no-tabs) .content,
+      .phone:not(.no-tabs) .squad-content,
+      .phone:not(.no-tabs) .profile-content { padding-bottom: 104px; }
+
+      /* Explore — full-bleed map + bottom sheet (Figma) */
+      .explore-screen { position: relative; overflow: hidden; }
+      .explore-screen #mobileMap { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .explore-pill {
+        position: absolute;
+        z-index: 600;
+        top: max(52px, env(safe-area-inset-top));
+        left: 50%;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        color: var(--secondary);
+        background: var(--secondary-tint);
+        box-shadow: var(--shadow-card);
+        font: 400 0.82rem/1 var(--font-display);
+        white-space: nowrap;
+        transform: translateX(-50%);
+      }
+      .explore-sheet {
+        position: absolute;
+        z-index: 700;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        max-height: 52%;
+        display: flex;
+        flex-direction: column;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        background: var(--bg);
+        box-shadow: 0 -12px 40px rgb(0 0 0 / 18%);
+      }
+      .sheet-handle { width: 44px; height: 5px; margin: 10px auto 0; border-radius: 3px; background: var(--border); }
+      .sheet-scroll { padding: 14px 18px 112px; overflow-y: auto; scrollbar-width: none; }
+      .sheet-scroll::-webkit-scrollbar { display: none; }
+
+      /* Explore bottom-sheet drop detail (Figma) */
+      .ex-head { display: flex; align-items: center; gap: 10px; }
+      .ex-ico { flex: 0 0 auto; color: var(--ink); font-size: 1.6rem; }
+      .ex-title { font-size: 1.2rem; letter-spacing: 0.02em; overflow-wrap: anywhere; }
+      .ex-body { display: grid; grid-template-columns: 1fr auto; column-gap: 14px; margin-top: 12px; align-items: stretch; }
+      .ex-left { min-width: 0; }
+      .ex-off { display: inline-block; padding: 6px 16px; border-radius: 999px; color: var(--primary); background: var(--primary-tint); font-family: var(--font-display); font-size: 0.95rem; }
+      .ex-price { margin: 8px 0 0; color: var(--muted); font: 400 0.72rem/1.3 var(--font-body); }
+      .ex-price s { opacity: 0.85; }
+      .ex-price b { color: var(--ink); font-weight: 400; }
+      .ex-stats { display: flex; gap: 16px; margin-top: 16px; }
+      .ex-stat { display: grid; grid-template-columns: auto auto; column-gap: 6px; align-items: center; }
+      .ex-stat > i { grid-row: 1 / span 2; align-self: center; color: var(--secondary); font-size: 1.15rem; }
+      .ex-stat b { color: var(--ink); font-family: var(--font-display); font-size: 1.25rem; }
+      .ex-stat span { color: var(--ink); font: 400 0.55rem/1 var(--font-body); }
+      .ex-stat em { grid-column: 2; margin-top: 2px; color: var(--primary); font: 400 0.48rem/1.2 var(--font-body); font-style: normal; }
+      .ex-right { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; gap: 12px; }
+      .ex-perks { display: flex; gap: 8px; }
+      .ex-perk { display: grid; justify-items: center; gap: 4px; width: 46px; color: var(--ink); font: 400 0.5rem/1.1 var(--font-body); text-align: center; }
+      .ex-perk-ico { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--border); color: var(--subtle); font-size: 1.15rem; }
+      .ex-perk-ico.on { background: var(--primary-tint); color: var(--primary); }
+      .ex-perk-ico.xp { font-family: var(--font-display); font-size: 0.9rem; }
+      .ex-post { padding: 12px 18px; border: 0; border-radius: 999px; color: var(--paper); background: var(--primary); font-family: var(--font-display); font-size: 0.78rem; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+
+      /* Rarity colour coding */
+      .signal-card .signal-orb { background: var(--secondary); color: var(--paper); font-size: 1.1rem; }
+      .signal-card[data-rarity="uncommon"] .signal-orb { background: #2f9c86; }
+      .signal-card[data-rarity="rare"] .signal-orb { background: var(--gold); }
+      .signal-card[data-rarity="epic"] .signal-orb { background: var(--primary); }
+      .signal-card[data-rarity="legendary"] .signal-orb { background: var(--purple); }
+      .signal-stage { color: var(--muted); }
+      .signal-stage.rar-uncommon { color: #2f9c86; }
+      .signal-stage.rar-rare { color: var(--gold); }
+      .signal-stage.rar-epic { color: var(--primary); }
+      .signal-stage.rar-legendary { color: var(--purple); }
+      .signal-stage.rar-common { color: var(--secondary); }
+      .explore-hunt { margin-top: 16px; padding: 12px 32px; border: 0; border-radius: 35px; color: var(--on-primary); background: var(--primary); font: 400 0.85rem/1 var(--font-display); cursor: pointer; }
+      .explore-section { margin: 22px 0 8px; font-size: 1rem; }
+      .explore-screen .signal-list { margin-top: 18px; }
+      .explore-screen .location-button { width: 100%; margin: 0; }
+      .explore-screen .demo-positions { margin-top: 10px; }
+      .explore-screen .join-row { margin-top: 10px; }
+
+      /* ============ DROP DETECTED screen (Figma "Drop" detect states) ============ */
+      .screen.dd-screen.active { display: flex; }
+      .dd-screen { flex-direction: column; padding: max(52px, env(safe-area-inset-top)) 24px 26px; background: var(--ink); color: var(--paper); }
+      .dd-top { display: flex; align-items: center; gap: 10px; }
+      .dd-top .back { flex: 0 0 auto; min-width: auto; min-height: auto; color: var(--paper); font-size: 1.4rem; }
+      .dd-top-label { flex: 1; display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.06em; }
+      .dd-top-label::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+      .dd-clock { color: var(--muted); font-size: 0.8rem; }
+      .dd-ring { position: relative; align-self: center; display: grid; place-items: center; width: 230px; height: 230px; margin: 40px 0; border: 4px solid rgb(255 250 240 / 12%); border-radius: 50%; }
+      .dd-ring.full { border-color: var(--paper); }
+      .dd-ring-pct { color: var(--muted); font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 0.06em; }
+      .dd-ring-num { margin: 2px 0; color: var(--paper); font-family: var(--font-display); font-size: 3.4rem; line-height: 1; letter-spacing: 0.02em; }
+      .dd-ring-unit { color: var(--muted); font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 0.08em; }
+      .dd-card { margin-top: auto; padding: 20px; border-radius: var(--radius-xl); background: rgb(255 250 240 / 6%); }
+      .dd-card-title { margin: 0 0 12px; color: var(--paper); font-family: var(--font-display); font-size: 1.3rem; line-height: 1.05; letter-spacing: 0.03em; }
+      .dd-rows { display: grid; gap: 6px; font: 400 0.82rem/1.5 var(--font-body); }
+      .dd-row { display: grid; grid-template-columns: 84px 1fr; }
+      .dd-row b { color: var(--muted); font-weight: 400; }
+      .dd-row span { color: var(--paper); }
+      .dd-cta { margin-top: 18px; padding: 15px; border: 0; border-radius: 35px; color: var(--paper); background: var(--primary); font-family: var(--font-display); font-size: 1.05rem; letter-spacing: 0.04em; cursor: pointer; }
+      .dd-cta.walking { background: var(--secondary); }
+
+      /* ============ Revealed Drop (Figma "OPERATOR DINER DROP") ============ */
+      .screen.rv-screen.active { display: flex; }
+      .rv-screen { flex-direction: column; padding: max(52px, env(safe-area-inset-top)) 22px 26px; background: var(--ink); color: var(--paper); }
+      .rv-screen .back { align-self: flex-start; min-width: auto; color: var(--paper); font-size: 1.4rem; }
+      .rv-pin { align-self: center; margin: 12px 0 2px; color: var(--paper); font-size: 2.6rem; }
+      .rv-title { align-self: center; color: var(--paper); font-family: var(--font-display); font-size: 1.65rem; line-height: 1; letter-spacing: 0.03em; text-align: center; }
+      .rv-off { align-self: center; margin: 16px 0 0; padding: 12px 40px; border-radius: 30px; color: var(--primary); background: var(--primary-tint); font-family: var(--font-display); font-size: 1.25rem; letter-spacing: 0.04em; }
+      .rv-price { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 22px; color: var(--muted); font: 400 1.05rem/1 var(--font-body); }
+      .rv-price s { opacity: 0.8; }
+      .rv-price b { color: var(--paper); font-weight: 400; }
+      .rv-card { margin-top: 26px; padding: 16px; border-radius: var(--radius-xl); background: rgb(255 250 240 / 6%); }
+      .rv-stats { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+      .rv-stat { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius-lg); background: var(--secondary-tint); }
+      .rv-stat i { flex: 0 0 auto; color: var(--secondary); font-size: 1.3rem; }
+      .rv-stat > div { display: flex; flex-direction: column; }
+      .rv-stat-num { display: block; color: var(--ink); font-family: var(--font-display); font-size: 1.5rem; line-height: 1; }
+      .rv-stat-lab { display: block; margin-top: 4px; color: var(--ink); font: 400 0.6rem/1 var(--font-body); letter-spacing: 0.03em; }
+      .rv-stat-side { display: block; margin-top: 3px; color: var(--primary); font: 400 0.52rem/1 var(--font-body); }
+      .rv-perks { display: flex; justify-content: space-between; margin-top: 14px; }
+      .rv-perk { display: grid; justify-items: center; gap: 8px; width: 30%; }
+      .rv-perk-ico { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: rgb(255 250 240 / 10%); color: var(--paper); font-size: 1.5rem; font-family: var(--font-display); }
+      .rv-perk-ico i { font-size: 1.7rem; }
+      .rv-perk:first-child .rv-perk-ico { background: var(--primary-tint); color: var(--primary); }
+      .rv-perk span { color: var(--ink); background: var(--paper); border-radius: 999px; padding: 2px 8px; font: 400 0.6rem/1.4 var(--font-body); }
+      .rv-post { margin: 16px 0 8px; padding: 14px; border: 0; border-radius: 30px; color: var(--paper); background: var(--primary); font-family: var(--font-display); font-size: 1rem; letter-spacing: 0.04em; cursor: pointer; }
+      .rv-note { color: var(--muted); font: 400 0.66rem/1.4 var(--font-body); text-align: center; }
+
+      /* ============ Make Post (Figma "Your squad post") ============ */
+      .mp-screen { padding: max(52px, env(safe-area-inset-top)) 22px 108px; }
+      .mp-screen .back { min-width: auto; color: var(--text); font-size: 1.4rem; }
+      .mp-eyebrow { margin: 6px 0 0; color: var(--text); font: 400 0.8rem/1 var(--font-body); }
+      .mp-title { margin: 4px 0 0; color: var(--text); font-family: var(--font-display); font-size: 1.55rem; line-height: 1; letter-spacing: 0.03em; }
+      .mp-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+      .mp-toggle button { padding: 12px; border: 2px solid var(--secondary); border-radius: 30px; background: transparent; color: var(--secondary); font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.04em; cursor: pointer; }
+      .mp-toggle button.on { color: var(--paper); background: var(--secondary); }
+      .mp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+      .mp-cell { display: grid; justify-items: center; gap: 6px; padding: 18px 10px; border-radius: var(--radius-lg); background: var(--secondary-tint); }
+      .mp-cell.open { background: transparent; border: 2px dashed var(--border); }
+      .mp-ava { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; color: var(--paper); background: var(--secondary); font-family: var(--font-display); font-size: 1.3rem; transform: none; }
+      .mp-cell.open .mp-ava { background: var(--border); color: var(--subtle); }
+      .mp-name { color: var(--secondary); font: 400 0.85rem/1 var(--font-body); }
+      .mp-role { color: var(--primary); font: 400 0.62rem/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; }
+      .mp-cell.open .mp-name { color: var(--subtle); }
+      .mp-cell.open .mp-role { color: var(--muted); }
+      .mp-post { margin-top: 16px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); color: var(--text); font: 400 0.82rem/1.5 var(--font-body); }
+      .mp-tags { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+      .mp-tags .tag { padding: 6px 14px; border-radius: 999px; color: var(--primary); background: var(--primary-tint); font: 400 0.75rem/1 var(--font-body); }
+      .mp-tags .add { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 0; color: var(--primary); background: var(--primary-tint); font-size: 1rem; cursor: pointer; }
+      .mp-btn { display: block; width: 100%; margin-top: 20px; padding: 14px; border: 0; border-radius: 30px; color: var(--paper); background: var(--primary); font-family: var(--font-display); font-size: 1rem; letter-spacing: 0.06em; cursor: pointer; }
+
+      /* ============ Open Squads (Figma "open squads") ============ */
+      .os-screen { padding: max(52px, env(safe-area-inset-top)) 22px 108px; }
+      .os-top { display: flex; align-items: baseline; justify-content: space-between; }
+      .os-title { color: var(--text); font-family: var(--font-display); font-size: 1.6rem; line-height: 1; letter-spacing: 0.03em; }
+      .os-msg { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; color: var(--primary); font: 400 0.72rem/1 var(--font-body); cursor: pointer; }
+      .os-msg i { font-size: 1.6rem; }
+      .os-card { margin-top: 16px; padding: 18px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
+      .os-drop { color: var(--secondary); font-family: var(--font-display); font-size: 1.1rem; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; }
+      .os-sub { margin: 8px 0 0; color: var(--muted); font: 400 0.74rem/1.3 var(--font-body); }
+      .os-tagline { margin: 6px 0 0; color: var(--primary); font: 400 0.72rem/1 var(--font-body); }
+      .os-member { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; margin-top: 14px; }
+      .os-ava { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: var(--paper); background: var(--secondary); font-family: var(--font-display); font-size: 1.1rem; }
+      .os-name { display: block; color: var(--text); font: 400 0.82rem/1.2 var(--font-body); }
+      .os-mmeta { display: block; margin-top: 2px; color: var(--muted); font: 400 0.68rem/1.2 var(--font-body); }
+      .os-quote { margin: 16px 0 0; color: var(--ink); font: 400 0.8rem/1.5 var(--font-body); }
+      .os-tags { display: flex; gap: 8px; margin-top: 12px; }
+      .os-tags .tag { padding: 5px 14px; border-radius: 999px; color: var(--primary); background: var(--primary-tint); font: 400 0.72rem/1 var(--font-body); }
+      .os-idlabel { display: block; margin: 16px 0 6px; color: var(--muted); font: 400 0.68rem/1 var(--font-body); }
+      .os-id { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg); color: var(--text); font: 400 0.9rem/1 var(--font-body); letter-spacing: 0.1em; }
+      .os-join { width: 100%; margin-top: 12px; padding: 13px; border: 0; border-radius: 999px; color: var(--paper); background: var(--primary); font-family: var(--font-display); font-size: 0.95rem; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+
+      /* ============ Nearby Friends (Figma) ============ */
+      .sq-screen { padding: max(52px, env(safe-area-inset-top)) 22px 108px; }
+      .sq-screen .back { min-width: auto; color: var(--text); font-size: 1.4rem; }
+      .sq-drop { margin: 6px 0 0; color: var(--text); font-family: var(--font-display); font-size: 1.5rem; line-height: 1; letter-spacing: 0.03em; }
+      .sq-h2 { margin: 14px 0 12px; color: var(--text); font-family: var(--font-display); font-size: 1.15rem; letter-spacing: 0.03em; }
+      .sq-card { display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 12px; margin-bottom: 12px; padding: 14px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
+      .sq-ava { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; color: var(--paper); background: var(--secondary); font-family: var(--font-display); font-size: 1.4rem; }
+      .sq-name { color: var(--secondary); font: 400 1rem/1.1 var(--font-body); }
+      .sq-meta { margin-top: 3px; color: var(--muted); font: 400 0.72rem/1.2 var(--font-body); }
+      .sq-dist { color: var(--primary); font: 400 0.72rem/1 var(--font-body); }
+      .sq-invite { grid-column: 1 / -1; padding: 9px; border: 1.5px solid var(--primary); border-radius: 999px; background: transparent; color: var(--primary); font-family: var(--font-display); font-size: 0.9rem; letter-spacing: 0.06em; cursor: pointer; }
+
+      /* ============ Profile (Figma) ============ */
+      .pf-screen { padding: max(52px, env(safe-area-inset-top)) 22px 108px; text-align: left; }
+      .pf-top { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: center; }
+      .pf-ava { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; color: var(--paper); background: var(--secondary); font-family: var(--font-display); font-size: 2.3rem; }
+      .pf-name { color: var(--secondary); font-family: var(--font-display); font-size: 1.5rem; line-height: 1; letter-spacing: 0.03em; }
+      .pf-stats { display: flex; gap: 18px; margin-top: 6px; }
+      .pf-stat b { color: var(--ink); font-family: var(--font-display); font-size: 1.55rem; display: inline-block; }
+      .pf-stat span { display: block; color: var(--muted); font: 400 0.6rem/1 var(--font-body); }
+      .pf-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      .pf-badge { padding: 5px 14px; border-radius: 999px; color: var(--primary); background: var(--primary-tint); font: 400 0.72rem/1 var(--font-body); }
+      .pf-badge.level { background: transparent; color: var(--primary); font-family: var(--font-display); letter-spacing: 0.04em; display: inline-block; padding-left: 0; }
+      .pf-bio { margin-top: 10px; color: var(--ink); font: 400 0.82rem/1.4 var(--font-body); }
+      .pf-xp { margin-top: 12px; }
+      .pf-xp .progress { height: 8px; background: var(--border); }
+      .pf-xp .xp-progress-label { margin: 6px 0 0; color: var(--muted); font: 400 0.68rem/1 var(--font-body); text-align: left; }
+      .pf-edit { display: block; width: 100%; margin-top: 16px; padding: 13px; border: 0; border-radius: 25px; color: var(--paper); background: var(--primary); font-family: var(--font-display); font-size: 0.95rem; letter-spacing: 0.06em; cursor: pointer; }
+      .pf-tabs { display: flex; gap: 40px; justify-content: center; margin: 22px 0 4px; border-bottom: 1px solid var(--border); }
+      .pf-tab { padding-bottom: 8px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--primary); font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 0.06em; cursor: pointer; }
+      .pf-tab.on { border-bottom-color: var(--primary); }
+      .pf-catch { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; margin-top: 12px; padding: 14px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); }
+      .pf-catch-ico { display: grid; place-items: center; width: 56px; height: 56px; color: var(--secondary); font-size: 2.5rem; }
+      .pf-catch-name { color: var(--secondary); font-family: var(--font-display); font-size: 0.92rem; letter-spacing: 0.02em; display: inline-block; }
+      .pf-catch-sub { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+      .pf-catch-rar { flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; color: var(--gold); background: #ffebce; font: 400 0.52rem/1 var(--font-body); }
+      .pf-catch-rar.rar-common { color: var(--secondary); background: var(--secondary-tint); }
+      .pf-catch-rar.rar-rare { color: var(--gold); background: #ffebce; }
+      .pf-catch-rar.rar-epic { color: var(--primary); background: var(--primary-tint); }
+      .pf-catch-rar.rar-legendary { color: var(--purple); background: #fee6ff; }
+
+      .pf-bgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+      .pf-bcard { display: grid; justify-items: center; gap: 4px; padding: 14px 8px; border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-card); opacity: 0.4; text-align: center; }
+      .pf-bcard.unlocked { opacity: 1; }
+      .pf-bico { font-size: 2.1rem; color: var(--muted); }
+      .pf-bcard.unlocked .pf-bico { color: var(--primary); }
+      .pf-bname { font: 400 0.66rem/1.1 var(--font-body); color: var(--text); }
+      .pf-bdesc { font: 400 0.55rem/1.2 var(--font-body); color: var(--muted); }
+      .pf-signout { display: block; width: 100%; margin-top: 24px; }
+      .pf-catch-meta { color: var(--ink); font: 400 0.72rem/1 var(--font-body); }
+
+      /* Figma display text is uppercase */
+      .dd-top-label, .dd-ring-pct, .dd-ring-unit, .dd-card-title, .dd-cta,
+      .rv-title, .rv-off, .rv-post, .mp-title, .mp-toggle button, .mp-btn,
+      .sq-drop, .sq-h2, .sq-invite, .pf-name, .pf-catch-name, .pf-edit, .pf-tab,
+      .home-greeting, .home-drop-title, .home-claim, .explore-hero-title, .explore-hunt {
+        text-transform: uppercase;
+      }
+      .dd-cta, .rv-post { width: 100%; }
+      .dd-ring-num { font-size: 5.4rem; }
+
+      /* The phone-mockup frame (fixed 430px device) shows at every window size.
+         A window narrower than the device just scrolls horizontally to it. */
     </style>
   </head>
   <body>
-    <main class="phone" aria-label="DropBy mobile demo">
+    <main class="phone no-tabs" aria-label="DropBy mobile demo">
       <section class="screen auth-screen active" data-screen="auth" aria-labelledby="authTitle">
         <div>
-          <div class="brand-mark" aria-hidden="true">D</div>
-          <p class="eyebrow">DropBy</p>
+          <div class="logo-text auth-logo"><span class="lp">DR<i class="ph-fill ph-map-pin"></i>P</span> <span class="lb">BY</span></div>
           <h1 class="auth-title" id="authTitle">Catch experiences nearby.</h1>
           <p class="subtitle">Sign in to discover live Drops and assemble a squad.</p>
           <div class="card auth-card">
@@ -448,7 +835,7 @@
               <button class="tab active" data-auth-mode="signin" type="button">Sign in</button>
               <button class="tab" data-auth-mode="create" type="button">Create account</button>
             </div>
-            <input class="input" id="authName" aria-label="Display name" placeholder="Display name" value="Melbourne Explorer" hidden />
+            <input class="input" id="authName" aria-label="Display name" placeholder="Display name" value="Joel" hidden />
             <input class="input" id="authEmail" aria-label="Email" type="email" value="explorer@dropbyapp.com" />
             <input class="input" id="authPassword" aria-label="Password" type="password" value="dropby12345" />
             <div class="auth-error" id="authError" aria-live="polite"></div>
@@ -463,7 +850,7 @@
         <h1 class="onboarding-title" id="onboardingTitle">Make discovery yours.</h1>
         <p class="subtitle">Choose the experiences you would actually leave home for.</p>
         <label class="field-label" for="onboardingName">Display name</label>
-        <input class="input" id="onboardingName" value="Melbourne Explorer" />
+        <input class="input" id="onboardingName" value="Joel" />
 
         <div class="interest-group">
           <div class="group-title">Food &amp; drink</div>
@@ -504,73 +891,142 @@
         <button class="primary" id="finishOnboarding" type="button">Allow location &amp; continue</button>
       </section>
 
-      <section class="screen" data-screen="discover" aria-labelledby="discoverTitle">
-        <header class="app-header">
-          <div>
-            <p class="eyebrow">Live discovery</p>
-            <h1 class="header-title" id="discoverTitle">Nearby Drops</h1>
-            <p class="greeting" id="greeting">Hey Explorer</p>
+      <section class="screen home-screen" data-screen="home" aria-labelledby="homeTitle">
+        <div class="content home-content">
+          <div class="home-logo logo-text"><span class="lp">DR<i class="ph-fill ph-map-pin"></i>P</span> <span class="lb">BY</span></div>
+
+          <div class="home-hgroup">
+            <span class="home-greeting" id="homeTitle">HEY EXPLORER,</span>
+            <span class="home-streak"><i class="ph-fill ph-fire"></i>15</span>
           </div>
-          <div class="header-actions">
-            <button class="rewards-quickaccess" id="openRewardsQuick" type="button" aria-label="Powerups, perks and challenges">
-              🎁<span class="notify-dot" id="rewardsNotifyDot" hidden>0</span>
-            </button>
-            <button class="connections-button" id="openConnections" type="button" aria-label="Connections">
-              👥<span class="notify-dot" id="connectionsNotifyDot" hidden>0</span>
-            </button>
-            <button class="avatar" id="openProfile" type="button" aria-label="Open profile">M</button>
-          </div>
-        </header>
-        <div class="content">
-          <div class="connection"><span class="live-dot"></span>Live updates connected <span class="host">demo engine</span></div>
-          <div class="map-frame">
-            <div id="mobileMap" aria-label="Map of nearby Drops"></div>
-            <div class="map-legend" aria-hidden="true">
-              <span class="legend-row"><span class="legend-dot"></span>Detected signal</span>
-              <span class="legend-row"><span class="legend-dot revealed"></span>Revealed Drop</span>
-              <span class="legend-row"><span class="legend-ring"></span>100 m Reveal zone</span>
+          <p class="home-prompt">What are you up to today?</p>
+
+          <div class="home-challenge">
+            <i class="ph ph-gift home-challenge-ico" aria-hidden="true"></i>
+            <div class="home-challenge-main">
+              <div class="home-challenge-head">
+                <span class="home-challenge-label">This week&rsquo;s challenge</span>
+                <span class="home-challenge-count">0/3 Caught</span>
+              </div>
+              <p class="home-challenge-body">Catch 3 Food Drops for bonus XP.</p>
+              <div class="home-bar"><span style="width: 35%"></span></div>
+              <button class="home-claim logo-text" type="button" disabled>CLAIM +50 XP</button>
             </div>
           </div>
-          <button class="primary location-button" id="useLocation" type="button">Start continuous walk demo</button>
-          <div class="demo-label">MELBOURNE DEMO POSITIONS</div>
-          <div class="demo-positions">
-            <button data-distance="500" type="button">Detect</button>
-            <button data-distance="100" type="button">Reveal</button>
-          </div>
-          <div class="join-row">
-            <input class="input" id="joinCode" placeholder="Paste a squad ID" />
-            <button id="joinSquad" type="button">Join squad</button>
-          </div>
-          <div class="section-row">
-            <h2 id="signalHeading">No signals yet</h2>
-            <span class="section-hint">Move closer to reveal more</span>
-          </div>
-          <div class="signal-list" id="signalList" aria-live="polite"></div>
-          <div class="button-gap">
-            <button class="secondary" id="openEngine" type="button">Open discovery engine lab</button>
+
+          <div class="home-map">
+            <div class="home-map-canvas" aria-hidden="true"></div>
+            <div class="home-drop">
+              <div class="home-drop-row">
+                <span class="home-drop-live"><span class="home-drop-dot"></span>Live near you</span>
+                <span class="home-drop-clock" id="homeClock">28:19</span>
+              </div>
+              <span class="home-drop-title logo-text">DROP NEARBY</span>
+              <div class="home-drop-body">
+                <div class="home-drop-meta">
+                  <p><i class="ph ph-map-pin"></i>280m (4 min walk)</p>
+                  <p><i class="ph ph-fork-knife"></i>Asian food</p>
+                  <p><i class="ph-fill ph-users-three"></i>Min. squad of 4</p>
+                </div>
+                <button class="home-hunt logo-text" id="homeHunt" type="button">CATCH</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="screen" data-screen="detail" aria-labelledby="detailTitle">
-        <header class="app-header">
-          <button class="back" data-back="discover" type="button" aria-label="Back">‹</button>
-          <h1 class="nav-title">Drop</h1>
-          <span class="header-spacer"></span>
-        </header>
-        <div class="detail-content">
-          <span class="stage-badge" id="detailStage">DETECT</span>
-          <p class="detail-distance" id="detailDistance">500 metres away</p>
-          <h2 class="detail-title" id="detailTitle">Mystery Drop</h2>
-          <p class="detail-explanation" id="detailExplanation"></p>
-          <div class="card detail-card" id="detailRows"></div>
-          <div class="card assemble-card" id="assembleCard" hidden>
-            <p class="eyebrow">Assemble</p>
-            <h3>Build a squad of 2–4</h3>
-            <p>Create a live squad, then share its ID so friends can join.</p>
-            <button class="primary" id="createSquad" type="button">Create squad</button>
+      <section class="screen explore-screen" data-screen="discover" aria-labelledby="discoverTitle">
+        <div id="mobileMap" aria-label="Map of nearby Drops"></div>
+        <div class="explore-pill">
+          <span class="live-dot"></span>
+          <span id="signalHeading">No drops live</span>
+        </div>
+        <div class="explore-sheet">
+          <div class="sheet-handle" aria-hidden="true"></div>
+          <div class="sheet-scroll">
+            <div class="ex-drop" id="exploreHero">
+              <div class="ex-head">
+                <i class="ph-fill ph-fork-knife ex-ico"></i>
+                <h1 class="ex-title" id="discoverTitle">Operator Diner</h1>
+              </div>
+              <div class="ex-body">
+                <div class="ex-left">
+                  <span class="ex-off">40% OFF</span>
+                  <p class="ex-price"><s>$45</s> &rarr; <b>$27 per person</b></p>
+                  <div class="ex-stats">
+                    <div class="ex-stat"><i class="ph-fill ph-users-three"></i><b id="exSquad">4</b><span>Min. Squad</span></div>
+                    <div class="ex-stat"><i class="ph ph-clock"></i><b>24:39</b><span>Time Left</span><em>Extra Time +15:00</em></div>
+                  </div>
+                </div>
+                <div class="ex-right">
+                  <div class="ex-perks">
+                    <div class="ex-perk"><span class="ex-perk-ico on"><i class="ph ph-clock-clockwise"></i></span>Extra Time</div>
+                    <div class="ex-perk"><span class="ex-perk-ico"><i class="ph ph-user-plus"></i></span>Extra Slot</div>
+                    <div class="ex-perk"><span class="ex-perk-ico xp">XP</span>XP Boost</div>
+                  </div>
+                  <button class="ex-post" id="exPost" type="button">Post Drop</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="signal-list" id="signalList" aria-live="polite"></div>
           </div>
         </div>
+      </section>
+
+      <section class="screen mp-screen" data-screen="makepost" aria-label="Your squad post">
+        <button class="back" data-back="discover" type="button" aria-label="Back">&lsaquo;</button>
+        <p class="mp-eyebrow">Your squad post</p>
+        <h1 class="mp-title" id="mpTitle">OPERATOR DINER DROP</h1>
+        <div class="mp-toggle">
+          <button type="button" class="on" data-vis="private">Private</button>
+          <button type="button" data-vis="public">Public</button>
+        </div>
+        <div class="mp-grid">
+          <div class="mp-cell"><span class="mp-ava" id="mpHostAva">J</span><span class="mp-name" id="mpHostName">You</span><span class="mp-role">Host</span></div>
+          <div class="mp-cell"><span class="mp-ava">A</span><span class="mp-name">Aileen</span><span class="mp-role">Joined</span></div>
+          <div class="mp-cell open"><span class="mp-ava">+</span><span class="mp-name">Open Slot</span><span class="mp-role">Waiting</span></div>
+          <div class="mp-cell open"><span class="mp-ava">+</span><span class="mp-name">Open Slot</span><span class="mp-role">Waiting</span></div>
+        </div>
+        <div class="mp-post">Diner run anybody? Operator Diner has great waffles!<br /><br />Looking for 2 more hungry people :)</div>
+        <div class="mp-tags">
+          <span class="tag">Casual</span>
+          <span class="tag">Uni students</span>
+          <button class="add" type="button" aria-label="Add tag">+</button>
+        </div>
+        <button class="mp-btn" id="mpPost" type="button">Post</button>
+      </section>
+
+      <section class="screen os-screen" data-screen="squads" aria-label="Open squads">
+        <div class="os-top">
+          <h1 class="os-title">Open Squads</h1>
+          <button class="os-msg" type="button"><i class="ph ph-chat-circle"></i>Messages</button>
+        </div>
+        <div class="os-card">
+          <h2 class="os-drop">OPERATOR DINER RUN</h2>
+          <p class="os-sub">Western Food &bull; 40% off &bull; 220m away</p>
+          <p class="os-tagline">Public Squad &bull; 2/4</p>
+          <div class="os-member">
+            <span class="os-ava">J</span>
+            <div><span class="os-name">Joel (HOST) &bull; Level 24</span><span class="os-mmeta">40 catches &bull; 304 connections</span></div>
+          </div>
+          <div class="os-member">
+            <span class="os-ava">A</span>
+            <div><span class="os-name">Aileen &bull; Level 17</span><span class="os-mmeta">23 catches &bull; 130 connections</span></div>
+          </div>
+          <p class="os-quote">&ldquo;Diner run anybody? Operator Diner has great waffles!<br /><br />Looking for 2 more hungry people :)&rdquo;</p>
+          <div class="os-tags"><span class="tag">Casual</span><span class="tag">Uni students</span></div>
+          <label class="os-idlabel" for="osId">Enter Squad ID</label>
+          <input class="os-id" id="osId" value="102948" readonly />
+          <button class="os-join" id="osJoin" type="button">Request to join</button>
+        </div>
+      </section>
+
+      <section class="screen sq-screen" data-screen="nearbyfriends" aria-label="Nearby friends">
+        <button class="back" data-back="makepost" type="button" aria-label="Back">&lsaquo;</button>
+        <h1 class="sq-drop">OPERATOR DINER DROP</h1>
+        <h2 class="sq-h2">Nearby Friends</h2>
+        <div id="nfList"></div>
       </section>
 
       <section class="screen" data-screen="squad" aria-labelledby="squadTitle">
@@ -655,47 +1111,48 @@
         </div>
       </section>
 
-      <section class="screen" data-screen="profile" aria-labelledby="profileTitle">
-        <header class="app-header">
-          <button class="back" data-back="discover" type="button" aria-label="Back">‹</button>
-          <h1 class="nav-title">Profile</h1>
-          <span class="header-spacer"></span>
-        </header>
-        <div class="profile-content">
-          <div class="profile-avatar" id="profileAvatar">M</div>
-          <h2 class="profile-name" id="profileTitle">Melbourne Explorer</h2>
-          <div class="profile-email" id="profileEmail">explorer@dropbyapp.com</div>
-          <div class="card profile-card">
-            <div class="profile-row"><span class="profile-key">Total XP</span><span class="profile-value" id="profileXp">0</span></div>
-            <div class="profile-row"><span class="profile-key">Level</span><span class="profile-value" id="profileLevel">1</span></div>
-            <div class="xp-progress-wrap">
-              <div class="progress"><div class="progress-fill" id="profileXpBar"></div></div>
-              <p class="xp-progress-label" id="profileXpLabel">0 / 500 XP to next level</p>
+      <section class="screen pf-screen" data-screen="profile" aria-label="Profile">
+        <div class="pf-top">
+          <div class="pf-ava">J</div>
+          <div>
+            <span class="pf-name">Joel</span>
+            <div class="pf-stats">
+              <span class="pf-stat"><b>40</b><span>catches</span></span>
+              <span class="pf-stat"><b>304</b><span>connections</span></span>
             </div>
-            <div class="profile-row"><span class="profile-key">Drops completed</span><span class="profile-value" id="profileDropsCompleted">0</span></div>
-            <div class="profile-row"><span class="profile-key">Onboarding</span><span class="profile-value">Complete</span></div>
-            <div class="profile-row"><span class="profile-key">Location</span><span class="profile-value">While using</span></div>
-            <div class="profile-row"><span class="profile-key">Backend</span><span class="profile-value">Demo engine</span></div>
-          </div>
-          <button class="rewards-cta" id="openRewards" type="button">
-            <span class="rewards-cta-icon">🎁</span>
-            <span class="rewards-cta-text">
-              <strong id="openRewardsTitle">Powerups, perks &amp; challenges</strong>
-              <span id="openRewardsSubtitle">See what you've earned</span>
-            </span>
-            <span class="notify-dot" id="openRewardsDot" hidden>0</span>
-            <span class="rewards-cta-arrow">›</span>
-          </button>
-          <h3 class="profile-section-title">Your interests</h3>
-          <div class="chips" id="profileInterests"></div>
-          <h3 class="profile-section-title">Badges</h3>
-          <div class="badge-list" id="profileBadges"></div>
-          <div class="button-gap">
-            <button class="secondary" id="openHistory" type="button">Drop history</button>
-            <button class="secondary" id="profileEngine" type="button">Discovery engine lab</button>
-            <button class="danger-button" id="signOut" type="button">Sign out</button>
           </div>
         </div>
+        <div class="pf-badges">
+          <span class="pf-badge level">Level 24</span>
+          <span class="pf-badge">Drop Veteran</span>
+          <span class="pf-badge">Squad Leader</span>
+        </div>
+        <p class="pf-bio">Chasing drops day and night. Batman&rsquo;s always on the lookout.</p>
+        <button class="pf-edit" type="button">Edit Profile</button>
+
+        <div class="pf-tabs">
+          <button class="pf-tab on" data-pftab="catches" type="button">Catches</button>
+          <button class="pf-tab" data-pftab="badges" type="button">Badges</button>
+        </div>
+
+        <div id="pfCatches">
+          <div class="pf-catch"><i class="ph-fill ph-fork-knife pf-catch-ico"></i><div><span class="pf-catch-name">Operator Diner Run</span><div class="pf-catch-sub"><span class="pf-catch-rar rar-rare">RARE</span><span class="pf-catch-meta">Lonsdale St &bull; Squad of 4</span></div></div></div>
+          <div class="pf-catch"><i class="ph-fill ph-barbell pf-catch-ico"></i><div><span class="pf-catch-name">Padel Session</span><div class="pf-catch-sub"><span class="pf-catch-rar rar-common">COMMON</span><span class="pf-catch-meta">Port Melbourne &bull; Squad of 6</span></div></div></div>
+          <div class="pf-catch"><i class="ph-fill ph-bowl-food pf-catch-ico"></i><div><span class="pf-catch-name">Midnight Ramen</span><div class="pf-catch-sub"><span class="pf-catch-rar rar-legendary">LEGENDARY</span><span class="pf-catch-meta">Russell St &bull; Solo</span></div></div></div>
+          <div class="pf-catch"><i class="ph-fill ph-microphone-stage pf-catch-ico"></i><div><span class="pf-catch-name">Karaoke for 3 hours</span><div class="pf-catch-sub"><span class="pf-catch-rar rar-rare">RARE</span><span class="pf-catch-meta">Exhibition St &bull; Squad of 3</span></div></div></div>
+        </div>
+        <div id="pfBadges" hidden>
+          <div class="pf-bgrid">
+            <div class="pf-bcard unlocked"><i class="ph-fill ph-medal pf-bico"></i><span class="pf-bname">First Catch</span><span class="pf-bdesc">Your first drop</span></div>
+            <div class="pf-bcard unlocked"><i class="ph-fill ph-crown pf-bico"></i><span class="pf-bname">Squad Leader</span><span class="pf-bdesc">Hosted 5 squads</span></div>
+            <div class="pf-bcard unlocked"><i class="ph-fill ph-fire pf-bico"></i><span class="pf-bname">Drop Veteran</span><span class="pf-bdesc">30-day streak</span></div>
+            <div class="pf-bcard"><i class="ph ph-lock-simple pf-bico"></i><span class="pf-bname">Night Owl</span><span class="pf-bdesc">10 nightlife drops</span></div>
+            <div class="pf-bcard"><i class="ph ph-lock-simple pf-bico"></i><span class="pf-bname">Explorer</span><span class="pf-bdesc">Reveal 50 drops</span></div>
+            <div class="pf-bcard"><i class="ph ph-lock-simple pf-bico"></i><span class="pf-bname">Legend</span><span class="pf-bdesc">Catch a legendary</span></div>
+          </div>
+        </div>
+
+        <button class="danger-button pf-signout" id="signOut" type="button">Sign out</button>
       </section>
 
       <section class="screen" data-screen="connections" aria-labelledby="connectionsTitle">
@@ -842,6 +1299,13 @@
       </section>
 
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <nav class="tab-bar" aria-label="Primary">
+        <button class="tab-btn" data-tab="home" type="button"><i class="ph-fill ph-house tab-ico" aria-hidden="true"></i>Home</button>
+        <button class="tab-btn" data-tab="discover" type="button"><i class="ph-fill ph-map-pin tab-ico" aria-hidden="true"></i>Explore</button>
+        <button class="tab-btn" data-tab="squads" type="button"><i class="ph-fill ph-users-three tab-ico" aria-hidden="true"></i>Squads</button>
+        <button class="tab-btn" data-tab="profile" type="button"><i class="ph-fill ph-user tab-ico" aria-hidden="true"></i>Profile</button>
+      </nav>
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -856,7 +1320,7 @@
         spa_massage: "Spa & massage",
       };
       const state = {
-        screen: "auth", authMode: "signin", email: "explorer@dropbyapp.com", name: "Melbourne Explorer",
+        screen: "auth", authMode: "signin", email: "explorer@dropbyapp.com", name: "Joel",
         preferences: new Set(["korean_bbq", "japanese_cuisine", "laser_tag"]), distance: 850,
         revealed: new Set(), selectedDropId: null, squadCount: 0, squadCode: "dropby-demo-squad",
         squadMaxPeopleBonus: 0,
@@ -902,6 +1366,17 @@
       // every other category here only has one rarity available, so their
       // set-bonus badges are real but effectively aspirational in the demo,
       // same as they would be for a very new account with few Drops nearby.
+      // Curated subset shown as map pins so the map reads clean (like the Figma);
+      // the full list still drives the scrollable signal list. Coordinates are
+      // hand-placed for a tidy spread around "You".
+      const MAP_DROP_IDS = ["drop_mel_004", "drop_mel_001", "drop_mel_003", "drop_mel_009"];
+      const MAP_DROP_COORDS = {
+        drop_mel_004: [-37.8086, 144.9642],
+        drop_mel_001: [-37.8112, 144.9612],
+        drop_mel_003: [-37.8135, 144.9724],
+        drop_mel_009: [-37.8156, 144.9658],
+      };
+
       const drops = [
         { id: "drop_mel_001", coordinates: primaryLocation, title: "Rare Korean BBQ Drop", offer: "40% off the group dining menu", business: "Seoul Table", address: "200 Little Bourke Street, Melbourne", category: "food_dining", interest: "korean_bbq", icon: "🥩", logo: "ST", rarity: "rare", minPeople: 2, maxPeople: 4, label: "40%", xpBase: 40 },
         { id: "drop_mel_002", coordinates: [-37.8097, 144.9648], title: "Rooftop Cinema Drop", offer: "Two-for-one twilight tickets", business: "Skyline Cinema", address: "Swanston Street, Melbourne", category: "activity_entertainment", interest: "rooftop_cinema", icon: "🎬", logo: "SC", rarity: "epic", minPeople: 2, maxPeople: 4, label: "2X", xpBase: 80 },
@@ -923,6 +1398,10 @@
         { id: "drop_mel_013", coordinates: [-37.8145, 144.9595], title: "Express Nail Bar", offer: "25% off a manicure", business: "Polished Co", address: "Collins Street, Melbourne", category: "wellness_beauty", interest: "spa_massage", icon: "💅", logo: "PC", rarity: "common", minPeople: 1, maxPeople: 2, label: "25%", xpBase: 10 },
         { id: "drop_mel_014", coordinates: [-37.807, 144.9685], title: "Day Spa Escape", offer: "40% off a 90-minute package", business: "Serenity Baths", address: "Spring Street, Melbourne", category: "wellness_beauty", interest: "spa_massage", icon: "🧖", logo: "SB", rarity: "rare", minPeople: 1, maxPeople: 3, label: "40%", xpBase: 40 },
       ];
+      const mapDrops = MAP_DROP_IDS
+        .map((id) => drops.find((d) => d.id === id))
+        .filter(Boolean)
+        .map((d) => ({ ...d, coordinates: MAP_DROP_COORDS[d.id] || d.coordinates }));
       const DEMO_CATEGORIES = ["food_dining", "activity_entertainment", "nightlife", "wellness_beauty"];
       // Mirrors apps/api/app/services/gamification.py exactly, so the numbers
       // shown here match what the real backend would award for the same Drop.
@@ -1055,6 +1534,8 @@
       let toastTimer = null;
       let trackingTimer = null;
 
+      const TAB_FOR_SCREEN = { home: "home", discover: "discover", squads: "squads", nearbyfriends: "squads", connections: "squads", squad: "squads", profile: "profile" };
+
       function showScreen(name) {
         state.screen = name;
         updateRewardsNotifyDot();
@@ -1062,6 +1543,12 @@
         $$("[data-screen]").forEach((screen) => screen.classList.toggle("active", screen.dataset.screen === name));
         const current = $(`[data-screen="${name}"]`);
         if (current) current.scrollTop = 0;
+        const tab = TAB_FOR_SCREEN[name];
+        $(".phone").classList.toggle("no-tabs", !tab);
+        $$(".tab-btn").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
+        if (name === "home") {
+          $("#homeTitle").textContent = "HEY " + (state.name || "Explorer").split(" ")[0].toUpperCase() + ",";
+        }
         if (name === "discover") {
           window.setTimeout(() => {
             if (!map) initializeMap();
@@ -1070,6 +1557,7 @@
           }, 30);
         }
         if (name === "profile") renderProfile();
+        if (name === "nearbyfriends") renderNearbyFriends();
         if (name === "squad") renderSquad();
         if (name === "checkin") renderCheckin();
         if (name === "engine") renderEngine();
@@ -1129,10 +1617,9 @@
       }
 
       function markerIcon(stage, drop) {
-        const revealed = stage === "reveal";
-        const label = revealed ? drop.business : drop.interest.replaceAll("_", " ");
-        const symbol = revealed ? drop.logo : drop.icon;
-        return L.divIcon({ className: "drop-pin", html: `<div class="drop-pin-core ${stage}"><span class="pin-symbol ${revealed ? "store-logo" : ""}">${symbol}</span><span class="pin-type">${label}</span></div>`, iconSize: [138, 38], iconAnchor: [69, 19] });
+        const rarity = String(drop.rarity || "common").toLowerCase();
+        const dist = Math.round(distanceBetween(userLocation(), drop.coordinates));
+        return L.divIcon({ className: "drop-pin", html: `<div class="drop-pin-core ${stage}" data-rarity="${rarity}"><span class="pin-symbol"><i class="${catIcon(drop.category)}"></i></span><span class="pin-type">Drop &middot; ${dist}m</span><span class="pin-rar rar-${rarity}">${rarity}</span></div>`, iconSize: [190, 40], iconAnchor: [95, 20] });
       }
 
       function initializeMap() {
@@ -1141,58 +1628,90 @@
           return;
         }
         map = L.map("mobileMap", { zoomControl: false }).setView([-37.8119, 144.9674], 15);
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19, subdomains: "abcd", attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO' }).addTo(map);
-        dropRevealZones = drops.map((drop) => L.circle(drop.coordinates, { radius: 100, color: "#9b87ff", opacity: 0.75, weight: 1.5, dashArray: "6 6", fillColor: "#9b87ff", fillOpacity: 0.08, interactive: false }).addTo(map));
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
+        dropRevealZones = mapDrops.map((drop) => L.circle(drop.coordinates, { radius: 100, color: "#e0526e", opacity: 0.6, weight: 1.5, dashArray: "6 6", fillColor: "#e0526e", fillOpacity: 0.06, interactive: false }).addTo(map));
         userMarker = L.marker(userLocation(), { icon: L.divIcon({ className: "user-pin", html: '<div class="user-pin-core"></div>', iconSize: [21, 21], iconAnchor: [10, 10] }), zIndexOffset: 600 }).addTo(map);
-        dropMarkers = drops.map((drop) => { const stage = stageFor(drop); return L.marker(drop.coordinates, { icon: markerIcon(stage, drop), opacity: 1, zIndexOffset: 500 }).addTo(map).on("click", () => openDrop(drop.id)); });
-        map.fitBounds([...drops.map((drop) => drop.coordinates), userLocation()], { padding: [28, 28], maxZoom: 15 });
+        dropMarkers = mapDrops.map((drop) => { const stage = stageFor(drop); return L.marker(drop.coordinates, { icon: markerIcon(stage, drop), opacity: 1, zIndexOffset: 500 }).addTo(map).on("click", () => openDrop(drop.id)); });
+        L.marker([-37.8102, 144.9705], { icon: L.divIcon({ className: "drop-pin", html: '<div class="drop-pin-core squad"><span class="pin-symbol"><i class="ph-fill ph-users-three"></i></span><span class="pin-type">Open Squad · 340m</span></div>', iconSize: [150, 38], iconAnchor: [75, 19] }), zIndexOffset: 450 }).addTo(map);
+        map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { padding: [40, 40], maxZoom: 15 });
       }
 
+      const CAT_ICON = {
+        food_dining: "ph ph-fork-knife",
+        activity_entertainment: "ph ph-game-controller",
+        nightlife: "ph ph-martini",
+        wellness_beauty: "ph ph-sparkle",
+        retail: "ph ph-shopping-bag",
+      };
+      function catIcon(cat) { return CAT_ICON[cat] || "ph ph-map-pin"; }
+
       function renderDiscover() {
-        $("#greeting").textContent = `Hey ${state.name.split(" ")[0]}`;
-        $("#openProfile").textContent = state.name.slice(0, 1).toUpperCase();
+        const greetingEl = $("#greeting");
+        if (greetingEl) greetingEl.textContent = `Hey ${state.name.split(" ")[0]}`;
+        const avatarEl = $("#openProfile");
+        if (avatarEl) avatarEl.textContent = state.name.slice(0, 1).toUpperCase();
         $$('[data-distance]').forEach((button) => button.classList.toggle("active", Number(button.dataset.distance) === state.distance));
         const snapshots = visibleSnapshots();
-        $("#signalHeading").textContent = snapshots.length ? `${snapshots.length} signal${snapshots.length === 1 ? "" : "s"}` : "No signals yet";
+        $("#signalHeading").textContent = snapshots.length ? `${snapshots.length} drop${snapshots.length === 1 ? "" : "s"} live` : "No drops live";
+        const hero = $("#exploreHero");
+        const near = snapshots[0];
+        if (hero && near) {
+          hero.style.display = "";
+          hero.dataset.dropId = near.id;
+          // Fixed demo drop (matches the Operator Diner mock data used elsewhere).
+          $("#discoverTitle").textContent = "Operator Diner";
+          $("#exSquad").textContent = 4;
+        } else if (hero) {
+          hero.style.display = "none";
+        }
         const list = $("#signalList");
         list.replaceChildren();
         if (!snapshots.length) list.innerHTML = '<div class="empty">Nothing is in range yet. Choose a demo position to start exploring.</div>';
         snapshots.forEach((drop) => {
-          const source = drops.find((item) => item.id === drop.id);
           const button = document.createElement("button");
           button.type = "button";
           button.className = "signal-card";
           button.dataset.stage = drop.stage;
+          const rarity = String(drop.rarity || "common").toLowerCase();
+          button.dataset.rarity = rarity;
           const title = drop.title || drop.interest_tag?.replaceAll("_", " ") || "Mystery Drop";
           const people = `${drop.min_group_size} needed${drop.max_group_size !== drop.min_group_size ? ` · up to ${drop.max_group_size}` : ""}`;
-          const meta = drop.business_name || `${drop.rarity} · ${people}`;
-          button.innerHTML = `<span class="signal-orb">${drop.stage === "reveal" ? source.logo : source.icon}</span><span class="signal-copy"><span class="signal-stage">${drop.stage}</span><span class="signal-title">${title}</span><span class="signal-meta">${meta}</span></span><span class="signal-distance">${drop.distance_m} m</span>`;
+          const meta = drop.business_name || `${rarity} · ${people}`;
+          button.innerHTML = `<span class="signal-orb"><i class="${catIcon(drop.category)}"></i></span><span class="signal-copy"><span class="signal-stage rar-${rarity}">${rarity}</span><span class="signal-title">${title}</span><span class="signal-meta">${meta}</span></span><span class="signal-distance">${drop.distance_m} m</span>`;
           button.addEventListener("click", () => openDrop(drop.id));
           list.append(button);
         });
         if (map && userMarker) {
           userMarker.setLatLng(userLocation());
-          dropMarkers.forEach((marker, index) => { const stage = stageFor(drops[index]); marker.setIcon(markerIcon(stage, drops[index])); marker.setOpacity(1); dropRevealZones[index].setStyle({ color: stage === "reveal" ? "#d9ff43" : "#9b87ff", fillColor: stage === "reveal" ? "#d9ff43" : "#9b87ff", fillOpacity: stage === "reveal" ? 0.14 : 0.08 }); });
-          map.fitBounds([...drops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [28, 28], maxZoom: 15 });
+          dropMarkers.forEach((marker, index) => { const stage = stageFor(mapDrops[index]); marker.setIcon(markerIcon(stage, mapDrops[index])); marker.setOpacity(1); });
+          map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [40, 40], maxZoom: 15 });
         }
         renderEngine();
       }
 
+      // Tapping a drop (list row or map pin) just opens the Explore screen,
+      // where the drop's full detail card is shown in the bottom sheet.
       function openDrop(id) {
         state.selectedDropId = id;
-        const drop = drops.find((item) => item.id === id);
-        const data = snapshot(drop);
-        const copy = { detect: "This signal is always visible. Its type, rarity, and group requirement are known; move closer to reveal the venue.", reveal: "You found it. The location, full offer, and squad details are now unlocked." };
-        $("#detailStage").textContent = data.stage.toUpperCase();
-        $("#detailStage").className = `stage-badge ${data.stage}`;
-        $("#detailDistance").textContent = `${data.distance_m} metres away`;
-        $("#detailTitle").textContent = data.title || data.interest_tag?.replaceAll("_", " ") || "Mystery Drop";
-        $("#detailExplanation").textContent = copy[data.stage];
-        const people = `${data.min_group_size} needed${data.max_group_size !== data.min_group_size ? ` · up to ${data.max_group_size}` : ""}`;
-        const rows = [["Rarity", data.rarity, false], ["Type", data.interest_tag?.replaceAll("_", " "), false], ["People needed", people, false], ["Business", data.business_name, true], ["Address", data.address, true], ["Offer", data.description, true]];
-        $("#detailRows").innerHTML = rows.map(([label, value, hiddenUntilReveal]) => `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value ${!value && hiddenUntilReveal ? "hidden" : ""}">${value || (hiddenUntilReveal ? "Move closer to unlock" : "Not provided")}</div></div>`).join("");
-        $("#assembleCard").hidden = data.stage !== "reveal";
-        showScreen("detail");
+        showScreen("discover");
+      }
+
+      function renderNearbyFriends() {
+        const friends = [
+          { name: "Aurelia", level: 32, catches: 54, connections: 439, dist: 200 },
+          { name: "Meidelline", level: 3, catches: 5, connections: 12, dist: 310 },
+          { name: "Billy", level: 49, catches: 65, connections: 453, dist: 540 },
+        ];
+        $("#nfList").innerHTML = friends.map((f) => `
+          <div class="sq-card">
+            <span class="sq-ava">${f.name.slice(0, 1)}</span>
+            <div>
+              <div class="sq-name">${f.name} &bull; Level ${f.level}</div>
+              <div class="sq-meta">${f.catches} catches &bull; ${f.connections} connections</div>
+            </div>
+            <span class="sq-dist">${f.dist}m away</span>
+            <button class="sq-invite" type="button">Invite</button>
+          </div>`).join("");
       }
 
       function renderSquad() {
@@ -1212,38 +1731,8 @@
         $("#goToCheckin").hidden = !ready;
       }
 
-      function renderProfile() {
-        $("#profileAvatar").textContent = state.name.slice(0, 1).toUpperCase();
-        $("#profileTitle").textContent = state.name;
-        $("#profileEmail").textContent = state.email;
-        $("#profileXp").textContent = state.xpTotal;
-        $("#profileLevel").textContent = state.level;
-        const profileProgress = xpProgress(state.xpTotal);
-        $("#profileXpBar").style.width = `${profileProgress.pct}%`;
-        $("#profileXpLabel").textContent = `${profileProgress.intoLevel} / ${profileProgress.perLevel} XP to next level`;
-        $("#profileDropsCompleted").textContent = state.stats.totalDropsCompleted;
-        $("#profileInterests").innerHTML = [...state.preferences].map((interest) => `<span class="chip" aria-pressed="true">${interestLabels[interest]}</span>`).join("");
-        $("#profileBadges").innerHTML = badgeDefs.map((def) => {
-          const unlocked = Boolean(state.badges[def.code]);
-          return `
-            <div class="badge-card ${unlocked ? "unlocked" : ""}">
-              <span class="badge-card-icon">${unlocked ? "🏅" : "🔒"}</span>
-              <span class="badge-card-copy">
-                <span class="badge-card-name">${def.name}</span>
-                <span class="badge-card-desc">${def.description}</span>
-                <span class="badge-card-buff">${badgeBuffLabel(def)}</span>
-              </span>
-            </div>
-          `;
-        }).join("");
-        const pending = pendingPerkChoices();
-        $("#openRewardsSubtitle").textContent = pending > 0
-          ? `${pending} perk${pending === 1 ? "" : "s"} ready to choose!`
-          : "See what you've earned";
-        $("#openRewardsDot").hidden = pending <= 0;
-        $("#openRewardsDot").textContent = pending;
-        updateRewardsNotifyDot();
-      }
+      // Profile shows a fixed demo persona ("Joel"), matching the Figma frame.
+      function renderProfile() {}
 
       function renderHistory() {
         const list = $("#historyList");
@@ -1282,6 +1771,7 @@
       function updateRewardsNotifyDot() {
         const count = rewardsActionCount();
         const dot = $("#rewardsNotifyDot");
+        if (!dot) return;
         dot.hidden = count <= 0;
         dot.textContent = count > 9 ? "9+" : count;
       }
@@ -1772,7 +2262,7 @@
         state.tracking = false;
         window.clearInterval(trackingTimer);
         trackingTimer = null;
-        $("#useLocation").textContent = "Start continuous walk demo";
+        const ul = $("#useLocation"); if (ul) ul.textContent = "Start continuous walk demo";
       }
 
       function toggleTrackingDemo() {
@@ -1786,7 +2276,7 @@
           state.revealed.clear();
         }
         state.tracking = true;
-        $("#useLocation").textContent = "Pause continuous tracking";
+        const ul2 = $("#useLocation"); if (ul2) ul2.textContent = "Pause continuous tracking";
         toast("Continuously updating location as you move.");
         trackingTimer = window.setInterval(() => {
           setDistance(Math.max(0, state.distance - 45));
@@ -1811,12 +2301,12 @@
         $("#authError").textContent = "";
         addEvent("auth.jwt_issued", `${email} signed in`);
         if (state.authMode === "create") {
-          state.name = $("#authName").value.trim() || "Explorer";
+          state.name = $("#authName").value.trim() || "Joel";
           $("#onboardingName").value = state.name;
           showScreen("onboarding");
         } else {
-          state.name = email === "explorer@dropbyapp.com" ? "Test Explorer" : "Melbourne Explorer";
-          showScreen("discover");
+          state.name = "Joel";
+          showScreen("home");
         }
       });
 
@@ -1827,21 +2317,47 @@
       }));
 
       $("#finishOnboarding").addEventListener("click", () => {
-        state.name = $("#onboardingName").value.trim() || "Explorer";
+        state.name = $("#onboardingName").value.trim() || "Joel";
         if (!state.preferences.size) { toast("Choose at least one interest."); return; }
         addEvent("onboarding.completed", `${state.preferences.size} interests and location saved`);
-        showScreen("discover");
+        showScreen("home");
       });
 
       $$('[data-distance]').forEach((button) => button.addEventListener("click", () => { stopTrackingDemo(); setDistance(Number(button.dataset.distance)); }));
-      $("#openProfile").addEventListener("click", () => showScreen("profile"));
-      $("#openEngine").addEventListener("click", () => showScreen("engine"));
-      $("#profileEngine").addEventListener("click", () => showScreen("engine"));
+      $("#openProfile")?.addEventListener("click", () => showScreen("profile"));
+      $("#openEngine")?.addEventListener("click", () => showScreen("engine"));
+      $("#profileEngine")?.addEventListener("click", () => showScreen("engine"));
       $$('[data-back]').forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.back)));
-      $("#useLocation").addEventListener("click", toggleTrackingDemo);
-      $("#createSquad").addEventListener("click", () => { state.squadCount = 1; state.squadMaxPeopleBonus = 0; state.squadCode = `dropby-${Math.random().toString(36).slice(2, 10)}`; addEvent("group.state_update", `forming · 1/${selectedDrop().maxPeople}`); showScreen("squad"); });
-      $("#joinSquad").addEventListener("click", () => {
-        const code = $("#joinCode").value.trim();
+      $$(".tab-btn").forEach((button) => button.addEventListener("click", () => showScreen(button.dataset.tab)));
+      function catchNearest() {
+        const list = visibleSnapshots();
+        const pick = list[0] || (drops[0] && snapshot(drops[0]));
+        if (pick) openDrop(pick.id);
+      }
+      $("#homeHunt")?.addEventListener("click", catchNearest);
+      $("#exploreHunt")?.addEventListener("click", catchNearest);
+      $("#exPost")?.addEventListener("click", () => {
+        $("#mpTitle").textContent = ($("#discoverTitle")?.textContent || "Operator Diner").toUpperCase();
+        showScreen("makepost");
+      });
+      $("#mpPost").addEventListener("click", () => { toast("Your squad post is live."); showScreen("squads"); });
+      $$(".mp-toggle button").forEach((b) => b.addEventListener("click", () => $$(".mp-toggle button").forEach((x) => x.classList.toggle("on", x === b))));
+      $$(".mp-cell.open").forEach((c) => c.addEventListener("click", () => showScreen("nearbyfriends")));
+      $("#osJoin")?.addEventListener("click", () => toast("Request to join sent."));
+      $$(".pf-tab").forEach((b) => b.addEventListener("click", () => {
+        $$(".pf-tab").forEach((x) => x.classList.toggle("on", x === b));
+        $("#pfCatches").hidden = b.dataset.pftab !== "catches";
+        $("#pfBadges").hidden = b.dataset.pftab !== "badges";
+      }));
+      let exploreCountdown = 28 * 60 + 19;
+      window.setInterval(() => {
+        exploreCountdown = exploreCountdown > 0 ? exploreCountdown - 1 : 0;
+        const clock = `${String(Math.floor(exploreCountdown / 60)).padStart(2, "0")}:${String(exploreCountdown % 60).padStart(2, "0")}`;
+        ["#homeClock"].forEach((sel) => { const el = $(sel); if (el) el.textContent = clock; });
+      }, 1000);
+      $("#createSquad")?.addEventListener("click", () => { state.squadCount = 1; state.squadMaxPeopleBonus = 0; state.squadCode = `dropby-${Math.random().toString(36).slice(2, 10)}`; addEvent("group.state_update", `forming · 1/${selectedDrop().maxPeople}`); showScreen("squad"); });
+      $("#joinSquad")?.addEventListener("click", () => {
+        const code = ($("#joinCode")?.value || "").trim();
         if (!code) { toast("Paste a squad ID first."); return; }
         if (!state.selectedDropId) state.selectedDropId = "drop_mel_001";
         state.squadCode = code;
@@ -1863,15 +2379,15 @@
       $("#goToCheckin").addEventListener("click", () => showScreen("checkin"));
       $("#scanQr").addEventListener("click", checkInAndConfirm);
       $("#findAnotherDrop").addEventListener("click", () => { state.squadCount = 0; state.squadMaxPeopleBonus = 0; state.selectedDropId = null; showScreen("discover"); });
-      $("#openHistory").addEventListener("click", () => showScreen("history"));
+      $("#openHistory")?.addEventListener("click", () => showScreen("history"));
       $("#signOut").addEventListener("click", () => { stopTrackingDemo(); state.distance = 850; state.revealed.clear(); state.squadCount = 0; state.squadMaxPeopleBonus = 0; state.history = []; showScreen("auth"); });
-      $("#openConnections").addEventListener("click", () => showScreen("connections"));
+      $("#openConnections")?.addEventListener("click", () => showScreen("connections"));
       $$('[data-connections-tab]').forEach((button) => button.addEventListener("click", () => switchConnectionsTab(button.dataset.connectionsTab)));
       $("#connectionsSearch").addEventListener("input", (event) => { state.connectionsSearchQuery = event.target.value; renderConnectionsFriendsTab(); });
       $("#chatSend").addEventListener("click", sendChatMessage);
       $("#chatInput").addEventListener("keydown", (event) => { if (event.key === "Enter") sendChatMessage(); });
-      $("#openRewards").addEventListener("click", () => { $("#rewardsBack").dataset.back = "profile"; showScreen("rewards"); });
-      $("#openRewardsQuick").addEventListener("click", () => { $("#rewardsBack").dataset.back = "discover"; showScreen("rewards"); });
+      $("#openRewards")?.addEventListener("click", () => { $("#rewardsBack").dataset.back = "profile"; showScreen("rewards"); });
+      $("#openRewardsQuick")?.addEventListener("click", () => { $("#rewardsBack").dataset.back = "discover"; showScreen("rewards"); });
       $("#claimChallenge").addEventListener("click", claimWeeklyChallenge);
       $("#simulateNextDay").addEventListener("click", () => {
         state.simulatedDayOffset += 1;
@@ -1890,17 +2406,13 @@
         if (state.demoRunning) return;
         stopTrackingDemo();
         state.demoRunning = true;
-        state.email = "explorer@dropbyapp.com"; state.name = "Test Explorer"; state.distance = 850; state.revealed.clear(); state.squadCount = 0;
+        state.email = "explorer@dropbyapp.com"; state.name = "Joel"; state.distance = 850; state.revealed.clear(); state.squadCount = 0;
         addEvent("auth.jwt_issued", "protected demo session started");
         showScreen("discover");
         for (const distance of [500, 100]) { await wait(650); setDistance(distance); }
-        await wait(700); openDrop("drop_mel_001");
-        await wait(800); $("#createSquad").click();
-        const drop = selectedDrop();
-        while (state.squadCount < drop.minPeople) { await wait(550); $("#addDemoMember").click(); }
-        await wait(750); showScreen("squad");
-        await wait(900); $("#goToCheckin").click();
-        await wait(900); await checkInAndConfirm();
+        await wait(700); openDrop("drop_mel_001");       // -> Explore, drop detail in sheet
+        await wait(1200); $("#exPost").click();          // Post Drop -> Make Post
+        await wait(1200); $("#mpPost").click();          // Post -> Open Squads
         await wait(1400); showScreen("profile");
         state.demoRunning = false;
       }

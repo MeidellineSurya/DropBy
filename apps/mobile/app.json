@@ -4,7 +4,7 @@
     "slug": "dropby-mobile",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "scheme": "dropby",
     "ios": {
       "supportsTablet": true,
@@ -19,7 +19,8 @@
         {
           "locationWhenInUsePermission": "DropBy uses your location to reveal nearby Drops."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

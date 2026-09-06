@@ -1,26 +1,32 @@
+import { Ionicons } from "@expo/vector-icons";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import * as Location from "expo-location";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Circle, Marker, type Region } from "react-native-maps";
 
 import { useSession } from "../SessionContext";
-import type { RootStackParamList } from "../navigation/RootNavigator";
-import { api, API_ORIGIN } from "../services/api";
+import type { MainTabParamList, RootStackParamList } from "../navigation/RootNavigator";
+import { api } from "../services/api";
 import { connectLiveSocket } from "../services/ws";
-import { colors } from "../theme";
+import { colors, fonts, radius, shadows } from "../theme";
 import type { DropSnapshot, DropStageEvent } from "../types";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Discover">;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, "Explore">,
+  NativeStackScreenProps<RootStackParamList>
+>;
 type Coordinate = { latitude: number; longitude: number };
 type LocationMode = "off" | "live" | "demo";
 
@@ -37,12 +43,13 @@ const TEST_POSITIONS = [
 ] as const;
 
 const stageColor = {
-  detect: colors.violet,
-  reveal: colors.lime,
+  detect: colors.info,
+  reveal: colors.secondary,
 };
 
 export function MapScreen({ navigation }: Props) {
-  const { token, user } = useSession();
+  const { token } = useSession();
+  const insets = useSafeAreaInsets();
   const [coordinate, setCoordinate] = useState<Coordinate | null>(null);
   const [drops, setDrops] = useState<DropSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,7 +58,7 @@ export function MapScreen({ navigation }: Props) {
   const [groupId, setGroupId] = useState("");
   const [joining, setJoining] = useState(false);
   const [locationMode, setLocationMode] = useState<LocationMode>("off");
-  const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
+  const [countdown, setCountdown] = useState(28 * 60 + 19);
   const watchPingRunning = useRef(false);
   const pingSequence = useRef(0);
   const loadingSequence = useRef(0);
@@ -60,6 +67,13 @@ export function MapScreen({ navigation }: Props) {
     () => drops.filter((drop) => drop.latitude != null && drop.longitude != null),
     [drops],
   );
+  const nearest = useMemo(() => [...drops].sort((a, b) => a.distance_m - b.distance_m)[0], [drops]);
+
+  // TODO(api): drive this from nearest.ends_at once the backend returns it consistently.
+  useEffect(() => {
+    const timer = setInterval(() => setCountdown((value) => (value > 0 ? value - 1 : 0)), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -146,7 +160,6 @@ export function MapScreen({ navigation }: Props) {
       const response = await api.locationPing(position.latitude, position.longitude);
       if (sequence !== pingSequence.current) return;
       setDrops(response.drops);
-      setLastLocationUpdate(new Date());
     } catch (reason) {
       if (sequence !== pingSequence.current) return;
       setError(reason instanceof Error ? reason.message : "Could not load nearby Drops");
@@ -186,227 +199,330 @@ export function MapScreen({ navigation }: Props) {
     }
   }
 
+  const clock = `${String(Math.floor(countdown / 60)).padStart(2, "0")}:${String(countdown % 60).padStart(2, "0")}`;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>LIVE DISCOVERY</Text>
-            <Text style={styles.title}>Nearby Drops</Text>
-            <Text style={styles.greeting}>Hey {user?.display_name.split(" ")[0]}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <Pressable onPress={() => navigation.navigate("Connections")} style={styles.connectionsButton}>
-              <Text style={styles.connectionsButtonText}>👥</Text>
-            </Pressable>
-            <Pressable onPress={() => navigation.navigate("Profile")} style={styles.avatar}>
-              <Text style={styles.avatarText}>{user?.display_name.slice(0, 1).toUpperCase()}</Text>
-            </Pressable>
-          </View>
-        </View>
+    <View style={styles.root}>
+      <MapView
+        initialRegion={MELBOURNE}
+        region={
+          coordinate ? { ...coordinate, latitudeDelta: 0.012, longitudeDelta: 0.012 } : undefined
+        }
+        style={styles.map}
+      >
+        {coordinate && <Marker coordinate={coordinate} pinColor={colors.secondary} title="You" />}
+        {coordinate && (
+          <Circle
+            center={coordinate}
+            fillColor="rgba(224,82,110,0.10)"
+            radius={700}
+            strokeColor="rgba(224,82,110,0.60)"
+          />
+        )}
+        {revealedDrops.map((drop) => (
+          <Marker
+            coordinate={{ latitude: drop.latitude!, longitude: drop.longitude! }}
+            description={drop.business_name}
+            key={drop.id}
+            pinColor={colors.primary}
+            title={drop.title}
+          />
+        ))}
+      </MapView>
 
-        <View style={styles.connectionRow}>
-          <View style={[styles.dot, socketConnected && styles.dotLive]} />
-          <Text style={styles.connectionText}>
-            {socketConnected ? "Live updates connected" : "Connecting live updates"}
-          </Text>
-          <Text numberOfLines={1} style={styles.host}>
-            {API_ORIGIN.replace(/^https?:\/\//, "")}
-          </Text>
-        </View>
+      <View style={[styles.livePill, { top: insets.top + 12 }]}>
+        <View style={[styles.liveDot, socketConnected && styles.liveDotOn]} />
+        <Text style={styles.livePillText}>
+          {drops.length} drop{drops.length === 1 ? "" : "s"} live
+        </Text>
+        {loading && <ActivityIndicator color={colors.secondary} size="small" />}
+      </View>
 
-        <View style={styles.trackingRow}>
-          <View style={[styles.trackingDot, locationMode === "live" && styles.trackingDotLive]} />
-          <Text style={styles.trackingText}>
-            {locationMode === "live"
-              ? "Continuous location tracking active"
-              : locationMode === "demo"
-                ? "Demo location active · live GPS paused"
-                : "Continuous location tracking is off"}
-          </Text>
-          {lastLocationUpdate && (
-            <Text style={styles.trackingTime}>
-              {lastLocationUpdate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.mapFrame}>
-          <MapView
-            initialRegion={MELBOURNE}
-            region={
-              coordinate
-                ? { ...coordinate, latitudeDelta: 0.012, longitudeDelta: 0.012 }
-                : undefined
-            }
-            style={styles.map}
-          >
-            {coordinate && <Marker coordinate={coordinate} pinColor="#367DFF" title="You" />}
-            {coordinate && (
-              <Circle
-                center={coordinate}
-                fillColor="#9B87FF12"
-                radius={700}
-                strokeColor="#9B87FF99"
+      <View style={styles.sheet}>
+        <View style={styles.handle} />
+        <ScrollView
+          contentContainerStyle={styles.sheetContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {nearest ? (
+            <View style={styles.hero}>
+              <View style={styles.heroTop}>
+                <Text style={styles.eyebrow}>LIVE NEAR YOU</Text>
+                <Text style={styles.clock}>{clock}</Text>
+              </View>
+              <Text style={styles.heroTitle}>DROP NEARBY</Text>
+              <MetaRow
+                icon="walk"
+                text={`${nearest.distance_m}m (${Math.max(1, Math.round(nearest.distance_m / 80))} min walk)`}
               />
-            )}
-            {revealedDrops.map((drop) => (
-              <Marker
-                coordinate={{ latitude: drop.latitude!, longitude: drop.longitude! }}
-                description={drop.business_name}
-                key={drop.id}
-                pinColor={colors.lime}
-                title={drop.title}
+              <MetaRow
+                icon="pricetag"
+                text={(nearest.interest_tag ?? nearest.category ?? "surprise").replace(/_/g, " ")}
               />
-            ))}
-          </MapView>
-          {loading && (
-            <View style={styles.mapLoading}>
-              <ActivityIndicator color={colors.lime} />
+              <MetaRow icon="people" text={`Min. squad of ${nearest.min_group_size ?? 1}`} />
+              <Pressable
+                onPress={() => navigation.navigate("DropDetail", { drop: nearest })}
+                style={styles.hunt}
+              >
+                <Text style={styles.huntText}>HUNT</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.hero}>
+              <Text style={styles.heroTitle}>NO DROPS YET</Text>
+              <Text style={styles.emptyText}>
+                Turn on location or tap a demo position to reveal nearby Drops.
+              </Text>
             </View>
           )}
-        </View>
 
-        <Pressable
-          onPress={() => {
-            if (locationMode === "live") setLocationMode("off");
-            else void enableLiveTracking();
-          }}
-          style={[styles.locationButton, locationMode === "live" && styles.locationButtonActive]}
-        >
-          <Text style={styles.locationButtonText}>
-            {locationMode === "live" ? "Pause continuous tracking" : "Enable continuous location"}
-          </Text>
-        </Pressable>
+          {error && <Text style={styles.error}>{error}</Text>}
 
-        <Text style={styles.testLabel}>MELBOURNE DEMO POSITIONS</Text>
-        <View style={styles.testRow}>
-          {TEST_POSITIONS.map(([label, latitude, longitude]) => (
-            <Pressable
-              key={label}
-              onPress={() => {
-                setLocationMode("demo");
-                void ping({ latitude, longitude });
-              }}
-              style={styles.testButton}
-            >
-              <Text style={styles.testButtonText}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
+          {drops.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>
+                {drops.length} signal{drops.length === 1 ? "" : "s"}
+              </Text>
+              {drops.map((drop) => {
+                const title =
+                  drop.title ?? drop.interest_tag?.replace(/_/g, " ") ?? "Mystery Drop";
+                return (
+                  <Pressable
+                    key={drop.id}
+                    onPress={() => navigation.navigate("DropDetail", { drop })}
+                    style={styles.dropCard}
+                  >
+                    <View style={[styles.signal, { backgroundColor: stageColor[drop.stage] }]}>
+                      <Ionicons
+                        color={colors.onPrimary}
+                        name={drop.stage === "reveal" ? "checkmark" : "help"}
+                        size={18}
+                      />
+                    </View>
+                    <View style={styles.dropCopy}>
+                      <Text style={styles.dropStage}>
+                        {drop.stage.toUpperCase()} · {drop.distance_m} M
+                      </Text>
+                      <Text style={styles.dropTitle}>{title}</Text>
+                      <Text style={styles.dropMeta}>
+                        {drop.business_name ??
+                          `${drop.rarity ?? "common"} · min ${drop.min_group_size ?? 1}`}
+                      </Text>
+                    </View>
+                    <Ionicons color={colors.muted} name="chevron-forward" size={20} />
+                  </Pressable>
+                );
+              })}
+            </>
+          )}
 
-        <View style={styles.joinCard}>
-          <TextInput
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={setGroupId}
-            placeholder="Paste a squad ID"
-            placeholderTextColor={colors.muted}
-            style={styles.joinInput}
-            value={groupId}
-          />
+          <Text style={styles.sectionTitle}>Location</Text>
           <Pressable
-            disabled={!groupId.trim() || joining}
-            onPress={() => void joinSquad()}
-            style={[styles.joinButton, (!groupId.trim() || joining) && styles.disabled]}
+            onPress={() => {
+              if (locationMode === "live") setLocationMode("off");
+              else void enableLiveTracking();
+            }}
+            style={[styles.controlButton, locationMode === "live" && styles.controlButtonActive]}
           >
-            {joining ? (
-              <ActivityIndicator color={colors.black} />
-            ) : (
-              <Text style={styles.joinButtonText}>Join squad</Text>
-            )}
-          </Pressable>
-        </View>
-
-        {error && <Text style={styles.error}>{error}</Text>}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {drops.length
-              ? `${drops.length} signal${drops.length === 1 ? "" : "s"}`
-              : "No signals yet"}
-          </Text>
-          <Text style={styles.sectionHint}>Move closer to reveal more</Text>
-        </View>
-
-        {drops.map((drop) => {
-          const title = drop.title ?? drop.interest_tag?.replace(/_/g, " ") ?? "Mystery Drop";
-          const groupNeed = drop.min_group_size
-            ? `${drop.min_group_size} needed${drop.max_group_size && drop.max_group_size !== drop.min_group_size ? ` · up to ${drop.max_group_size}` : ""}`
-            : "Group size hidden";
-          return (
-            <Pressable
-              key={drop.id}
-              onPress={() => navigation.navigate("DropDetail", { drop })}
-              style={styles.dropCard}
+            <Ionicons
+              color={locationMode === "live" ? colors.primary : colors.onPrimary}
+              name={locationMode === "live" ? "pause" : "navigate"}
+              size={16}
+            />
+            <Text
+              style={[
+                styles.controlButtonText,
+                locationMode === "live" && styles.controlButtonTextActive,
+              ]}
             >
-              <View style={[styles.signal, { backgroundColor: stageColor[drop.stage] }]}>
-                <Text style={styles.signalText}>{drop.stage === "reveal" ? "OK" : "?"}</Text>
-              </View>
-              <View style={styles.dropCopy}>
-                <Text style={styles.dropStage}>
-                  {drop.stage.toUpperCase()} · {drop.distance_m} M
-                </Text>
-                <Text style={styles.dropTitle}>{title}</Text>
-                <Text style={styles.dropMeta}>
-                  {drop.business_name ?? `${drop.rarity ?? "common"} · ${groupNeed}`}
-                </Text>
-              </View>
-              <Text style={styles.chevron}>›</Text>
+              {locationMode === "live" ? "Pause continuous tracking" : "Enable continuous location"}
+            </Text>
+          </Pressable>
+
+          <View style={styles.demoRow}>
+            {TEST_POSITIONS.map(([label, latitude, longitude]) => (
+              <Pressable
+                key={label}
+                onPress={() => {
+                  setLocationMode("demo");
+                  void ping({ latitude, longitude });
+                }}
+                style={styles.demoButton}
+              >
+                <Text style={styles.demoButtonText}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.joinRow}>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={setGroupId}
+              placeholder="Paste a squad ID"
+              placeholderTextColor={colors.muted}
+              style={styles.joinInput}
+              value={groupId}
+            />
+            <Pressable
+              disabled={!groupId.trim() || joining}
+              onPress={() => void joinSquad()}
+              style={[styles.joinButton, (!groupId.trim() || joining) && styles.disabled]}
+            >
+              {joining ? (
+                <ActivityIndicator color={colors.onPrimary} />
+              ) : (
+                <Text style={styles.joinButtonText}>Join</Text>
+              )}
             </Pressable>
-          );
-        })}
-      </ScrollView>
-    </SafeAreaView>
+          </View>
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
+
+function MetaRow({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return (
+    <View style={styles.metaRow}>
+      <Ionicons color={colors.subtle} name={icon} size={14} />
+      <Text style={styles.metaText}>{text}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: colors.background, flex: 1 },
-  content: { paddingBottom: 36 },
-  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 18 },
-  eyebrow: { color: colors.violet, fontSize: 12, fontWeight: "900", letterSpacing: 1.6 },
-  title: { color: colors.text, fontSize: 32, fontWeight: "900", letterSpacing: -1, marginTop: 3 },
-  greeting: { color: colors.muted, fontSize: 14, marginTop: 3 },
-  headerActions: { alignItems: "center", flexDirection: "row", gap: 10 },
-  avatar: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
-  avatarText: { color: colors.black, fontSize: 17, fontWeight: "900" },
-  connectionsButton: { alignItems: "center", backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderRadius: 20, borderWidth: 1, height: 40, justifyContent: "center", width: 40 },
-  connectionsButtonText: { fontSize: 17 },
-  connectionRow: { alignItems: "center", flexDirection: "row", marginHorizontal: 20, marginVertical: 14 },
-  dot: { backgroundColor: colors.muted, borderRadius: 4, height: 8, marginRight: 7, width: 8 },
-  dotLive: { backgroundColor: colors.cyan },
-  connectionText: { color: colors.muted, fontSize: 13 },
-  host: { color: colors.muted, flex: 1, fontSize: 11, marginLeft: 8, textAlign: "right" },
-  trackingRow: { alignItems: "center", flexDirection: "row", marginHorizontal: 20, marginBottom: 12, marginTop: -5 },
-  trackingDot: { backgroundColor: colors.muted, borderRadius: 4, height: 8, marginRight: 7, width: 8 },
-  trackingDotLive: { backgroundColor: colors.lime },
-  trackingText: { color: colors.muted, flex: 1, fontSize: 12 },
-  trackingTime: { color: colors.muted, fontSize: 11, marginLeft: 8 },
-  mapFrame: { borderColor: colors.border, borderRadius: 22, borderWidth: 1, marginHorizontal: 14, overflow: "hidden" },
-  map: { height: 300, width: "100%" },
-  mapLoading: { alignItems: "center", backgroundColor: "#090B0FAA", bottom: 0, justifyContent: "center", left: 0, position: "absolute", right: 0, top: 0 },
-  locationButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 13, marginHorizontal: 20, marginTop: 14, paddingVertical: 14 },
-  locationButtonActive: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderWidth: 1 },
-  locationButtonText: { color: colors.black, fontSize: 15, fontWeight: "900" },
-  testLabel: { color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 1.2, marginHorizontal: 20, marginTop: 20 },
-  testRow: { flexDirection: "row", gap: 8, marginHorizontal: 20, marginTop: 9 },
-  testButton: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, flex: 1, paddingVertical: 11 },
-  testButtonText: { color: colors.text, fontSize: 13, fontWeight: "700" },
-  joinCard: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 8, marginHorizontal: 20, marginTop: 14, padding: 10 },
-  joinInput: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 9, borderWidth: 1, color: colors.text, flex: 1, fontSize: 13, minWidth: 0, paddingHorizontal: 11, paddingVertical: 10 },
-  joinButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 9, justifyContent: "center", minHeight: 40, minWidth: 94, paddingHorizontal: 12 },
-  joinButtonText: { color: colors.black, fontSize: 13, fontWeight: "900" },
-  disabled: { opacity: 0.45 },
-  error: { color: colors.danger, fontSize: 14, marginHorizontal: 20, marginTop: 14 },
-  sectionHeader: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between", marginHorizontal: 20, marginBottom: 10, marginTop: 24 },
-  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: "900" },
-  sectionHint: { color: colors.muted, fontSize: 12 },
-  dropCard: { alignItems: "center", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: "row", marginBottom: 10, marginHorizontal: 20, padding: 14 },
-  signal: { alignItems: "center", borderRadius: 22, height: 44, justifyContent: "center", width: 44 },
-  signalText: { color: colors.black, fontSize: 14, fontWeight: "900" },
+  root: { backgroundColor: colors.surfaceInverse, flex: 1 },
+  map: { bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
+  livePill: {
+    alignItems: "center",
+    alignSelf: "center",
+    backgroundColor: colors.secondaryTint,
+    borderRadius: radius.pill,
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    position: "absolute",
+    ...shadows.card,
+  },
+  liveDot: { backgroundColor: colors.muted, borderRadius: 4, height: 8, width: 8 },
+  liveDotOn: { backgroundColor: colors.secondary },
+  livePillText: { color: colors.secondary, fontFamily: fonts.display, fontSize: 13 },
+  sheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    bottom: 0,
+    left: 0,
+    maxHeight: "64%",
+    position: "absolute",
+    right: 0,
+    ...shadows.card,
+  },
+  handle: {
+    alignSelf: "center",
+    backgroundColor: colors.border,
+    borderRadius: 3,
+    height: 5,
+    marginTop: 10,
+    width: 44,
+  },
+  sheetContent: { padding: 20, paddingBottom: 120 },
+  hero: { marginBottom: 8 },
+  heroTop: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  eyebrow: { color: colors.subtle, fontFamily: fonts.display, fontSize: 10, letterSpacing: 0.5 },
+  clock: { color: colors.subtle, fontFamily: fonts.body, fontSize: 12 },
+  heroTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 24, marginTop: 4 },
+  metaRow: { alignItems: "center", flexDirection: "row", gap: 8, marginTop: 8 },
+  metaText: { color: colors.subtle, fontFamily: fonts.body, fontSize: 12, textTransform: "capitalize" },
+  emptyText: { color: colors.subtle, fontFamily: fonts.body, fontSize: 13, lineHeight: 18, marginTop: 6 },
+  hunt: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.primary,
+    borderRadius: radius.xxl,
+    marginTop: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+  },
+  huntText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 14 },
+  error: { color: colors.danger, fontFamily: fonts.body, fontSize: 13, marginTop: 12 },
+  sectionTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 16, marginBottom: 8, marginTop: 22 },
+  dropCard: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    marginBottom: 10,
+    padding: 14,
+    ...shadows.card,
+  },
+  signal: { alignItems: "center", borderRadius: radius.pill, height: 44, justifyContent: "center", width: 44 },
   dropCopy: { flex: 1, marginLeft: 12 },
-  dropStage: { color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 0.8 },
-  dropTitle: { color: colors.text, fontSize: 17, fontWeight: "800", marginTop: 3, textTransform: "capitalize" },
-  dropMeta: { color: colors.muted, fontSize: 13, marginTop: 3, textTransform: "capitalize" },
-  chevron: { color: colors.muted, fontSize: 30, marginLeft: 8 },
+  dropStage: { color: colors.muted, fontFamily: fonts.display, fontSize: 11, letterSpacing: 0.8 },
+  dropTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 17, marginTop: 3, textTransform: "capitalize" },
+  dropMeta: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, marginTop: 3, textTransform: "capitalize" },
+  controlButton: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  controlButtonActive: { backgroundColor: colors.surface, borderColor: colors.primary, borderWidth: 1 },
+  controlButtonText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 14 },
+  controlButtonTextActive: { color: colors.primary },
+  demoRow: { flexDirection: "row", gap: 8, marginTop: 10 },
+  demoButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    flex: 1,
+    paddingVertical: 11,
+  },
+  demoButtonText: { color: colors.text, fontFamily: fonts.body, fontSize: 13 },
+  joinRow: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+    padding: 10,
+    ...shadows.card,
+  },
+  joinInput: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    color: colors.text,
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    minWidth: 0,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+  },
+  joinButton: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    justifyContent: "center",
+    minHeight: 40,
+    minWidth: 70,
+    paddingHorizontal: 12,
+  },
+  joinButtonText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 13 },
+  disabled: { opacity: 0.45 },
 });

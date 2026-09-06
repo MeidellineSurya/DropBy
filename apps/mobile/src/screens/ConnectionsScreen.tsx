@@ -1,3 +1,5 @@
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -11,9 +13,9 @@ import {
   View,
 } from "react-native";
 
-import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { MainTabParamList, RootStackParamList } from "../navigation/RootNavigator";
 import { api } from "../services/api";
-import { colors } from "../theme";
+import { colors, fonts, radius } from "../theme";
 import type {
   ConnectionStatusView,
   ConnectionSummary,
@@ -22,7 +24,10 @@ import type {
   UserSearchResult,
 } from "../types";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Connections">;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, "Squads">,
+  NativeStackScreenProps<RootStackParamList>
+>;
 type Tab = "friends" | "chat";
 type Person = UserSearchResult | RecentSquadmate;
 
@@ -185,7 +190,7 @@ export function ConnectionsScreen({ navigation }: Props) {
             style={styles.searchInput}
             value={query}
           />
-          {searching && <ActivityIndicator color={colors.lime} style={styles.spinner} />}
+          {searching && <ActivityIndicator color={colors.primary} style={styles.spinner} />}
 
           {query.trim().length > 0 && (
             <>
@@ -268,25 +273,25 @@ const styles = StyleSheet.create({
   page: { backgroundColor: colors.background, flex: 1 },
   content: { padding: 20, paddingBottom: 40 },
   tabRow: { flexDirection: "row", gap: 10, paddingHorizontal: 20, paddingTop: 12 },
-  tabButton: { alignItems: "center", borderColor: colors.border, borderRadius: 99, borderWidth: 1, flex: 1, paddingVertical: 11 },
-  tabButtonActive: { backgroundColor: colors.lime, borderColor: colors.lime },
-  tabButtonText: { color: colors.muted, fontSize: 14, fontWeight: "800" },
-  tabButtonTextActive: { color: colors.black },
-  searchInput: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 15, paddingHorizontal: 14, paddingVertical: 12 },
+  tabButton: { alignItems: "center", borderColor: colors.border, borderRadius: radius.pill, borderWidth: 1, flex: 1, paddingVertical: 11 },
+  tabButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabButtonText: { color: colors.muted, fontFamily: fonts.display, fontSize: 14 },
+  tabButtonTextActive: { color: colors.onPrimary },
+  searchInput: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, color: colors.text, fontFamily: fonts.body, fontSize: 15, paddingHorizontal: 14, paddingVertical: 12 },
   spinner: { marginTop: 12 },
-  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: "900", marginTop: 22, marginBottom: 6 },
-  empty: { color: colors.muted, fontSize: 14, marginTop: 6 },
+  sectionTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 16, marginTop: 22, marginBottom: 6 },
+  empty: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, marginTop: 6 },
   row: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 62 },
-  avatar: { alignItems: "center", backgroundColor: colors.violet, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
-  avatarText: { color: colors.black, fontSize: 14, fontWeight: "900" },
+  avatar: { alignItems: "center", backgroundColor: colors.info, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
+  avatarText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 14 },
   rowCopy: { flex: 1, marginLeft: 11 },
-  rowName: { color: colors.text, fontSize: 15, fontWeight: "700" },
-  rowMeta: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  actionButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 99, marginLeft: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  actionButtonDisabled: { backgroundColor: colors.surfaceRaised },
-  actionButtonText: { color: colors.black, fontSize: 12, fontWeight: "800" },
+  rowName: { color: colors.text, fontFamily: fonts.body, fontSize: 15 },
+  rowMeta: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
+  actionButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.pill, marginLeft: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  actionButtonDisabled: { backgroundColor: colors.border },
+  actionButtonText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 12 },
   actionButtonTextDisabled: { color: colors.muted },
-  declineButton: { alignItems: "center", borderColor: colors.border, borderRadius: 99, borderWidth: 1, marginLeft: 8, paddingHorizontal: 14, paddingVertical: 8 },
-  declineButtonText: { color: colors.muted, fontSize: 12, fontWeight: "800" },
-  error: { color: colors.danger, fontSize: 14, marginTop: 16 },
+  declineButton: { alignItems: "center", borderColor: colors.border, borderRadius: radius.pill, borderWidth: 1, marginLeft: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  declineButtonText: { color: colors.muted, fontFamily: fonts.display, fontSize: 12 },
+  error: { color: colors.danger, fontFamily: fonts.body, fontSize: 14, marginTop: 16 },
 });

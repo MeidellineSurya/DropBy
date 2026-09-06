@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useSession } from "../SessionContext";
-import { colors } from "../theme";
+import { colors, fonts, radius, shadows } from "../theme";
 
 const INTEREST_GROUPS = [
   {
@@ -123,7 +123,7 @@ export function OnboardingScreen() {
           onPress={() => void continueToMap()}
           style={[styles.primary, (busy || name.trim().length < 2 || preferences.length === 0) && styles.disabled]}
         >
-          {busy ? <ActivityIndicator color={colors.black} /> : <Text style={styles.primaryText}>Allow location & continue</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.primaryText}>Allow location & continue</Text>}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -133,25 +133,25 @@ export function OnboardingScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  step: { color: colors.violet, fontSize: 13, fontWeight: "800", letterSpacing: 1.5 },
-  title: { color: colors.text, fontSize: 34, fontWeight: "900", letterSpacing: -1, marginTop: 8 },
-  subtitle: { color: colors.muted, fontSize: 16, lineHeight: 24, marginBottom: 28, marginTop: 10 },
-  label: { color: colors.text, fontSize: 14, fontWeight: "800", marginBottom: 8, marginTop: 12 },
-  input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 16, paddingHorizontal: 14, paddingVertical: 13 },
+  step: { color: colors.primary, fontFamily: fonts.display, fontSize: 13, letterSpacing: 1.5 },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 34, letterSpacing: 0.5, marginTop: 8 },
+  subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 16, lineHeight: 24, marginBottom: 28, marginTop: 10 },
+  label: { color: colors.text, fontFamily: fonts.display, fontSize: 14, marginBottom: 8, marginTop: 12 },
+  input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, color: colors.text, fontFamily: fonts.body, fontSize: 16, paddingHorizontal: 14, paddingVertical: 13 },
   interestGroup: { marginTop: 12 },
-  groupTitle: { color: colors.muted, fontSize: 12, fontWeight: "800", marginBottom: 8, textTransform: "uppercase" },
+  groupTitle: { color: colors.muted, fontFamily: fonts.display, fontSize: 12, marginBottom: 8, textTransform: "uppercase" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  chip: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 11 },
-  chipSelected: { backgroundColor: "#28233E", borderColor: colors.violet },
-  chipText: { color: colors.muted, fontSize: 15, fontWeight: "700" },
-  chipTextSelected: { color: colors.text },
-  permissionCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: "row", marginBottom: 18, marginTop: 28, padding: 16 },
-  permissionIcon: { color: colors.lime, fontSize: 14, fontWeight: "900", marginRight: 14, marginTop: 3 },
+  chip: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.pill, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 11 },
+  chipSelected: { backgroundColor: colors.primaryTint, borderColor: colors.primary },
+  chipText: { color: colors.muted, fontFamily: fonts.body, fontSize: 15 },
+  chipTextSelected: { color: colors.primary },
+  permissionCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, flexDirection: "row", marginBottom: 18, marginTop: 28, padding: 16, ...shadows.card },
+  permissionIcon: { color: colors.secondary, fontFamily: fonts.display, fontSize: 14, marginRight: 14, marginTop: 3 },
   permissionCopy: { flex: 1 },
-  permissionTitle: { color: colors.text, fontSize: 16, fontWeight: "800" },
-  permissionText: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: 4 },
-  primary: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 13, justifyContent: "center", minHeight: 52 },
-  primaryText: { color: colors.black, fontSize: 16, fontWeight: "900" },
+  permissionTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 16 },
+  permissionText: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20, marginTop: 4 },
+  primary: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, justifyContent: "center", minHeight: 52 },
+  primaryText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 16 },
   disabled: { opacity: 0.45 },
-  error: { color: colors.danger, fontSize: 14, marginBottom: 12 },
+  error: { color: colors.danger, fontFamily: fonts.body, fontSize: 14, marginBottom: 12 },
 });

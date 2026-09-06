@@ -1,22 +1,107 @@
 /* Mirrors apps/mobile/src/theme.ts so the dashboard and mobile app read as
    one product. Kept as plain CSS custom properties (no build-time sharing
-   with the RN StyleSheet) since the two run in different renderers. */
+   with the RN StyleSheet) since the two run in different renderers.
+
+   Tokens extracted from the DropBy Figma file:
+   https://www.figma.com/design/hRuRdZOdURH15HCCuVnsBq/DropBy
+
+   The design is a light "paper" theme with dark accent surfaces (the Drop
+   screen background and the bottom nav use --color-ink). Lilita One
+   stands in for Figma's "BBH Bartle" display face; Candal is the body face. */
+
+@import url("https://fonts.googleapis.com/css2?family=Candal&family=Lilita+One&display=swap");
 
 :root {
-  --color-bg: #090b0f;
-  --color-surface: #131821;
-  --color-surface-raised: #1a202b;
-  --color-border: #2b3442;
-  --color-text: #f5f7fb;
-  --color-muted: #98a3b3;
-  --color-lime: #d9ff43;
-  --color-cyan: #52e6d8;
-  --color-violet: #9b87ff;
-  --color-danger: #ff786e;
-  --color-black: #0b0d09;
+  /* Brand */
+  --color-pink: #e0526e; /* primary */
+  --color-green: #6d9c42; /* secondary */
 
-  --radius-lg: 22px;
-  --radius-md: 12px;
-  --radius-sm: 9px;
+  /* Surfaces */
+  --color-paper: #fffaf0;
+  --color-card: #ffffff;
+  --color-ink: #2b2527;
+  --color-black: #000000;
+
+  /* Text */
+  --color-muted: #b1b1b1;
+  --color-subtle: #5f5f5f;
+  --color-on-dark: #fffaf0;
+
+  /* Tints (badge / chip backgrounds) */
+  --color-pink-tint: #ffe1e7;
+  --color-green-tint: #eff2d8;
+  --color-gold-tint: #ffebce;
+  --color-purple-tint: #fee6ff;
+
+  /* Accent text on tints */
+  --color-gold: #ff9601;
+  --color-purple: #8f5da6;
+
+  /* Semantic aliases */
+  --color-bg: var(--color-paper);
+  --color-surface: var(--color-card);
+  --color-surface-inverse: var(--color-ink);
+  --color-border: #eae3d6;
+
+  --color-text: var(--color-ink);
+  --color-text-inverse: var(--color-on-dark);
+
+  --color-primary: var(--color-pink);
+  --color-primary-tint: var(--color-pink-tint);
+  --color-on-primary: var(--color-on-dark);
+  --color-secondary: var(--color-green);
+  --color-secondary-tint: var(--color-green-tint);
+
+  --color-success: var(--color-green);
+  --color-success-tint: var(--color-green-tint);
+  --color-warning: var(--color-gold);
+  --color-warning-tint: var(--color-gold-tint);
+  --color-info: var(--color-purple);
+  --color-info-tint: var(--color-purple-tint);
+  --color-danger: var(--color-pink);
+
+  --color-shadow: rgba(0, 0, 0, 0.25);
+  --color-overlay: rgba(0, 0, 0, 0.1);
+
+  /* Deprecated — kept so pre-restyle pages keep rendering. Removed per page
+     as each is migrated to the tokens above. */
+  --color-surface-raised: var(--color-paper);
+  --color-lime: var(--color-green);
+  --color-cyan: var(--color-green);
+  --color-violet: var(--color-purple);
+
+  /* Typography */
+  --font-display: "Lilita One", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "Candal", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --text-display: 33px;
+  --text-title: 22px;
+  --text-heading: 18px;
+  --text-button: 16px;
+  --text-body: 14px;
+  --text-label: 12px;
+  --text-caption: 10px;
+
+  --tracking-display: 0.03em;
+
+  /* Spacing (4-based) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+
+  /* Radius. chips=md, cards/buttons=lg, hero containers=xl,
+     CTA / nav pill / map markers=2xl, fully-round=pill. */
+  --radius-sm: 13px;
+  --radius-md: 20px;
+  --radius-lg: 25px;
+  --radius-xl: 30px;
+  --radius-2xl: 35px;
   --radius-pill: 999px;
+
+  /* Elevation — the design uses a single card shadow */
+  --shadow-card: 0 4px 4px rgba(0, 0, 0, 0.25);
 }

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 import { useSession } from "../SessionContext";
-import { colors } from "../theme";
+import { colors, fonts, radius, shadows } from "../theme";
 
 export function AuthScreen() {
   const { login, register } = useSession();
@@ -114,7 +114,7 @@ export function AuthScreen() {
               ]}
             >
               {busy ? (
-                <ActivityIndicator color={colors.black} />
+                <ActivityIndicator color={colors.onPrimary} />
               ) : (
                 <Text style={styles.primaryText}>{creating ? "Create account" : "Sign in"}</Text>
               )}
@@ -133,24 +133,24 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, justifyContent: "center", padding: 24 },
   brandMark: {
-    alignItems: "center", backgroundColor: colors.lime, borderRadius: 16,
+    alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.md,
     height: 54, justifyContent: "center", marginBottom: 24, transform: [{ rotate: "-5deg" }], width: 54,
   },
-  brandLetter: { color: colors.black, fontSize: 28, fontWeight: "900" },
-  eyebrow: { color: colors.violet, fontSize: 13, fontWeight: "800", letterSpacing: 2 },
-  title: { color: colors.text, fontSize: 36, fontWeight: "900", letterSpacing: -1.2, marginTop: 8 },
-  subtitle: { color: colors.muted, fontSize: 17, lineHeight: 25, marginBottom: 28, marginTop: 10 },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 22, borderWidth: 1, padding: 18 },
-  tabs: { backgroundColor: colors.background, borderRadius: 12, flexDirection: "row", marginBottom: 16, padding: 4 },
-  tab: { alignItems: "center", borderRadius: 9, flex: 1, paddingVertical: 10 },
-  tabActive: { backgroundColor: colors.surfaceRaised },
-  tabText: { color: colors.muted, fontSize: 14, fontWeight: "700" },
+  brandLetter: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 28 },
+  eyebrow: { color: colors.primary, fontFamily: fonts.display, fontSize: 13, letterSpacing: 2 },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 36, letterSpacing: 0.5, marginTop: 8 },
+  subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 17, lineHeight: 25, marginBottom: 28, marginTop: 10 },
+  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.xl, borderWidth: 1, padding: 18, ...shadows.card },
+  tabs: { backgroundColor: colors.background, borderRadius: radius.md, flexDirection: "row", marginBottom: 16, padding: 4 },
+  tab: { alignItems: "center", borderRadius: radius.sm, flex: 1, paddingVertical: 10 },
+  tabActive: { backgroundColor: colors.surface, ...shadows.card },
+  tabText: { color: colors.muted, fontFamily: fonts.body, fontSize: 14 },
   tabTextActive: { color: colors.text },
-  input: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 16, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 13 },
-  error: { color: colors.danger, fontSize: 14, marginBottom: 10 },
-  primary: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 12, minHeight: 50, justifyContent: "center", marginTop: 4 },
-  primaryText: { color: colors.black, fontSize: 16, fontWeight: "900" },
+  input: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, color: colors.text, fontFamily: fonts.body, fontSize: 16, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 13 },
+  error: { color: colors.danger, fontFamily: fonts.body, fontSize: 14, marginBottom: 10 },
+  primary: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, minHeight: 50, justifyContent: "center", marginTop: 4 },
+  primaryText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 16 },
   pressed: { opacity: 0.82 },
   disabled: { opacity: 0.45 },
-  connection: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 18, textAlign: "center" },
+  connection: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19, marginTop: 18, textAlign: "center" },
 });

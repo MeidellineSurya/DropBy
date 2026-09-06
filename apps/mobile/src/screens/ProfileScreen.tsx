@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "../SessionContext";
 import { API_ORIGIN } from "../services/api";
-import { colors } from "../theme";
+import { colors, fonts, radius, shadows } from "../theme";
 
 export function ProfileScreen() {
   const { user, logout } = useSession();
@@ -54,19 +54,19 @@ function Row({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   page: { backgroundColor: colors.background },
   content: { alignItems: "center", padding: 20, paddingBottom: 40 },
-  avatar: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 38, height: 76, justifyContent: "center", marginTop: 14, width: 76 },
-  avatarText: { color: colors.black, fontSize: 30, fontWeight: "900" },
-  name: { color: colors.text, fontSize: 25, fontWeight: "900", marginTop: 13 },
-  email: { color: colors.muted, fontSize: 14, marginTop: 4 },
-  card: { alignSelf: "stretch", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 17, borderWidth: 1, marginTop: 25, paddingHorizontal: 16 },
+  avatar: { alignItems: "center", backgroundColor: colors.secondary, borderRadius: 38, height: 76, justifyContent: "center", marginTop: 14, width: 76 },
+  avatarText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 30 },
+  name: { color: colors.secondary, fontFamily: fonts.display, fontSize: 25, marginTop: 13 },
+  email: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, marginTop: 4 },
+  card: { alignSelf: "stretch", backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, marginTop: 25, paddingHorizontal: 16, ...shadows.card },
   row: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", justifyContent: "space-between", minHeight: 58 },
-  label: { color: colors.muted, fontSize: 13 },
-  value: { color: colors.text, flex: 1, fontSize: 13, fontWeight: "700", marginLeft: 16, textAlign: "right", textTransform: "capitalize" },
-  sectionTitle: { alignSelf: "stretch", color: colors.text, fontSize: 18, fontWeight: "900", marginTop: 24 },
+  label: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
+  value: { color: colors.text, flex: 1, fontFamily: fonts.body, fontSize: 13, marginLeft: 16, textAlign: "right", textTransform: "capitalize" },
+  sectionTitle: { alignSelf: "stretch", color: colors.text, fontFamily: fonts.display, fontSize: 18, marginTop: 24 },
   tags: { alignSelf: "stretch", flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  tag: { backgroundColor: colors.surfaceRaised, borderColor: colors.violet, borderRadius: 99, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
-  tagText: { color: colors.text, fontSize: 12, textTransform: "capitalize" },
-  empty: { color: colors.muted, fontSize: 14 },
-  logoutButton: { alignItems: "center", alignSelf: "stretch", borderColor: colors.danger, borderRadius: 12, borderWidth: 1, marginTop: 32, paddingVertical: 14 },
-  logoutText: { color: colors.danger, fontSize: 14, fontWeight: "800" },
+  tag: { backgroundColor: colors.primaryTint, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 7 },
+  tagText: { color: colors.primary, fontFamily: fonts.body, fontSize: 12, textTransform: "capitalize" },
+  empty: { color: colors.muted, fontFamily: fonts.body, fontSize: 14 },
+  logoutButton: { alignItems: "center", alignSelf: "stretch", borderColor: colors.danger, borderRadius: radius.lg, borderWidth: 1, marginTop: 32, paddingVertical: 14 },
+  logoutText: { color: colors.danger, fontFamily: fonts.display, fontSize: 14 },
 });

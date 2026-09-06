@@ -24,6 +24,21 @@ apps/mobile/.expo/
 .vscode/
 .idea/
 
+# Claude Code / AI tooling (local only, never pushed)
+.claude/
+.claude*/
+CLAUDE.md
+CLAUDE.local.md
+.cursor/
+.aider*
+.mcp.json
+
+# Local scratch (screenshots, temp render output, etc.)
+.shots/
+.tmp-*/
+*.tmp.html
+tmp/
+
 # Product brief (kept locally, not tracked)
 Charlie - DropBy (1).txt
 

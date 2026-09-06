@@ -14,7 +14,7 @@ import { useSession } from "../SessionContext";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { api } from "../services/api";
 import { connectLiveSocket } from "../services/ws";
-import { colors } from "../theme";
+import { colors, fonts, radius, shadows } from "../theme";
 import type { GroupEvent, GroupSnapshot } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Squad">;
@@ -68,7 +68,7 @@ export function SquadScreen({ navigation, route }: Props) {
     setError(null);
     try {
       await api.leaveGroup(groupId);
-      navigation.popTo("Discover");
+      navigation.navigate("Main", { screen: "Explore" });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not leave this squad");
       setLeaving(false);
@@ -78,7 +78,7 @@ export function SquadScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={colors.lime} size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
@@ -158,33 +158,33 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", backgroundColor: colors.background, flex: 1, justifyContent: "center" },
   liveRow: { alignItems: "center", flexDirection: "row" },
   dot: { backgroundColor: colors.muted, borderRadius: 4, height: 8, marginRight: 7, width: 8 },
-  dotLive: { backgroundColor: colors.cyan },
-  liveText: { color: colors.muted, fontSize: 13 },
-  eyebrow: { color: colors.lime, fontSize: 12, fontWeight: "900", letterSpacing: 1.4, marginTop: 24 },
-  title: { color: colors.text, fontSize: 38, fontWeight: "900", letterSpacing: -1, marginTop: 4 },
-  subtitle: { color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 8 },
-  progressTrack: { backgroundColor: colors.surfaceRaised, borderRadius: 5, height: 10, marginTop: 22, overflow: "hidden" },
-  progressFill: { backgroundColor: colors.lime, borderRadius: 5, height: "100%" },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 18, borderWidth: 1, marginTop: 22, padding: 16 },
-  cardTitle: { color: colors.text, fontSize: 18, fontWeight: "900", marginBottom: 8 },
+  dotLive: { backgroundColor: colors.secondary },
+  liveText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
+  eyebrow: { color: colors.primary, fontFamily: fonts.display, fontSize: 12, letterSpacing: 1, marginTop: 24 },
+  title: { color: colors.text, fontFamily: fonts.display, fontSize: 38, letterSpacing: 0.5, marginTop: 4 },
+  subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22, marginTop: 8 },
+  progressTrack: { backgroundColor: colors.border, borderRadius: 5, height: 10, marginTop: 22, overflow: "hidden" },
+  progressFill: { backgroundColor: colors.secondary, borderRadius: 5, height: "100%" },
+  card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, marginTop: 22, padding: 16, ...shadows.card },
+  cardTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 18, marginBottom: 8 },
   memberRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 60 },
-  avatar: { alignItems: "center", backgroundColor: colors.violet, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
-  avatarText: { color: colors.black, fontSize: 14, fontWeight: "900" },
+  avatar: { alignItems: "center", backgroundColor: colors.info, borderRadius: 18, height: 36, justifyContent: "center", width: 36 },
+  avatarText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 14 },
   emptyAvatar: { alignItems: "center", borderColor: colors.border, borderRadius: 18, borderStyle: "dashed", borderWidth: 1, height: 36, justifyContent: "center", width: 36 },
   emptyAvatarText: { color: colors.muted, fontSize: 20 },
   memberCopy: { flex: 1, marginLeft: 11 },
-  memberName: { color: colors.text, fontSize: 15, fontWeight: "700" },
-  memberRole: { color: colors.muted, fontSize: 12, marginTop: 2, textTransform: "capitalize" },
-  joined: { color: colors.cyan, fontSize: 12, fontWeight: "700" },
-  openSlot: { color: colors.muted, fontSize: 14, marginLeft: 11 },
-  codeCard: { backgroundColor: colors.surfaceRaised, borderRadius: 16, marginTop: 16, padding: 16 },
-  codeLabel: { color: colors.muted, fontSize: 11, fontWeight: "900", letterSpacing: 1 },
-  code: { color: colors.text, fontSize: 13, marginTop: 7 },
-  primaryButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 11, marginTop: 15, paddingVertical: 14 },
-  primaryButtonText: { color: colors.black, fontSize: 14, fontWeight: "900" },
-  secondaryButton: { alignItems: "center", borderColor: colors.border, borderRadius: 11, borderWidth: 1, marginTop: 15, paddingVertical: 13 },
-  secondaryButtonText: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  memberName: { color: colors.text, fontFamily: fonts.body, fontSize: 15 },
+  memberRole: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2, textTransform: "capitalize" },
+  joined: { color: colors.secondary, fontFamily: fonts.display, fontSize: 12 },
+  openSlot: { color: colors.muted, fontFamily: fonts.body, fontSize: 14, marginLeft: 11 },
+  codeCard: { backgroundColor: colors.secondaryTint, borderRadius: radius.lg, marginTop: 16, padding: 16 },
+  codeLabel: { color: colors.subtle, fontFamily: fonts.display, fontSize: 11, letterSpacing: 1 },
+  code: { color: colors.text, fontFamily: fonts.body, fontSize: 13, marginTop: 7 },
+  primaryButton: { alignItems: "center", backgroundColor: colors.primary, borderRadius: radius.lg, marginTop: 15, paddingVertical: 14 },
+  primaryButtonText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 14 },
+  secondaryButton: { alignItems: "center", borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, marginTop: 15, paddingVertical: 13 },
+  secondaryButtonText: { color: colors.text, fontFamily: fonts.body, fontSize: 14 },
   leaveButton: { alignItems: "center", minHeight: 46, justifyContent: "center", marginTop: 7 },
-  leaveText: { color: colors.danger, fontSize: 14, fontWeight: "700" },
-  error: { color: colors.danger, fontSize: 14, marginTop: 12 },
+  leaveText: { color: colors.danger, fontFamily: fonts.body, fontSize: 14 },
+  error: { color: colors.danger, fontFamily: fonts.body, fontSize: 14, marginTop: 12 },
 });
