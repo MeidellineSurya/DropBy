@@ -64,7 +64,6 @@ export function CreateDropPage() {
   const [maxCapacity, setMaxCapacity] = useState(10);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
-  const [discoveryRadius, setDiscoveryRadius] = useState(700);
   const [discoverRadius, setDiscoverRadius] = useState(100);
   const [publishNow, setPublishNow] = useState(true);
   const [venueCapacity, setVenueCapacity] = useState<number | null>(null);
@@ -97,7 +96,6 @@ export function CreateDropPage() {
         max_capacity_participants: maxCapacity,
         starts_at: toIso(startsAt),
         ends_at: toIso(endsAt),
-        discovery_radius_m: discoveryRadius,
         discover_radius_m: discoverRadius,
         publish: publishNow,
       });
@@ -247,7 +245,7 @@ export function CreateDropPage() {
         </section>
 
         <section>
-          <h2>Scheduling & discovery radius</h2>
+          <h2>Scheduling & reveal radius</h2>
           <div className="form-row">
             <label>
               Starts at
@@ -268,27 +266,17 @@ export function CreateDropPage() {
               />
             </label>
           </div>
-          <div className="form-row">
-            <label>
-              Detect radius (m)
-              <input
-                type="number"
-                value={discoveryRadius}
-                onChange={(e) => setDiscoveryRadius(Number(e.target.value))}
-              />
-            </label>
-            <label>
-              Reveal radius (m)
-              <input
-                type="number"
-                value={discoverRadius}
-                onChange={(e) => setDiscoverRadius(Number(e.target.value))}
-              />
-            </label>
-          </div>
+          <label>
+            Reveal radius (m)
+            <input
+              type="number"
+              value={discoverRadius}
+              onChange={(e) => setDiscoverRadius(Number(e.target.value))}
+            />
+          </label>
           <p className="form-hint">
-            Users see a mystery pin within the Detect radius, then the full offer once they're
-            within the Reveal radius. Detect must be &ge; Reveal.
+            Every active Drop is detectable from any distance — a mystery signal only, with no
+            details. The full offer unlocks once someone gets within this Reveal radius.
           </p>
         </section>
 

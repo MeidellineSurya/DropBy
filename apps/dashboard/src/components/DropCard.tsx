@@ -73,10 +73,6 @@ export function DropCard({ drop, onPublish, onPause, onResume, onCancel, busy }:
             <dd className={`drop-card__rarity rarity-${drop.rarity}`}>{drop.rarity}</dd>
           </div>
           <div className="drop-card__details-row">
-            <dt>Detect radius</dt>
-            <dd>{drop.discovery_radius_m} m</dd>
-          </div>
-          <div className="drop-card__details-row">
             <dt>Reveal radius</dt>
             <dd>{drop.discover_radius_m} m</dd>
           </div>

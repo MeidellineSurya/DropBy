@@ -1,6 +1,10 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (added visual charts to Overview and Analytics —
+_Last updated: 2026-09-06 (removed the dead "Detect radius" field from
+Create Drop, and audited the rest of the business side for the same
+pattern — two more dead fields and several real gaps found, not yet acted
+on — see "Removed the dead 'Detect radius' field from Create Drop" below;
+before that, added visual charts to Overview and Analytics —
 a reusable dependency-free SVG donut chart for a Drops-by-status
 breakdown, a fullest-live-Drops capacity list, and a squad-progress/
 capacity gauge on Analytics — see "Added visual charts to Overview and
@@ -732,6 +736,82 @@ rather than a broken or empty chart, since the demo business account
 currently has very little data to look at. Not done: actually looking at
 the rendered charts — still no browser available in this environment.
 
+## Removed the dead "Detect radius" field from Create Drop
+
+The user asked to confirm `discovery_radius_m` ("Detect radius" on the
+Create Drop form) doesn't do anything anymore, having noticed it
+themselves. Confirmed by reading `services/proximity.py` directly: the
+Detect/Reveal query has no distance filter at all — every active Drop
+comes back for every ping regardless of distance — and `stage_for_distance`
+only ever checks `discover_radius_m` (the Reveal threshold). Nothing reads
+`discovery_radius_m` to gate anything a user sees.
+
+This isn't a bug on its own — "every active Drop is detectable regardless
+of distance" was a deliberate earlier decision (see the Key decisions
+below) — but the Create Drop form still presented "Detect radius (m)" as
+an equally meaningful setting right next to the one that actually matters,
+with no indication one of the two numbers does nothing.
+
+Removed the input and the `discoveryRadius` state entirely; the create
+payload no longer sends `discovery_radius_m` at all, letting the server's
+own default (`settings.default_detect_radius_m`) apply, same as
+`reveal_radius_m` (a different vestigial radius from the same retired
+three-stage model) already does — its own schema comment explicitly notes
+it's "left optional so callers don't need to know it exists." Also dropped
+the "Detect radius" row from `DropCard`'s expanded details, reworded the
+section heading ("Scheduling & discovery radius" → "Scheduling & reveal
+radius") and its explanatory hint to describe what the form's one
+remaining radius field actually controls.
+
+Live-verified: created a Drop through the API with no `discovery_radius_m`
+key in the request body at all (exactly what the dashboard now sends) —
+`201`, and the response shows it defaulted to `700` server-side, same as
+before.
+
+### Broader audit: other dead fields and business-side gaps
+
+Asked to check for other things in the same boat — either genuinely inert,
+or missing from the business side entirely. Went through every business
+API route, request/response schema, and dashboard page looking for either
+pattern. Findings, not yet acted on beyond the Detect radius fix above:
+
+**Dead or effectively-dead fields:**
+- `Business.verified` — always `False` for every real business; nothing in
+  the application ever sets it `True` (only demo/seed scripts hack it via
+  a direct DB write). Returned by `BusinessResponse`, declared in the
+  dashboard's `Business` TS type, but never displayed anywhere. A dead
+  duplicate of `status` (`pending`/`active`/`suspended`), which is the
+  actual gate on whether a business can publish.
+- `Business.logo_url` — a DB column with no Pydantic schema field anywhere,
+  in either direction. Not settable, not readable, via any route. Fully
+  inert.
+
+**Missing from the business side** (none of these have a backend route at
+all yet, not just a missing dashboard page):
+- **No way to edit a Drop after creating it, not even in `draft`.** Only
+  create/publish/pause/resume/cancel exist — a typo in the title or the
+  wrong discount means cancel-and-recreate, not fix-in-place.
+- **No business profile page, and no route to support one.** Nowhere to
+  view or edit your own business's name, address, venue capacity,
+  description, or phone after registering — `business_auth.py` only has
+  register/login/`me` (read-only).
+- **`phone` is collect-only, into a void.** `BusinessRegisterRequest`
+  accepts it, but the dashboard's registration form never asks for it, and
+  `BusinessResponse` doesn't return it even if it were set another way —
+  nobody can currently see or use a business's phone number anywhere.
+- **No password change or reset flow.** A business is stuck with whatever
+  password it registered with; there's no recovery path if forgotten.
+- **No status filter on Manage Drops, despite the API already supporting
+  one.** `GET /business/drops?drop_status=...` exists and the dashboard's
+  own `api.listDrops(status?)` already accepts the parameter, but
+  `ManageDropsPage` always calls it with none — every Drop ever created
+  (draft through cancelled/expired, forever) renders in one flat,
+  unfilterable list.
+- **No visibility into who redeemed a Drop**, only counts. `RedemptionResponse`
+  never included squad member identities — noted more cautiously than the
+  others, since surfacing user names to a business is a privacy-scoping
+  decision to make deliberately, not an obvious oversight to just fix.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -836,17 +916,25 @@ the rendered charts — still no browser available in this environment.
    actually been looked at rendered either, only reasoned through.
 3. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
-4. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
+4. Pick from the business-side gaps found in "Removed the dead 'Detect
+   radius' field from Create Drop" above and decide which are worth
+   building: Drop editing (currently cancel-and-recreate for even a typo),
+   a business profile view/edit page (+ the backend route it needs), a
+   password change/reset flow, wiring `phone` through end to end (form +
+   `BusinessResponse`) or dropping it, a status filter on Manage Drops
+   (the API already supports it), and whether `Business.verified`/
+   `logo_url` should be wired up for real or removed as dead weight.
+5. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
    Collection/Profile screen, and the powerup/perk/weekly-challenge
    endpoints — check-in is now wired; gamification display isn't.
-5. Mobile: register a real FCM token via `POST /devices` and subscribe to the
+6. Mobile: register a real FCM token via `POST /devices` and subscribe to the
    `territory.bonus_awarded` WS event, so push notifications and territory
    popups actually reach the phone.
-6. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
+7. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
    drop the package — right now it's a hand-mirrored placeholder nothing
    actually imports.
-7. Run `python -m app.scripts.seed_badges` once against a fresh database so
+8. Run `python -m app.scripts.seed_badges` once against a fresh database so
    badge criteria have real `Badge` rows to unlock against.
-8. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
+9. Select a deployment provider, add its PostgreSQL/PostGIS and Redis URLs,
    secrets, domain, and TLS configuration, then start the supplied production
    Compose stack.
