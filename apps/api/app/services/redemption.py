@@ -113,9 +113,17 @@ def get_squad_qr(db: Session, group_id: UUID, user: User) -> str:
     return sign_squad_qr(str(group.id), str(drop.id), str(drop.business_id))
 
 
-def scan_squad_qr(db: Session, qr_token: str, business: Business) -> Redemption:
+def scan_squad_qr(db: Session, qr_token: str, business: Business) -> tuple[Redemption, bool]:
     """Business staff scan a squad's code — this both verifies and confirms
-    the redemption in one action. There is no further approval step."""
+    the redemption in one action. There is no further approval step.
+
+    Returns (redemption, is_fresh). is_fresh is False on an idempotent
+    rescan of an already-confirmed squad (a staff double-tap, or scanning an
+    older still-valid token after the app issued a new one) — the caller
+    uses this to skip re-publishing the WS confirm event and re-enqueuing
+    the XP task, which is itself idempotent for XP but was still re-sending
+    a "you earned N XP" push and a redundant redemption.confirmed broadcast
+    on every rescan before this."""
     try:
         claims = verify_squad_qr(qr_token)
     except ValueError as exc:
@@ -132,7 +140,7 @@ def scan_squad_qr(db: Session, qr_token: str, business: Business) -> Redemption:
 
     existing = db.scalar(select(Redemption).where(Redemption.group_id == group.id))
     if existing is not None and existing.status == RedemptionStatus.confirmed:
-        return existing  # idempotent rescan
+        return existing, False  # idempotent rescan
     if group.status != GroupStatus.ready:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -164,7 +172,7 @@ def scan_squad_qr(db: Session, qr_token: str, business: Business) -> Redemption:
     group.completed_at = now
     db.commit()
     db.refresh(existing)
-    return existing
+    return existing, True
 
 
 def dispute_redemption(db: Session, redemption_id: UUID, business: Business) -> Redemption:

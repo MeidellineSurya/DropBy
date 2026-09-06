@@ -72,10 +72,6 @@ export function AnalyticsPage() {
                   <span className="stat-card__label">Ready</span>
                 </div>
                 <div className="stat-card">
-                  <span className="stat-card__value">{funnel.squads_checked_in}</span>
-                  <span className="stat-card__label">Checked in</span>
-                </div>
-                <div className="stat-card">
                   <span className="stat-card__value">{funnel.squads_completed}</span>
                   <span className="stat-card__label">Completed</span>
                 </div>

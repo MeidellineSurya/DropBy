@@ -139,18 +139,22 @@ def test_scan_squad_qr_auto_confirms(monkeypatch) -> None:
     # group lookup, existing-redemption lookup (none), joined_member_count's own scalar
     db.scalar.side_effect = [group, None, 3]
 
-    redemption = scan_squad_qr(db, token, _business(business_id))
+    redemption, is_fresh = scan_squad_qr(db, token, _business(business_id))
 
     assert redemption.status == RedemptionStatus.confirmed
     assert redemption.business_id == business_id
     assert redemption.confirmed_by == business_id
     assert redemption.participant_count == 3
     assert group.status == GroupStatus.completed
+    assert is_fresh is True
     db.add.assert_called_once()
     db.commit.assert_called_once()
 
 
 def test_scan_squad_qr_is_idempotent_for_an_already_confirmed_squad() -> None:
+    """Not just idempotent in what it returns — the caller uses is_fresh to
+    skip re-notifying the squad too (see api/v1/redemptions.py's scan
+    route), so this must come back False on a rescan, not just truthy data."""
     business_id = uuid4()
     drop_id = uuid4()
     group_id = uuid4()
@@ -160,9 +164,10 @@ def test_scan_squad_qr_is_idempotent_for_an_already_confirmed_squad() -> None:
     db = MagicMock(spec=Session)
     db.scalar.side_effect = [group, existing]
 
-    result = scan_squad_qr(db, token, _business(business_id))
+    result, is_fresh = scan_squad_qr(db, token, _business(business_id))
 
     assert result is existing
+    assert is_fresh is False
     db.commit.assert_not_called()
 
 

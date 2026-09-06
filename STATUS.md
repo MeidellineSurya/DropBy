@@ -1,7 +1,13 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (reworked check-in a third time: each squad now
-generates its own signed QR once ready, and the business scans it — the scan
+_Last updated: 2026-09-06 (a cross-cutting consistency audit after the
+squad-QR-scan redesign found and fixed three real gaps it had introduced: a
+dashboard analytics stat permanently stuck at zero, duplicate push
+notifications on a rescan, and the business dashboard never actually
+receiving a scan live over WebSocket — see "Consistency audit after the
+squad-QR-scan redesign" below; before that, reworked check-in a third
+time: each squad now generates its own signed QR once ready, and the
+business scans it — the scan
 itself is both the verification and the confirmation, closing the fraud gap
 the auto-confirm-by-location-claim design opened; before that, made
 discovery notification-driven — every user with a known location is
@@ -65,7 +71,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Business moderation endpoints (approve/reject registrations) | Not built — only direct DB/seed access sets `Business.status = active` |
 | Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
 | XP clawback on dispute | Not built — disputing a redemption is records-only (releases capacity, flags the record); already-awarded XP, badges, and streak progress are untouched, deliberately, since unwinding those correctly is real added scope |
-| Analytics funnel's "Checked in" vs "Completed" distinction | Now redundant for new data — auto-confirm means every redemption hits both at the same instant, so the two stay equal going forward. Left as-is (still meaningful for historical pre-auto-confirm data); not restructured |
+| Analytics funnel's "Checked in" bucket | Removed — see "Consistency audit after the squad-QR-scan redesign" below. It's not a stale distinction anymore, it was reporting a permanent, misleading zero |
 | Business dashboard funnel showing cancelled/expired squads | Not built — `business_analytics.py`'s funnel only ever tracked forming/ready/checked_in/completed; a squad that never made it isn't visible there at all, only findable by absence |
 | `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
@@ -420,6 +426,97 @@ capacity without touching the awarded XP, exactly as before. The dashboard's
 QR display both type-check cleanly and were exercised at the code-path
 level; the actual camera-to-decode-to-API round trip was not physically
 verified, since this environment has no camera hardware to test against.
+
+## Consistency audit after the squad-QR-scan redesign
+
+Asked to check the recent redesigns for cross-cutting consistency (mobile
+↔ backend, dashboard ↔ backend), not just re-verify each change in
+isolation the way it was checked when it shipped. Walked every backend
+route against what each frontend actually calls, every WS event the
+backend publishes against what each frontend actually listens for, and the
+shared response schemas field-by-field. Most of it held up (`GroupResponse`
+↔ mobile's `GroupSnapshot`, `RedemptionResponse` ↔ the dashboard's
+`Redemption` type, the WS event catalog vs. what's actually published are
+all in sync). Two real, live-verified gaps turned up, both introduced by
+"Business scans a squad-generated QR" above without being caught at the
+time — that change touched `services/redemption.py` and its own unit
+tests, not the analytics/notification code paths it silently broke:
+
+- **The Analytics page's "Checked in" stat was structurally guaranteed to
+  read 0 forever.** `business_analytics.drop_funnel()` counted
+  `GroupStatus.checked_in`, a status that existed as a real intermediate
+  step under the old check-in designs but that `scan_squad_qr` never
+  sets — a squad now goes straight from `ready` to `completed` in one
+  transition. Live-verified before fixing: ran a full create → assemble →
+  scan flow to actual completion and confirmed the funnel returned
+  `squads_checked_in: 0` sitting right next to `squads_completed: 1` — a
+  business reading their own dashboard would see a completed redemption
+  reported as 0% checked-in, which reads as broken instrumentation, not as
+  a design choice. Fixed by removing the field entirely (schema, service,
+  the dashboard's stat card, both test suites) rather than trying to
+  redefine what it means — there's no intermediate state left for it to
+  count. `GroupStatus.checked_in` and `RedemptionStatus.checked_in`
+  themselves are left as unused-but-harmless enum values (same treatment as
+  the already-documented unused `Redemption.pending`/`expired`), since
+  dropping a value from a Postgres native enum type needs its own
+  migration and isn't worth it for a value nothing selects into anymore.
+- **Rescanning an already-confirmed squad's code re-sent a duplicate "you
+  earned N XP" push and a duplicate `redemption.confirmed` broadcast to
+  every member, even though it never re-awarded XP.** `scan_squad_qr` was
+  already correctly idempotent about the *data* (returns the existing
+  confirmed Redemption on a rescan, no second DB write), and
+  `award_xp_for_redemption` was already correctly idempotent about *XP*
+  (checks for an existing `UserXpTransaction` before granting more) — but
+  the route called `award_xp_for_redemption_task.delay(...)` and published
+  the WS event unconditionally on every successful scan, fresh or not, and
+  the Celery task sends its push/WS confirm from whatever `xp_awarded`
+  comes back, replay or not. A staff double-tap, a scanner misfire, or
+  scanning an older still-valid token after the app silently refreshed it
+  would each spam the squad's phones again for a scan that changed
+  nothing. Fixed by having `scan_squad_qr` return `(redemption, is_fresh)`
+  instead of just `redemption`, and having the route skip the WS publish
+  and the Celery enqueue entirely when `is_fresh` is `False`. Live-verified:
+  scanned the same squad's code twice, checked `notification_log` directly
+  — exactly one `redemption_confirmed` row, not two.
+- **The business dashboard's live Redemptions queue never actually received
+  a scan live — a genuine regression, not a pre-existing gap.** The old
+  `POST /groups/{id}/checkin` route (removed by this redesign) published
+  its check-in event to `ws:business:{business_id}` in addition to the
+  squad's own topics; the new `POST /redemptions/scan` route carried over
+  the squad-facing publish targets but dropped that one. The dashboard's
+  WS connection authenticates as the business and only ever subscribes to
+  `ws:business:{id}` + `ws:drop:{id}` per live Drop (`main.py`'s
+  `_business_topics`) — never `ws:group:{id}` — so `RedemptionQueuePage`'s
+  reload-on-`redemption.*` listener was dead code with nothing to ever
+  trigger it. A business with the Redemptions page open while staff
+  scanned a code elsewhere would only see it after a manual refresh. Fixed
+  by adding `ws:business:{business.id}` back to the scan route's publish
+  set (still gated by `is_fresh`, so a rescan doesn't double-fire this
+  either). Live-verified with a real WebSocket client authenticated as the
+  business, connected to `/ws/live` exactly like the dashboard does:
+  scanning a squad's code delivered a `redemption.checked_in` event on that
+  connection within the same second, and a subsequent rescan delivered
+  nothing (confirmed via a 2-second wait-and-timeout, not just "didn't
+  crash").
+
+Live-verified end to end after all three fixes: `pytest -q` still 198/198;
+`GET /business/analytics/drops/{id}` no longer returns `squads_checked_in`
+at all (dashboard and backend types both updated, `tsc --noEmit` and
+`vite build` clean); a real create → assemble → scan run shows
+`squads_completed: 1` with no dead field alongside it; and a deliberate
+second scan of the same still-valid token produces exactly one
+`redemption_confirmed` notification-log row, confirmed via direct SQL, not
+two; and a business's own WebSocket connection now receives the
+`redemption.checked_in` event the moment staff scan a code, with a rescan
+correctly producing no second one.
+
+Also noted, not fixed (lower severity, pre-existing, unrelated to this
+redesign): `connection.request_received`/`connection.request_accepted` are
+published over WS but no mobile screen subscribes to them — `Connections`
+only loads its lists on mount/tab-switch, so an incoming friend request
+only appears after a manual refresh or re-navigation, never live. This
+predates the squad-QR-scan work and is a gap in the separate friends/
+messaging workstream, not something this audit's fixes touch.
 
 ## Key decisions
 

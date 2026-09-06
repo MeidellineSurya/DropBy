@@ -17,7 +17,6 @@ class DropFunnelResponse(BaseModel):
     max_capacity_participants: int
     squads_forming: int
     squads_ready: int
-    squads_checked_in: int
     squads_completed: int
 
 
