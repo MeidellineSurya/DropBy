@@ -95,6 +95,11 @@ export const api = {
     request<GroupSnapshot>(`/groups/${groupId}/join`, { method: "POST" }),
   leaveGroup: (groupId: string) =>
     request<GroupSnapshot | null>(`/groups/${groupId}/leave`, { method: "POST" }),
+  // The business confirms a claim by scanning this — check-in isn't
+  // something the consumer does at all beyond displaying the code. See
+  // apps/api/app/services/redemption.py.
+  getSquadQr: (groupId: string) =>
+    request<{ qr_token: string }>(`/groups/${groupId}/qr`),
   searchUsers: (query: string) =>
     request<UserSearchResult[]>(`/connections/search?q=${encodeURIComponent(query)}`),
   getRecentSquadmates: () => request<RecentSquadmate[]>("/connections/recent-squadmates"),

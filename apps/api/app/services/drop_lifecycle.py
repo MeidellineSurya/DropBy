@@ -346,7 +346,10 @@ def cancel_drop(
                 Group.drop_id == drop_id,
                 Group.status.in_([GroupStatus.forming, GroupStatus.ready]),
             )
-            .values(status=GroupStatus.cancelled)
+            .values(
+                status=GroupStatus.cancelled,
+                cancelled_reason="The business cancelled this Drop.",
+            )
             .returning(Group.id)
         ).all()
     )
@@ -392,14 +395,27 @@ def expire_due(db: Session) -> tuple[list[UUID], list[UUID]]:
     )
     group_ids: list[UUID] = []
     if drop_ids:
+        # Two updates instead of one so forming/ready squads each get a
+        # reason that actually matches what happened to them.
         group_ids = list(
             db.scalars(
                 update(Group)
-                .where(
-                    Group.drop_id.in_(drop_ids),
-                    Group.status.in_([GroupStatus.forming, GroupStatus.ready]),
+                .where(Group.drop_id.in_(drop_ids), Group.status == GroupStatus.forming)
+                .values(
+                    status=GroupStatus.expired,
+                    cancelled_reason="This Drop ended before your squad found enough people.",
                 )
-                .values(status=GroupStatus.expired)
+                .returning(Group.id)
+            ).all()
+        )
+        group_ids += list(
+            db.scalars(
+                update(Group)
+                .where(Group.drop_id.in_(drop_ids), Group.status == GroupStatus.ready)
+                .values(
+                    status=GroupStatus.expired,
+                    cancelled_reason="This Drop ended before your squad could check in.",
+                )
                 .returning(Group.id)
             ).all()
         )

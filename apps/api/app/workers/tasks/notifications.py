@@ -2,29 +2,46 @@ from uuid import UUID
 
 from app.db.session import SessionLocal
 from app.models.drops import Drop
-from app.services.notifications import find_nearby_users_for_drop, send_push
+from app.services.notifications import find_users_to_notify_for_drop, send_push
 from app.workers.celery_app import celery_app
+
+# Below this, "450m away" reads as noise rather than a useful distance —
+# round down to whole km once we're this far out.
+NOTIFICATION_DISTANCE_KM_THRESHOLD_M = 1000
+
+
+def _format_distance(distance_m: float) -> str:
+    """Same nearest-50m rounding Detect uses in-app (see
+    proximity.snapshot_for) — avoids handing out a precise-enough distance
+    to triangulate the venue from a notification alone."""
+    if distance_m >= NOTIFICATION_DISTANCE_KM_THRESHOLD_M:
+        return f"{distance_m / 1000:.1f}km"
+    return f"{max(50, round(distance_m / 50) * 50)}m"
 
 
 @celery_app.task
 def notify_users_of_new_drop(drop_id: str) -> int:
-    """Triggered when a Drop activates. Alerts every nearby user with a fresh
-    location ping if it's Rare or better — matches the brief's "Legendary
-    Drop 300m away" curiosity hook; Common/Uncommon Drops stay silent so
-    exploration, not notification spam, drives discovery."""
+    """Triggered when a Drop activates. Discovery is notification-driven —
+    every user gets told a Drop exists, not just people already nearby (see
+    STATUS.md); Detect itself only ever reveals category and distance, never
+    the offer, title, or business name — that's still gated behind Reveal
+    once someone actually gets close."""
     with SessionLocal() as db:
         drop = db.get(Drop, UUID(drop_id))
-        if drop is None or drop.rarity.value not in {"rare", "epic", "legendary"}:
+        if drop is None:
             return 0
-        user_ids = find_nearby_users_for_drop(db, drop.id)
-        payload = {
-            "title": f"{drop.rarity.value.title()} Drop nearby",
-            "body": f"{drop.title} just appeared near you",
-            "drop_id": str(drop.id),
-        }
-        for user_id in user_ids:
+        category_label = drop.category.value.replace("_", " ").title()
+        recipients = find_users_to_notify_for_drop(db, drop.id)
+        for user_id, distance_m in recipients:
+            payload = {
+                "title": "New Drop detected",
+                "body": f"A {category_label} Drop appeared {_format_distance(distance_m)} away",
+                "drop_id": str(drop.id),
+                "category": drop.category.value,
+                "distance_m": distance_m,
+            }
             send_push(db, user_id, "drop_nearby", payload)
-        return len(user_ids)
+        return len(recipients)
 
 
 @celery_app.task

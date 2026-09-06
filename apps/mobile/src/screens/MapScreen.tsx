@@ -19,6 +19,7 @@ import MapView, { Circle, Marker, type Region } from "react-native-maps";
 import { useSession } from "../SessionContext";
 import type { MainTabParamList, RootStackParamList } from "../navigation/RootNavigator";
 import { api } from "../services/api";
+import { enableLocalNotifications, notifyDemoAlert, notifyDropRevealed } from "../services/notifications";
 import { connectLiveSocket } from "../services/ws";
 import { colors, fonts, radius, shadows } from "../theme";
 import type { DropSnapshot, DropStageEvent } from "../types";
@@ -59,9 +60,12 @@ export function MapScreen({ navigation }: Props) {
   const [joining, setJoining] = useState(false);
   const [locationMode, setLocationMode] = useState<LocationMode>("off");
   const [countdown, setCountdown] = useState(28 * 60 + 19);
+  const [notifying, setNotifying] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState<string | null>(null);
   const watchPingRunning = useRef(false);
   const pingSequence = useRef(0);
   const loadingSequence = useRef(0);
+  const revealedDropIds = useRef(new Set<string>());
 
   const revealedDrops = useMemo(
     () => drops.filter((drop) => drop.latitude != null && drop.longitude != null),
@@ -100,6 +104,12 @@ export function MapScreen({ navigation }: Props) {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    void enableLocalNotifications().catch(() => {
+      // Discovery should keep working if the user declines notifications.
+    });
   }, []);
 
   useEffect(() => {
@@ -160,6 +170,14 @@ export function MapScreen({ navigation }: Props) {
       const response = await api.locationPing(position.latitude, position.longitude);
       if (sequence !== pingSequence.current) return;
       setDrops(response.drops);
+      for (const drop of response.drops) {
+        if (drop.stage !== "reveal" || revealedDropIds.current.has(drop.id)) continue;
+        revealedDropIds.current.add(drop.id);
+        const title = drop.title ?? drop.interest_tag?.replace(/_/g, " ") ?? "A nearby Drop";
+        void notifyDropRevealed({ id: drop.id, title }).catch(() => {
+          // A local alert is a demo enhancement, not a requirement for discovery.
+        });
+      }
     } catch (reason) {
       if (sequence !== pingSequence.current) return;
       setError(reason instanceof Error ? reason.message : "Could not load nearby Drops");
@@ -182,6 +200,24 @@ export function MapScreen({ navigation }: Props) {
       longitude: location.coords.longitude,
     });
     setLocationMode("live");
+  }
+
+  async function sendNotificationTest() {
+    setNotifying(true);
+    setNotificationMessage(null);
+    try {
+      const allowed = await enableLocalNotifications();
+      if (!allowed) {
+        setNotificationMessage("Enable notifications in iPhone Settings to test alerts.");
+        return;
+      }
+      await notifyDemoAlert();
+      setNotificationMessage("Test alert sent — check the banner or Notification Centre.");
+    } catch {
+      setNotificationMessage("Could not send the test alert. Please reload Expo Go and try again.");
+    } finally {
+      setNotifying(false);
+    }
   }
 
   async function joinSquad() {
@@ -355,6 +391,19 @@ export function MapScreen({ navigation }: Props) {
             ))}
           </View>
 
+          <Pressable
+            disabled={notifying}
+            onPress={() => void sendNotificationTest()}
+            style={[styles.notifyButton, notifying && styles.disabled]}
+          >
+            {notifying ? (
+              <ActivityIndicator color={colors.text} />
+            ) : (
+              <Text style={styles.demoButtonText}>Test phone notification</Text>
+            )}
+          </Pressable>
+          {notificationMessage && <Text style={styles.notifyMessage}>{notificationMessage}</Text>}
+
           <View style={styles.joinRow}>
             <TextInput
               autoCapitalize="none"
@@ -489,6 +538,17 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   demoButtonText: { color: colors.text, fontFamily: fonts.body, fontSize: 13 },
+  notifyButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    marginTop: 10,
+    minHeight: 44,
+  },
+  notifyMessage: { color: colors.subtle, fontFamily: fonts.body, fontSize: 12, marginTop: 8 },
   joinRow: {
     alignItems: "center",
     backgroundColor: colors.surface,

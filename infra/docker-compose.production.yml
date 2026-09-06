@@ -5,8 +5,8 @@ x-runtime-environment: &runtime-environment
   JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the production environment file}
   JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
   JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-60}
-  QR_SIGNING_SECRET: ${QR_SIGNING_SECRET:?Set QR_SIGNING_SECRET in the production environment file}
   FCM_CREDENTIALS_JSON_PATH: ${FCM_CREDENTIALS_JSON_PATH:-}
+  QR_SIGNING_SECRET: ${QR_SIGNING_SECRET:?Set QR_SIGNING_SECRET in the production environment file}
 
 services:
   migrate:

@@ -17,6 +17,7 @@ from app.services.drop_lifecycle import (
     resume_drop as resume_drop_lifecycle,
 )
 from app.services.squad_state import group_snapshot
+from app.workers.tasks.notifications import notify_users_of_new_drop
 from app.ws.manager import publish
 from ws_contracts.events import DropExpired, GroupStateUpdate
 
@@ -111,6 +112,11 @@ def create_drop(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     db.commit()
     db.refresh(drop)
+    if drop.status == DropStatus.active:
+        # starts_at was already in the past, so this Drop skipped scheduled
+        # entirely and went straight to active — the scheduled->active sweep
+        # that normally fires this will never see it.
+        notify_users_of_new_drop.delay(str(drop.id))
     return _drop_response(drop)
 
 
@@ -149,6 +155,8 @@ def publish_drop(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     if drop is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Draft Drop not found")
+    if drop.status == DropStatus.active:
+        notify_users_of_new_drop.delay(str(drop.id))
     return _drop_response(drop)
 
 

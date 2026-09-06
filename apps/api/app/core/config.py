@@ -14,8 +14,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
 
-    qr_signing_secret: str = "change-me-too"
     fcm_credentials_json_path: str = ""
+
+    # Signs each squad's check-in QR (see services/redemption.py) — a
+    # separate secret from JWT_SECRET so a leak of one token domain doesn't
+    # implicate the other.
+    qr_signing_secret: str = "change-me-too"
 
     default_detect_radius_m: int = 700
     default_reveal_radius_m: int = 180

@@ -9,13 +9,14 @@ import {
   Text,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 
 import { useSession } from "../SessionContext";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { api } from "../services/api";
 import { connectLiveSocket } from "../services/ws";
 import { colors, fonts, radius, shadows } from "../theme";
-import type { GroupEvent, GroupSnapshot } from "../types";
+import type { GroupEvent, GroupSnapshot, RedemptionEvent } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Squad">;
 
@@ -25,6 +26,7 @@ export function SquadScreen({ navigation, route }: Props) {
   const [group, setGroup] = useState<GroupSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const [qrToken, setQrToken] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,8 +50,11 @@ export function SquadScreen({ navigation, route }: Props) {
     const socket = connectLiveSocket(
       token,
       (event) => {
-        if (!event.type.startsWith("group.")) return;
-        if ((event as GroupEvent).group_id === groupId) void refresh();
+        // redemption.* covers check-in/confirm — check-in auto-confirms now
+        // (see api/app/services/redemption.py), so this is what tells other
+        // squad members the Drop was redeemed without them tapping anything.
+        if (!event.type.startsWith("group.") && !event.type.startsWith("redemption.")) return;
+        if ((event as GroupEvent | RedemptionEvent).group_id === groupId) void refresh();
       },
       setConnected,
     );
@@ -62,6 +67,18 @@ export function SquadScreen({ navigation, route }: Props) {
       title: "Join my DropBy squad",
     });
   }
+
+  // The business confirms by scanning this — there's nothing for the
+  // consumer to tap. Fetched once the squad is ready; re-fetchable any
+  // number of times without invalidating a copy already on screen (it's
+  // stateless, see apps/api/app/services/redemption.py).
+  useEffect(() => {
+    if (group?.status !== "ready" || qrToken) return;
+    api
+      .getSquadQr(groupId)
+      .then((res) => setQrToken(res.qr_token))
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load your check-in code"));
+  }, [group?.status, groupId, qrToken]);
 
   async function leaveSquad() {
     setLeaving(true);
@@ -83,10 +100,40 @@ export function SquadScreen({ navigation, route }: Props) {
     );
   }
 
+  if (group?.status === "cancelled" || group?.status === "expired") {
+    const expired = group.status === "expired";
+    const fallback = expired
+      ? "This Drop ended before your squad could redeem it."
+      : "This squad was cancelled.";
+    return (
+      <View style={[styles.page, styles.content, { flex: 1 }]}>
+        <Text style={styles.eyebrow}>{expired ? "DROP EXPIRED" : "SQUAD CANCELLED"}</Text>
+        <Text style={styles.title}>Didn't make it this time</Text>
+        <View style={styles.endedCard}>
+          <Text style={styles.endedText}>{group.cancelled_reason ?? fallback}</Text>
+        </View>
+        <Pressable
+          onPress={() => navigation.navigate("Main", { screen: "Explore" })}
+          style={styles.primaryButton}
+        >
+          <Text style={styles.primaryButtonText}>Back to Explore</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   const count = group?.current_count ?? 0;
   const maximum = group?.max_allowed ?? 4;
   const progress = `${Math.min(100, Math.round((count / maximum) * 100))}%` as const;
   const ready = group?.status === "ready";
+  const completed = group?.status === "completed";
+
+  const eyebrow = completed ? "REDEEMED" : ready ? "SQUAD READY" : "ASSEMBLING";
+  const subtitle = completed
+    ? "Checked in and redeemed — XP is on its way to everyone in the squad."
+    : ready
+      ? "Your minimum squad is ready. You can still fill the remaining spaces."
+      : `${Math.max(0, (group?.min_required ?? 2) - count)} more needed to unlock the Drop.`;
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.page}>
@@ -95,17 +142,40 @@ export function SquadScreen({ navigation, route }: Props) {
         <Text style={styles.liveText}>{connected ? "Live squad updates" : "Reconnecting"}</Text>
       </View>
 
-      <Text style={styles.eyebrow}>{ready ? "SQUAD READY" : "ASSEMBLING"}</Text>
+      <Text style={styles.eyebrow}>{eyebrow}</Text>
       <Text style={styles.title}>{count}/{maximum} explorers</Text>
-      <Text style={styles.subtitle}>
-        {ready
-          ? "Your minimum squad is ready. You can still fill the remaining spaces."
-          : `${Math.max(0, (group?.min_required ?? 2) - count)} more needed to unlock the Drop.`}
-      </Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
 
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: progress }]} />
       </View>
+
+      {ready && (
+        <View style={styles.claimCard}>
+          <Text style={styles.claimTitle}>At the venue?</Text>
+          <Text style={styles.claimSubtitle}>
+            Show this code to staff — they scan it to confirm your squad.
+          </Text>
+          <View style={styles.qrWrapper}>
+            {qrToken ? (
+              // Deliberately black-on-white regardless of the app's dark
+              // theme — a scanner needs real contrast, not just "readable
+              // enough for a person."
+              <QRCode value={qrToken} size={200} backgroundColor="#ffffff" color="#000000" />
+            ) : (
+              <ActivityIndicator color={colors.primary} />
+            )}
+          </View>
+        </View>
+      )}
+
+      {completed && (
+        <View style={styles.successCard}>
+          <Text style={styles.successText}>
+            ✓ Redeemed! Everyone in the squad earns XP for this one.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Members</Text>
@@ -129,24 +199,28 @@ export function SquadScreen({ navigation, route }: Props) {
         ))}
       </View>
 
-      <View style={styles.codeCard}>
-        <Text style={styles.codeLabel}>SQUAD ID</Text>
-        <Text selectable style={styles.code}>{groupId}</Text>
-        <Pressable onPress={() => void shareSquad()} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Share squad invite</Text>
-        </Pressable>
-      </View>
+      {!completed && (
+        <View style={styles.codeCard}>
+          <Text style={styles.codeLabel}>SQUAD ID</Text>
+          <Text selectable style={styles.code}>{groupId}</Text>
+          <Pressable onPress={() => void shareSquad()} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Share squad invite</Text>
+          </Pressable>
+        </View>
+      )}
 
       <Pressable onPress={() => void refresh()} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Refresh now</Text>
       </Pressable>
-      <Pressable disabled={leaving} onPress={() => void leaveSquad()} style={styles.leaveButton}>
-        {leaving ? (
-          <ActivityIndicator color={colors.danger} />
-        ) : (
-          <Text style={styles.leaveText}>Leave squad</Text>
-        )}
-      </Pressable>
+      {!completed && (
+        <Pressable disabled={leaving} onPress={() => void leaveSquad()} style={styles.leaveButton}>
+          {leaving ? (
+            <ActivityIndicator color={colors.danger} />
+          ) : (
+            <Text style={styles.leaveText}>Leave squad</Text>
+          )}
+        </Pressable>
+      )}
       {error && <Text style={styles.error}>{error}</Text>}
     </ScrollView>
   );
@@ -165,6 +239,14 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 15, lineHeight: 22, marginTop: 8 },
   progressTrack: { backgroundColor: colors.border, borderRadius: 5, height: 10, marginTop: 22, overflow: "hidden" },
   progressFill: { backgroundColor: colors.secondary, borderRadius: 5, height: "100%" },
+  claimCard: { backgroundColor: colors.surface, borderColor: colors.primary, borderRadius: radius.lg, borderWidth: 1, marginTop: 18, padding: 16, ...shadows.card },
+  claimTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 17 },
+  claimSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 13, lineHeight: 19, marginTop: 6 },
+  qrWrapper: { alignItems: "center", backgroundColor: "#ffffff", borderRadius: radius.md, justifyContent: "center", marginTop: 14, minHeight: 220, padding: 10 },
+  successCard: { backgroundColor: colors.surface, borderColor: colors.secondary, borderRadius: radius.lg, borderWidth: 1, marginTop: 18, padding: 16, ...shadows.card },
+  successText: { color: colors.text, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
+  endedCard: { backgroundColor: colors.surface, borderColor: colors.danger, borderRadius: radius.lg, borderWidth: 1, marginTop: 18, padding: 16, ...shadows.card },
+  endedText: { color: colors.text, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.lg, borderWidth: 1, marginTop: 22, padding: 16, ...shadows.card },
   cardTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 18, marginBottom: 8 },
   memberRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 60 },

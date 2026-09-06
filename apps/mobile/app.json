@@ -20,7 +20,13 @@
           "locationWhenInUsePermission": "DropBy uses your location to reveal nearby Drops."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "drop-alerts"
+        }
+      ]
     ]
   }
 }

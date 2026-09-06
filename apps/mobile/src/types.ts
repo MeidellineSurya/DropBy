@@ -60,6 +60,10 @@ export interface GroupSnapshot {
   max_allowed: number;
   open_to_nearby: boolean;
   expires_at?: string;
+  // Set when status is cancelled/expired, so the app can explain why instead
+  // of just showing a dead-end status. Persisted server-side (not a one-time
+  // response field) — see apps/api/app/models/groups.py.
+  cancelled_reason?: string | null;
   members: GroupMember[];
 }
 
@@ -139,9 +143,20 @@ export interface GroupEvent {
   [key: string]: unknown;
 }
 
+// Check-in auto-confirms (see apps/api/app/services/redemption.py), so
+// redemption.checked_in fires immediately and redemption.confirmed follows
+// shortly after once award_xp_for_redemption's Celery task lands.
+export interface RedemptionEvent {
+  type: "redemption.checked_in" | "redemption.confirmed";
+  group_id: string;
+  redemption_id: string;
+  [key: string]: unknown;
+}
+
 export type LiveEvent =
   | DropStageEvent
   | GroupEvent
+  | RedemptionEvent
   | ConnectionRequestReceivedEvent
   | ConnectionRequestAcceptedEvent
   | MessageSentEvent

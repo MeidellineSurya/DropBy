@@ -18,3 +18,13 @@ def test_production_accepts_distinct_strong_secrets() -> None:
     )
 
     assert configured.environment == "production"
+
+
+def test_production_rejects_identical_secrets() -> None:
+    with pytest.raises(ValidationError, match="must be different"):
+        Settings(
+            _env_file=None,
+            environment="production",
+            jwt_secret="same-" + "a" * 40,
+            qr_signing_secret="same-" + "a" * 40,
+        )

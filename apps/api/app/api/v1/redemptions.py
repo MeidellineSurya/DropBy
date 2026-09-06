@@ -5,58 +5,61 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_business, get_db
 from app.models.businesses import Business
-from app.schemas.redemption import ConfirmRequest, RedemptionResponse, VenueQrResponse
-from app.services.redemption import (
-    build_response,
-    confirm_redemption,
-    get_venue_qr,
-    list_redemption_queue,
-    reject_redemption,
-)
+from app.models.groups import Group
+from app.schemas.redemption import RedemptionResponse, ScanRequest
+from app.services.redemption import build_response, dispute_redemption, list_recent_redemptions, scan_squad_qr
+from app.services.squad_state import group_snapshot
 from app.workers.tasks.gamification import award_xp_for_redemption_task
+from app.ws.manager import publish
+from ws_contracts.events import RedemptionCheckedIn
 
 router = APIRouter()
 
 
 @router.get("/queue", response_model=list[RedemptionResponse])
-def redemption_queue(
+def recent_redemptions(
     business: Business = Depends(get_current_business),
     db: Session = Depends(get_db),
 ) -> list[RedemptionResponse]:
-    """The business dashboard's live redemption queue (checked-in, awaiting confirm)."""
-    return [build_response(db, redemption) for redemption in list_redemption_queue(db, business)]
+    """Confirmed redemptions still inside the dispute window."""
+    return [build_response(db, redemption) for redemption in list_recent_redemptions(db, business)]
 
 
-@router.get("/drops/{drop_id}/qr", response_model=VenueQrResponse)
-def drop_qr(
-    drop_id: UUID,
-    business: Business = Depends(get_current_business),
-    db: Session = Depends(get_db),
-) -> VenueQrResponse:
-    """The venue-facing QR for this Drop, to display/print at the counter."""
-    return VenueQrResponse(qr_token=get_venue_qr(db, drop_id, business))
-
-
-@router.post("/{redemption_id}/confirm", response_model=RedemptionResponse)
-def confirm(
-    redemption_id: UUID,
-    body: ConfirmRequest,
+@router.post("/scan", response_model=RedemptionResponse)
+async def scan(
+    body: ScanRequest,
     business: Business = Depends(get_current_business),
     db: Session = Depends(get_db),
 ) -> RedemptionResponse:
-    """Business confirms headcount, completes the Group, and enqueues XP/badge award."""
-    redemption = confirm_redemption(db, redemption_id, business, body.participant_count)
+    """Staff scan a squad's check-in code. This is the actual verification +
+    confirmation step — see services/redemption.py's module docstring for
+    why the business, not the squad's own location, is the trust anchor."""
+    redemption = scan_squad_qr(db, body.qr_token, business)
+    group = db.get(Group, redemption.group_id)
+    if group is not None:
+        snapshot = group_snapshot(db, group)
+        event = RedemptionCheckedIn(
+            group_id=snapshot.id,
+            redemption_id=str(redemption.id),
+            checked_in_at=redemption.checked_in_at,
+        ).model_dump(mode="json")
+        for topic in {
+            f"ws:group:{snapshot.id}",
+            *(f"ws:user:{member.user_id}" for member in snapshot.members),
+        }:
+            await publish(topic, event)
     award_xp_for_redemption_task.delay(str(redemption.id))
     return build_response(db, redemption)
 
 
-@router.post("/{redemption_id}/reject", response_model=RedemptionResponse)
-def reject(
+@router.post("/{redemption_id}/dispute", response_model=RedemptionResponse)
+def dispute(
     redemption_id: UUID,
     business: Business = Depends(get_current_business),
     db: Session = Depends(get_db),
 ) -> RedemptionResponse:
-    """Business rejects a mistaken or fraudulent scan, releasing the squad's
-    reserved capacity back to the Drop."""
-    redemption = reject_redemption(db, redemption_id, business)
+    """Business flags a confirmed redemption as fraudulent or mistaken,
+    releasing its reserved capacity back to the Drop. Does not claw back XP
+    already awarded — see services/redemption.py."""
+    redemption = dispute_redemption(db, redemption_id, business)
     return build_response(db, redemption)
