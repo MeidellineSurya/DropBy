@@ -58,6 +58,11 @@ def snapshot_for(
             rarity=drop.rarity,
             category=drop.category,
             interest_tag=drop.interest_tag,
+            # The mobile map uses a deliberately coarse rarity pin before a
+            # Drop is revealed. It needs the pin coordinate to place that
+            # marker, while the name, venue, offer and address remain hidden.
+            latitude=latitude,
+            longitude=longitude,
             min_group_size=drop.min_group_size,
             max_group_size=drop.max_group_size,
         )

@@ -117,7 +117,7 @@ def find_users_to_notify_for_drop(db: Session, drop_id: UUID) -> list[tuple[UUID
     """Every user with a known location, paired with their distance to the
     Drop — feeds the "new Drop" push alert sent to everyone, not just people
     already nearby (discovery is notification-driven now; see
-    STATUS.md). No radius or freshness filter: a user doesn't have to be
+    product design). No radius or freshness filter: a user doesn't have to be
     in range, or have pinged recently, to be told a Drop exists — they only
     need *some* last known location so a distance can be shown at all.
     Distance here is whatever their last ping says, however old; it's just

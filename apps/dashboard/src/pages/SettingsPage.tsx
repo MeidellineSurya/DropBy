@@ -4,10 +4,12 @@ import { ApiError, api } from "../services/api";
 import type { Business, DropCategory } from "../types";
 import "./SettingsPage.css";
 
+const UNIVERSITY_OF_MELBOURNE = { latitude: "-37.7963", longitude: "144.9614" };
+
 // Everything editable about a business's own profile — PATCH
 // /business/auth/me. owner_email and password aren't here on purpose:
 // changing sign-in identity is a separate concern from editing a profile,
-// not yet built (see STATUS.md).
+// not yet built.
 export function SettingsPage() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -147,9 +149,20 @@ export function SettingsPage() {
               <input value={longitude} onChange={(e) => setLongitude(e.target.value)} required />
             </label>
           </div>
+          <button
+            className="settings-location-preset"
+            onClick={() => {
+              setLatitude(UNIVERSITY_OF_MELBOURNE.latitude);
+              setLongitude(UNIVERSITY_OF_MELBOURNE.longitude);
+              setSaved(false);
+            }}
+            type="button"
+          >
+            Use University of Melbourne
+          </button>
           <p className="form-hint">
-            Where every new Drop is placed. Existing Drops keep their own location, so correcting
-            this won't move anything you've already created.
+            Where your Drops are placed. Saving a corrected location also moves your current live
+            and upcoming Drops; historical Drops retain their original location.
           </p>
         </section>
 

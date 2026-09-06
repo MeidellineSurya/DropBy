@@ -23,7 +23,7 @@ def _format_distance(distance_m: float) -> str:
 def notify_users_of_new_drop(drop_id: str) -> int:
     """Triggered when a Drop activates. Discovery is notification-driven —
     every user gets told a Drop exists, not just people already nearby (see
-    STATUS.md); Detect itself only ever reveals category and distance, never
+    product design); Detect itself only ever reveals category and distance, never
     the offer, title, or business name — that's still gated behind Reveal
     once someone actually gets close."""
     with SessionLocal() as db:

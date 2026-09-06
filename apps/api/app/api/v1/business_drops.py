@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from geoalchemy2.elements import WKTElement
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,11 @@ from app.core.deps import get_current_business, get_db
 from app.models.businesses import Business, BusinessStatus
 from app.models.drops import Drop, DropStatus, DropViewEvent
 from app.models.groups import Group
-from app.schemas.business_drops import BusinessDropCreateRequest, BusinessDropResponse
+from app.schemas.business_drops import (
+    BusinessDropCreateRequest,
+    BusinessDropLocationUpdate,
+    BusinessDropResponse,
+)
 from app.services.drop_lifecycle import (
     cancel_drop as cancel_drop_lifecycle,
     create_drop as create_drop_lifecycle,
@@ -141,6 +146,21 @@ def get_business_drop(
     db: Session = Depends(get_db),
 ) -> BusinessDropResponse:
     return _drop_response(_owned_drop_or_404(db, drop_id, business))
+
+
+@router.patch("/{drop_id}/location", response_model=BusinessDropResponse)
+def update_drop_location(
+    drop_id: UUID,
+    body: BusinessDropLocationUpdate,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessDropResponse:
+    """Correct a single Drop's pin without changing the venue or other Drops."""
+    drop = _owned_drop_or_404(db, drop_id, business)
+    drop.location = WKTElement(f"POINT({body.longitude} {body.latitude})", srid=4326)
+    db.commit()
+    db.refresh(drop)
+    return _drop_response(drop)
 
 
 @router.post("/{drop_id}/publish", response_model=BusinessDropResponse)

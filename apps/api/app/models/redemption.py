@@ -26,7 +26,7 @@ class Redemption(Base):
     confirmed redemption within DISPUTE_WINDOW as a fraud/mistake flag;
     disputing does NOT claw back XP already awarded (that would also need to
     unwind badges/streaks/stats derived from it, which isn't built — see
-    STATUS.md). `checked_in`/`rejected` are legacy values from the old
+    history). `checked_in`/`rejected` are legacy values from the old
     QR-scan-then-business-confirms flow, unused by new redemptions.
     """
 

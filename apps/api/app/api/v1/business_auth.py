@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_business, get_db
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.businesses import Business, BusinessStatus
+from app.models.drops import Drop, DropStatus
 from app.schemas.business_auth import (
     BusinessLoginRequest,
     BusinessRegisterRequest,
@@ -120,7 +121,29 @@ def update_me(
             "latitude and longitude must be updated together",
         )
     if latitude is not None and longitude is not None:
-        business.location = WKTElement(f"POINT({longitude} {latitude})", srid=4326)
+        location = WKTElement(f"POINT({longitude} {latitude})", srid=4326)
+        business.location = location
+        # A venue correction needs to correct its live pins too. Leaving the
+        # existing active/scheduled Drops at a stale registration coordinate
+        # made Settings appear to save successfully while the customer map
+        # remained somewhere else. Terminal Drops are historical records and
+        # intentionally keep their original location.
+        mutable_drops = db.scalars(
+            select(Drop).where(
+                Drop.business_id == business.id,
+                Drop.status.in_(
+                    [
+                        DropStatus.draft,
+                        DropStatus.scheduled,
+                        DropStatus.active,
+                        DropStatus.paused,
+                        DropStatus.capacity_reached,
+                    ]
+                ),
+            )
+        ).all()
+        for drop in mutable_drops:
+            drop.location = location
     if "name" in updates:
         updates["name"] = updates["name"].strip()
     if "category" in updates:

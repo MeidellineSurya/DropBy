@@ -1,84 +1,73 @@
 # DropBy
 
-🎯 Pokémon GO, but you catch real-world deals — businesses drop time-limited
-offers that only reveal themselves as you physically walk toward them, and
-the best ones require a squad to unlock 🗺️
+DropBy is a location-based deal discovery app. Businesses publish timed **Drops**; people can see their rarity from afar, reveal the offer when they get close, form a squad, and redeem it together.
 
-## What this is
+This repository contains one product with three parts:
 
-A business posts a **Drop** — a discount, tied to a location and a time
-window. Nearby users see a generic signal from a distance (**Detect**); it
-only fully reveals — offer, address, countdown — once they're within about
-100 meters (**Reveal**). Some Drops need a minimum group size, so unlocking
-one means gathering friends and going somewhere in real life. Once a squad
-is ready, they scan the venue's QR code to check in; the business confirms
-on a live dashboard queue, and everyone in the squad earns XP.
+| Path | Purpose |
+| --- | --- |
+| `apps/api` | FastAPI API, Postgres/PostGIS models, Redis and Celery workers |
+| `apps/dashboard` | React business dashboard for creating and managing Drops |
+| `apps/mobile` | Expo Go shell for the shared mobile experience in `apps/api/demo/mobile.html` |
+| `infra` | Local Docker Compose stack |
 
-Rarity and XP are never set by the business — the platform computes both
-from the offer's actual terms (discount depth, venue capacity, group-size
-requirement), so a business can't just label a 5%-off coffee "Legendary."
+## Prerequisites
 
-This repo is a working full-stack implementation of that loop: FastAPI
-backend, a React Native consumer app, and a React business dashboard.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running
+- Node.js 20 or later
+- Expo Go on an iPhone (only required for the mobile app)
 
-## Quick start
+The API runs locally in Docker. An iPhone cannot reach `localhost` on your Mac, so Expo Go uses a temporary Cloudflare tunnel.
 
-The fastest way to see it work needs **no install at all**:
+## Start the full app
 
-```bat
-demo.cmd
+From the repository root, create the API environment file once:
+
+```bash
+cp apps/api/.env.example apps/api/.env
 ```
 
-A self-contained browser demo of the full consumer experience — sign in,
-onboarding, map discovery, squad assembly, gamification — against five
-fictional Melbourne Drops. No Docker, database, Python, or Node required.
+Start the API, database, workers and dashboard:
 
-To run the real backend (Windows, with Docker Desktop installed and open):
-
-```bat
-dev.cmd
+```bash
+cd infra
+docker compose up -d --build
+docker compose exec api python -m app.scripts.seed_discovery
 ```
 
-This creates `.env`, builds the backend, runs migrations, seeds demo data,
-and opens Swagger at <http://localhost:8000/docs>.
+Open the business dashboard at [http://localhost:5173](http://localhost:5173). The API health check is at [http://localhost:8000/health](http://localhost:8000/health) and API documentation is at [http://localhost:8000/docs](http://localhost:8000/docs).
 
-```bat
-dev.cmd verify   # live integration check: PostGIS, capacity races, WebSockets
-dev.cmd logs
-dev.cmd status
-dev.cmd stop
+Seeded dashboard login:
+
+- Email: `venue@dropbyapp.com`
+- Password: `dropby12345`
+
+Seeded consumer login:
+
+- Email: `explorer@dropbyapp.com`
+- Password: `dropby12345`
+
+## Run on Expo Go (iPhone)
+
+Keep the Docker stack running. In a second terminal at the repository root, start a tunnel to the API:
+
+```bash
+npx wrangler tunnel quick-start http://localhost:8000
 ```
 
-Manual, non-Docker setup is documented in
-[`apps/api/DISCOVERY_ENGINE.md`](apps/api/DISCOVERY_ENGINE.md).
+Copy the `https://...trycloudflare.com` URL it prints, keep that terminal open, and put it in `apps/mobile/.env`:
 
-## Repository structure
+```env
+EXPO_PUBLIC_API_URL=https://your-current-tunnel.trycloudflare.com
+```
 
-| Path | What it is |
-|---|---|
-| `apps/api` | FastAPI backend — a modular monolith (discovery/real-time, business/supply, redemption+gamification+notifications), PostgreSQL+PostGIS, Redis, Celery |
-| `apps/mobile` | Expo/React Native consumer app |
-| `apps/dashboard` | React + Vite business partner dashboard |
-| `packages/ws-contracts` | Frozen Pydantic WebSocket event/DTO contracts |
-| `packages/shared-types` | TypeScript types mirroring `ws-contracts` |
-| `infra/` | Docker Compose stacks (dev and production) |
+If the file does not exist yet:
 
-## Try the consumer frontend
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
 
-Run `demo.cmd` (or `mobile.cmd`) to open the standalone browser frontend.
-It uses local fictional Melbourne Drop data, so it needs no backend, Docker,
-Expo Go, account, or API configuration.
-
-1. Sign in with the filled demo account, or create one to see onboarding.
-2. On **Nearby Drops**, press **Detect** and **Reveal**.
-3. Open a signal card for the progressive Drop-details screen.
-4. Create a squad and add members to move through 2/4 → 3/4 → 4/4.
-5. Open **Profile → Discovery engine lab** for lifecycle, capacity, and
-   real-time event tools.
-
-The Expo/React Native client is an Expo Go wrapper around that same browser
-demo, so its interface and interactions match `demo.cmd`. It needs internet
-access to load the demo, but no Docker, tunnel, or API account. To run it:
+Then start Expo:
 
 ```bash
 cd apps/mobile
@@ -86,43 +75,43 @@ npm install
 npm start -- --lan --clear
 ```
 
-Install Expo Go, then scan the QR code Expo prints.
+Scan the QR code using Expo Go. Approve location access when asked. The mobile app is the same frontend as the browser demo, but it injects your iPhone's live location and connects to the API configured above.
 
-## Business dashboard
+Every quick Cloudflare tunnel has a new URL. When you restart the tunnel, update `apps/mobile/.env`, stop Expo with `Ctrl+C`, and start Expo again with the command above.
 
-With the stack running, the dashboard is served at
-<http://localhost:5173>. Log in with the seeded demo business:
+## Browser demo
 
-- Email: `venue@dropbyapp.com`
-- Password: `dropby12345`
+The standalone frontend has an offline fallback and is useful for quick UI demos:
 
-From there: **Overview**, **Drops**, **Create Drop** (with a live computed
-rarity/XP preview), **Analytics**, and **Live Queue** — where checked-in
-squads show up in real time for a business to confirm or reject.
-
-Sessions last one hour with no refresh flow yet; an expired session
-redirects to login automatically instead of leaving a dead-end error.
-
-## Production deployment
-
-`infra/docker-compose.production.yml` targets an external PostgreSQL
-(PostGIS-enabled) and Redis:
-
-```bat
-copy infra\.env.production.example infra\.env.production
-docker compose --env-file infra\.env.production -f infra\docker-compose.production.yml up --build -d
+```bash
+open apps/api/demo/mobile.html
 ```
 
-Migrations run before the API, worker, and scheduler start. The API has a
-`/health` check, runs as a non-root user, and refuses weak/default
-production secrets. Still needed: a hosting provider, real secrets/domain,
-and TLS.
+On Windows, double-click `demo.cmd`. `mobile.cmd` is retained as the same convenience launcher.
 
-## Status & decisions
+## Common commands
 
-Discovery, the business platform, and the redemption/gamification/
-notifications loop are all implemented and merged. See
-[`STATUS.md`](STATUS.md) for the full progress table, key architectural
-decisions, and everything that's explicitly *not* built yet (mobile QR
-scanning, business moderation UI, notification delivery in the mobile app,
-and more).
+```bash
+# View local containers
+cd infra
+docker compose ps
+
+# Follow API logs
+docker compose logs -f api
+
+# Stop local services (keeps database data)
+docker compose down
+
+# Rebuild after API changes
+docker compose up -d --build api
+
+# Check the Expo project
+cd ../apps/mobile
+npm run typecheck
+```
+
+## Notes
+
+- Drops added in the dashboard are returned to the mobile app while they are active and within their scheduled time window.
+- The dashboard is intended for local development at `localhost:5173`; Expo Go connects to the API through the Cloudflare URL in `apps/mobile/.env`.
+- The API environment file is deliberately ignored by Git. Do not commit tunnel URLs, production credentials, or secrets.

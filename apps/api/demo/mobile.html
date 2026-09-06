@@ -421,7 +421,7 @@
       .xp-progress-wrap { padding: 14px 0; border-bottom: 1px solid var(--border); }
       .xp-progress-wrap .progress { margin: 0; }
       .xp-progress-label { margin: 8px 0 0; color: var(--muted); font-size: 0.76rem; text-align: center; }
-      .badge-unlock { margin-top: 16px; padding: 18px; border-color: var(--lime); background: var(--raised); text-align: left; }
+      .badge-unlock { position: relative; margin-top: 16px; overflow: hidden; padding: 18px; border-color: var(--lime); background: var(--raised); text-align: left; }
       .badge-unlock .eyebrow { color: var(--lime); }
       .badge-unlock h3 { margin: 6px 0 6px; font-size: 1.15rem; }
       .badge-unlock p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
@@ -442,6 +442,7 @@
       .profile-avatar { display: grid; width: 76px; height: 76px; margin: 15px auto 12px; place-items: center; border-radius: 50%; color: var(--black); background: var(--lime); font-size: 1.8rem; font-weight: 900; }
       .profile-name { margin-bottom: 4px; font-size: 1.55rem; }
       .profile-email { color: var(--muted); font-size: 0.88rem; }
+      .pf-account-buff { margin: 12px 20px 0; padding: 9px 12px; border: 1px solid var(--lime); border-radius: 12px; color: var(--lime); background: rgb(217 255 67 / 8%); font-size: 0.74rem; font-weight: 800; line-height: 1.35; text-align: left; }
       .profile-card { margin-top: 24px; padding: 0 16px; text-align: left; }
       .profile-row { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); }
       .profile-key { color: var(--muted); font-size: 0.82rem; }
@@ -555,6 +556,18 @@
       .tab-btn .tab-ico { font-size: 22px; }
       .tab-btn.active { color: var(--on-primary); background: var(--primary); }
 
+      /* Personal QR — a quick way for someone nearby to add this explorer. */
+      .my-qr-content { padding: 20px 20px 110px; text-align: center; }
+      .my-qr-kicker { margin: 28px 0 6px; color: var(--primary); font: 400 0.72rem/1 var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; }
+      .my-qr-title { margin: 0; color: var(--text); font-family: var(--font-display); font-size: 1.65rem; letter-spacing: 0.02em; }
+      .my-qr-copy { max-width: 290px; margin: 9px auto 22px; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+      .my-qr-card { padding: 20px; border-radius: var(--radius-xl); background: var(--surface); box-shadow: var(--shadow-card); }
+      .my-qr-image-wrap { display: grid; place-items: center; width: 244px; height: 244px; max-width: 100%; margin: 0 auto; padding: 12px; border-radius: 18px; background: #fff; }
+      .my-qr-image { display: block; width: 100%; height: 100%; object-fit: contain; }
+      .my-qr-name { display: block; margin-top: 17px; color: var(--text); font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 0.03em; }
+      .my-qr-code { display: block; margin-top: 5px; color: var(--primary); font: 400 0.72rem/1 var(--font-body); letter-spacing: 0.11em; text-transform: uppercase; }
+      .my-qr-note { margin: 18px auto 0; color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+
       /* Home screen — matches Figma "Home v1" */
       .home-content { padding: 14px 20px 108px; }
       .home-logo { display: block; width: 100%; margin: 4px 0 0; font-size: 1.5rem; letter-spacing: 0.06em; text-align: center; }
@@ -581,10 +594,7 @@
       .home-map { position: relative; margin-top: 16px; overflow: hidden; border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
       .home-map-canvas {
         height: 380px;
-        background:
-          repeating-linear-gradient(118deg, #363030 0 1.5px, transparent 1.5px 30px),
-          repeating-linear-gradient(28deg, #363030 0 1.5px, transparent 1.5px 40px),
-          var(--ink);
+        background: var(--ink);
       }
       .home-drop { position: absolute; right: 0; bottom: 0; left: 0; padding: 14px 18px 18px; background: var(--ink); }
       .home-drop-row { display: flex; align-items: center; justify-content: space-between; }
@@ -847,6 +857,7 @@
       .pf-bcard.unlocked .pf-bico { color: var(--primary); }
       .pf-bname { font: 400 0.66rem/1.1 var(--font-body); color: var(--text); }
       .pf-bdesc { font: 400 0.55rem/1.2 var(--font-body); color: var(--muted); }
+      .pf-buff { font: 800 0.55rem/1.25 var(--font-body); color: var(--lime); }
       .pf-signout { display: block; width: 100%; margin-top: 24px; }
       .pf-catch-meta { margin-top: 3px; color: var(--muted); font: 400 0.72rem/1 var(--font-body); }
 
@@ -956,7 +967,7 @@
           </div>
 
           <div class="home-map">
-            <div class="home-map-canvas" aria-hidden="true"></div>
+            <div class="home-map-canvas" id="homeMobileMap" aria-label="Nearby Drops map"></div>
             <div class="home-drop">
               <div class="home-drop-row">
                 <span class="home-drop-live"><span class="home-drop-dot"></span>Live near you</span>
@@ -999,7 +1010,7 @@
                     <span>Min. Squad</span>
                   </div>
                   <div class="ex-stat">
-                    <span class="ex-stat-pill"><i class="ph ph-clock"></i><b>24:39</b></span>
+                    <span class="ex-stat-pill"><i class="ph ph-clock"></i><b id="exploreTimeLeft">24:39</b></span>
                     <span>Time Left</span><em>Extra Time +15:00</em>
                   </div>
                 </div>
@@ -1008,7 +1019,7 @@
                   <div class="ex-perk"><span class="ex-perk-ico"><i class="ph ph-user-plus"></i></span>Extra Slot</div>
                   <div class="ex-perk"><span class="ex-perk-ico xp">XP</span>XP Boost</div>
                 </div>
-                <button class="ex-post" id="exPost" type="button">Post Drop</button>
+                <button class="ex-post" id="exPost" type="button">Open Squad</button>
                 <p class="ex-note">Only 1 of 3 tables left at this discount</p>
               </div>
             </div>
@@ -1053,7 +1064,7 @@
       <section class="screen os-screen" data-screen="squads" aria-label="Open squads">
         <div class="os-top">
           <h1 class="os-title">Open Squads</h1>
-          <button class="os-msg" type="button"><i class="ph ph-chat-circle"></i>Messages</button>
+          <button class="os-msg" id="openConnections" type="button"><i class="ph ph-chat-circle"></i>Messages</button>
         </div>
         <div class="os-card">
           <h2 class="os-drop">OPERATOR DINER RUN</h2>
@@ -1180,6 +1191,7 @@
           <span class="pf-badge">Drop Veteran</span>
           <span class="pf-badge">Squad Leader</span>
         </div>
+        <p class="pf-account-buff" id="pfAccountBuff">Complete Drops to unlock account buffs.</p>
         <p class="pf-bio">Chasing drops day and night. Batman&rsquo;s always on the lookout.</p>
         <button class="pf-edit" type="button">Edit Profile</button>
 
@@ -1195,17 +1207,24 @@
           <div class="pf-catch" data-rarity="rare"><span class="pf-catch-orb"><i class="ph-fill ph-microphone-stage"></i></span><div class="pf-catch-copy"><span class="pf-catch-rar rar-rare">Rare</span><span class="pf-catch-name">Karaoke for 3 hours</span><span class="pf-catch-meta">Exhibition St &bull; Squad of 3</span></div></div>
         </div>
         <div id="pfBadges" hidden>
-          <div class="pf-bgrid">
-            <div class="pf-bcard unlocked"><i class="ph-fill ph-medal pf-bico"></i><span class="pf-bname">First Catch</span><span class="pf-bdesc">Your first drop</span></div>
-            <div class="pf-bcard unlocked"><i class="ph-fill ph-crown pf-bico"></i><span class="pf-bname">Squad Leader</span><span class="pf-bdesc">Hosted 5 squads</span></div>
-            <div class="pf-bcard unlocked"><i class="ph-fill ph-fire pf-bico"></i><span class="pf-bname">Drop Veteran</span><span class="pf-bdesc">30-day streak</span></div>
-            <div class="pf-bcard"><i class="ph ph-lock-simple pf-bico"></i><span class="pf-bname">Night Owl</span><span class="pf-bdesc">10 nightlife drops</span></div>
-            <div class="pf-bcard"><i class="ph ph-lock-simple pf-bico"></i><span class="pf-bname">Explorer</span><span class="pf-bdesc">Reveal 50 drops</span></div>
-            <div class="pf-bcard"><i class="ph ph-lock-simple pf-bico"></i><span class="pf-bname">Legend</span><span class="pf-bdesc">Catch a legendary</span></div>
-          </div>
+          <div class="pf-bgrid" id="pfBadgeGrid"></div>
         </div>
 
         <button class="danger-button pf-signout" id="signOut" type="button">Sign out</button>
+      </section>
+
+      <section class="screen" data-screen="myqr" aria-labelledby="myQrTitle">
+        <div class="my-qr-content">
+          <p class="my-qr-kicker">Your DropBy pass</p>
+          <h1 class="my-qr-title" id="myQrTitle">My QR code</h1>
+          <p class="my-qr-copy">Let a friend scan this to find and add you on DropBy.</p>
+          <div class="my-qr-card">
+            <div class="my-qr-image-wrap"><img class="my-qr-image" id="myQrImage" alt="Your personal DropBy QR code" /></div>
+            <strong class="my-qr-name" id="myQrName">Joel</strong>
+            <span class="my-qr-code" id="myQrCode">DROPBY-JOEL</span>
+          </div>
+          <p class="my-qr-note">This is your personal code, not the venue check-in QR used to redeem a Drop.</p>
+        </div>
       </section>
 
       <section class="screen" data-screen="connections" aria-labelledby="connectionsTitle">
@@ -1357,6 +1376,7 @@
         <button class="tab-btn" data-tab="home" type="button"><i class="ph-fill ph-house tab-ico" aria-hidden="true"></i>Home</button>
         <button class="tab-btn" data-tab="discover" type="button"><i class="ph-fill ph-map-pin tab-ico" aria-hidden="true"></i>Explore</button>
         <button class="tab-btn" data-tab="squads" type="button"><i class="ph-fill ph-users-three tab-ico" aria-hidden="true"></i>Squads</button>
+        <button class="tab-btn" data-tab="myqr" type="button"><i class="ph-fill ph-qr-code tab-ico" aria-hidden="true"></i>My code</button>
         <button class="tab-btn" data-tab="profile" type="button"><i class="ph-fill ph-user tab-ico" aria-hidden="true"></i>Profile</button>
       </nav>
     </main>
@@ -1372,9 +1392,16 @@
         live_music: "Live music", cocktail_bars: "Cocktail bars", fitness_classes: "Fitness classes",
         spa_massage: "Spa & massage",
       };
+      const browserStartLocation = window.__DROPBY_START_LOCATION;
+      const initialUserCoordinates = Array.isArray(browserStartLocation)
+        ? browserStartLocation
+        : browserStartLocation && Number.isFinite(browserStartLocation.latitude) && Number.isFinite(browserStartLocation.longitude)
+          ? [browserStartLocation.latitude, browserStartLocation.longitude]
+          : [-37.8119, 144.9674];
       const state = {
         screen: "auth", authMode: "signin", email: "explorer@dropbyapp.com", name: "Joel",
         preferences: new Set(["korean_bbq", "japanese_cuisine", "laser_tag"]), distance: 850,
+        apiToken: null, currentCoordinates: initialUserCoordinates, demoTargetCoordinates: [-37.8119, 144.9674],
         revealed: new Set(), selectedDropId: null, squadCount: 0, squadCode: "dropby-demo-squad",
         squadMaxPeopleBonus: 0,
         lifecycleStatus: "active", lifecycleReserved: 0, lifecycleCapacity: 8, lifecycleSeconds: 5400,
@@ -1433,7 +1460,7 @@
         drop_mel_009: [-37.8156, 144.9658],
       };
 
-      const drops = [
+      let drops = [
         { id: "drop_mel_001", coordinates: primaryLocation, title: "Rare Korean BBQ Drop", offer: "40% off the group dining menu", business: "Seoul Table", address: "200 Little Bourke Street, Melbourne", category: "food_dining", interest: "korean_bbq", icon: "🥩", logo: "ST", rarity: "rare", minPeople: 2, maxPeople: 4, label: "40%", xpBase: 40 },
         { id: "drop_mel_002", coordinates: [-37.8097, 144.9648], title: "Rooftop Cinema Drop", offer: "Two-for-one twilight tickets", business: "Skyline Cinema", address: "Swanston Street, Melbourne", category: "activity_entertainment", interest: "rooftop_cinema", icon: "🎬", logo: "SC", rarity: "epic", minPeople: 2, maxPeople: 4, label: "2X", xpBase: 80 },
         { id: "drop_mel_003", coordinates: [-37.815, 144.97], title: "Matcha Break Drop", offer: "Free ceremonial matcha upgrade", business: "Midori Corner", address: "Russell Street, Melbourne", category: "food_dining", interest: "japanese_cuisine", icon: "🍵", logo: "MC", rarity: "common", minPeople: 1, maxPeople: 1, label: "+", xpBase: 10 },
@@ -1454,7 +1481,7 @@
         { id: "drop_mel_013", coordinates: [-37.8145, 144.9595], title: "Express Nail Bar", offer: "25% off a manicure", business: "Polished Co", address: "Collins Street, Melbourne", category: "wellness_beauty", interest: "spa_massage", icon: "💅", logo: "PC", rarity: "common", minPeople: 1, maxPeople: 2, label: "25%", xpBase: 10 },
         { id: "drop_mel_014", coordinates: [-37.807, 144.9685], title: "Day Spa Escape", offer: "40% off a 90-minute package", business: "Serenity Baths", address: "Spring Street, Melbourne", category: "wellness_beauty", interest: "spa_massage", icon: "🧖", logo: "SB", rarity: "rare", minPeople: 1, maxPeople: 3, label: "40%", xpBase: 40 },
       ];
-      const mapDrops = MAP_DROP_IDS
+      let mapDrops = MAP_DROP_IDS
         .map((id) => drops.find((d) => d.id === id))
         .filter(Boolean)
         .map((d) => ({ ...d, coordinates: MAP_DROP_COORDS[d.id] || d.coordinates }));
@@ -1531,8 +1558,12 @@
           default: return false;
         }
       }
-      function badgeXpBonusPct(heldCodes) {
-        return badgeDefs.reduce((total, def) => (heldCodes.has(def.code) ? total + def.xpBonusPct : total), 0);
+      function badgeXpBonusPct(heldCodes, category) {
+        return badgeDefs.reduce((total, def) => (
+          heldCodes.has(def.code) && (!def.xpBonusCategory || def.xpBonusCategory === category)
+            ? total + def.xpBonusPct
+            : total
+        ), 0);
       }
       function badgeBuffLabel(def) {
         const pct = Math.round(def.xpBonusPct * 100);
@@ -1587,11 +1618,24 @@
       let userMarker = null;
       let dropMarkers = [];
       let openSquadMarker = null;
+      let homeMap = null;
+      let homeUserMarker = null;
+      let homeDropMarkers = [];
+      let liveRefreshTimer = null;
       let dropRevealZones = [];
       let toastTimer = null;
       let trackingTimer = null;
 
-      const TAB_FOR_SCREEN = { home: "home", discover: "discover", squads: "squads", nearbyfriends: "squads", connections: "squads", squad: "squads", profile: "profile" };
+      const TAB_FOR_SCREEN = { home: "home", discover: "discover", squads: "squads", nearbyfriends: "squads", connections: "squads", squad: "squads", myqr: "myqr", profile: "profile" };
+
+      function renderMyQr() {
+        const identity = (state.email || state.name || "explorer").trim().toLowerCase();
+        const code = `DROPBY-${(state.name || "Explorer").replace(/[^a-z0-9]/gi, "").slice(0, 10).toUpperCase() || "EXPLORER"}`;
+        $("#myQrName").textContent = state.name || "Explorer";
+        $("#myQrCode").textContent = code;
+        // A standards-compliant QR image; its payload identifies this demo account.
+        $("#myQrImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(`dropby://user/${identity}`)}`;
+      }
 
       function showScreen(name) {
         state.screen = name;
@@ -1605,6 +1649,8 @@
         $$(".tab-btn").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
         if (name === "home") {
           $("#homeTitle").textContent = "HEY " + (state.name || "Explorer").split(" ")[0].toUpperCase() + ",";
+          renderExploreCountdown();
+          window.setTimeout(renderHomeMap, 30);
         }
         if (name === "discover") {
           window.setTimeout(() => {
@@ -1618,6 +1664,7 @@
           }
         }
         if (name === "profile") renderProfile();
+        if (name === "myqr") renderMyQr();
         if (name === "nearbyfriends") renderNearbyFriends();
         if (name === "squad") renderSquad();
         if (name === "checkin") renderCheckin();
@@ -1645,7 +1692,7 @@
         return radius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       }
 
-      function userLocation() { return [primaryLocation[0] + state.distance / 111320, primaryLocation[1]]; }
+      function userLocation() { return state.currentCoordinates; }
       function isProximityDemoDrop(drop) { return drop.id === PROXIMITY_DEMO_DROP_ID; }
       function revealRadiusMultiplier() {
         const permanent = 1 + RADIUS_PERK_BONUS_PCT * state.perks.filter((perk) => perk.type === "bigger_radius").length;
@@ -1672,11 +1719,9 @@
       }
 
       function visibleSnapshots() {
-        // The proximity control demonstrates one real Drop at a time. This
-        // keeps the empty state genuinely empty until the user reaches its
-        // detect radius, instead of unrelated nearby fixtures leaking in.
+        // Pins always appear on the map, but the list only receives Drops
+        // once the user is inside each Drop's detect radius.
         return drops
-          .filter(isProximityDemoDrop)
           .map(snapshot)
           .filter((drop) => drop.stage !== "outside")
           .sort((a, b) => a.distance_m - b.distance_m);
@@ -1719,7 +1764,24 @@
             });
         });
         openSquadMarker = L.marker([-37.8102, 144.9705], { icon: L.divIcon({ className: "drop-pin", html: '<div class="drop-pin-core squad"><span class="pin-symbol"><i class="ph-fill ph-users-three"></i></span><span class="pin-type">Open Squad · 340m</span></div>', iconSize: [150, 38], iconAnchor: [75, 19] }), opacity: 0, zIndexOffset: 450 }).addTo(map);
-        map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { padding: [40, 40], maxZoom: 15 });
+        if (mapDrops.length) map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { padding: [40, 40], maxZoom: 15 });
+        else map.setView(userLocation(), 15);
+      }
+
+      function renderHomeMap() {
+        const container = $("#homeMobileMap");
+        if (!container || typeof L === "undefined") return;
+        if (!homeMap) {
+          homeMap = L.map("homeMobileMap", { attributionControl: false, dragging: false, scrollWheelZoom: false, zoomControl: false, doubleClickZoom: false, touchZoom: false });
+          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(homeMap);
+          homeUserMarker = L.marker(userLocation(), { icon: L.divIcon({ className: "user-pin", html: '<div class="user-pin-core"></div>', iconSize: [21, 21], iconAnchor: [10, 10] }), zIndexOffset: 600 }).addTo(homeMap);
+          homeDropMarkers = mapDrops.map((drop) => L.marker(drop.coordinates, { icon: markerIcon("map", drop), zIndexOffset: 500 }).addTo(homeMap).on("click", () => showScreen("discover")));
+        }
+        homeUserMarker?.setLatLng(userLocation());
+        homeDropMarkers.forEach((marker, index) => marker.setIcon(markerIcon(stageFor(mapDrops[index]) === "outside" ? "map" : stageFor(mapDrops[index]), mapDrops[index])));
+        homeMap.invalidateSize();
+        if (mapDrops.length) homeMap.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { padding: [24, 24], maxZoom: 15 });
+        else homeMap.setView(userLocation(), 15);
       }
 
       const CAT_ICON = {
@@ -1731,6 +1793,65 @@
       };
       function catIcon(cat) { return CAT_ICON[cat] || "ph-fill ph-map-pin"; }
 
+      const LIVE_API_ORIGIN = String(window.__DROPBY_API_ORIGIN || "").replace(/\/$/, "");
+      function liveDropFromSnapshot(drop) {
+        const rarity = String(drop.rarity || "common").toLowerCase();
+        const interest = drop.interest_tag || "nearby experience";
+        return {
+          id: drop.id,
+          coordinates: [drop.latitude, drop.longitude],
+          title: drop.title || `${rarity} ${interest.replaceAll("_", " ")}`,
+          offer: drop.description || "Move closer to reveal this Drop.",
+          business: drop.business_name || "Hidden venue",
+          address: drop.address || "Location unlocks when you arrive",
+          category: drop.category || "activity_entertainment",
+          interest,
+          rarity,
+          minPeople: drop.min_group_size || 1,
+          maxPeople: drop.max_group_size || 1,
+          label: "LIVE",
+          xpBase: 10,
+        };
+      }
+
+      function resetMaps() {
+        map?.remove(); map = null; userMarker = null; dropMarkers = []; openSquadMarker = null;
+        homeMap?.remove(); homeMap = null; homeUserMarker = null; homeDropMarkers = [];
+      }
+
+      async function refreshLiveDrops() {
+        if (!LIVE_API_ORIGIN || !state.apiToken) return false;
+        const [latitude, longitude] = userLocation();
+        try {
+          const response = await fetch(`${LIVE_API_ORIGIN}/api/v1/drops/location/ping`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.apiToken}` },
+            body: JSON.stringify({ latitude, longitude }),
+          });
+          if (!response.ok) throw new Error(`Live Drop refresh failed (${response.status})`);
+          const payload = await response.json();
+          const liveDrops = (payload.drops || []).filter((drop) => Number.isFinite(drop.latitude) && Number.isFinite(drop.longitude)).map(liveDropFromSnapshot);
+          drops = liveDrops;
+          mapDrops = liveDrops;
+          if (liveDrops[0]) {
+            state.demoTargetCoordinates = liveDrops[0].coordinates;
+            state.distance = Math.round(distanceBetween(userLocation(), state.demoTargetCoordinates));
+          }
+          resetMaps();
+          if (state.screen === "discover") showScreen("discover");
+          if (state.screen === "home") window.setTimeout(renderHomeMap, 30);
+          return true;
+        } catch (error) {
+          console.warn("Live Drops unavailable; keeping the current map.", error);
+          return false;
+        }
+      }
+
+      function beginLiveDropRefresh() {
+        window.clearInterval(liveRefreshTimer);
+        if (LIVE_API_ORIGIN && state.apiToken) liveRefreshTimer = window.setInterval(() => { void refreshLiveDrops(); }, 15000);
+      }
+
       function renderDiscover() {
         const greetingEl = $("#greeting");
         if (greetingEl) greetingEl.textContent = `Hey ${state.name.split(" ")[0]}`;
@@ -1740,7 +1861,7 @@
         const snapshots = visibleSnapshots();
         const proximity = $("#proximityDistance");
         if (proximity) {
-          const stage = stageFor(drops[0]);
+          const stage = drops[0] ? stageFor(drops[0]) : "outside";
           proximity.textContent = `${state.distance} m away · ${stage === "reveal" ? "full Drop revealed" : stage === "detect" ? "signal detected" : "move closer to detect"}`;
         }
         $("#signalHeading").textContent = snapshots.length ? `${snapshots.length} drop${snapshots.length === 1 ? "" : "s"} live` : "No drops live";
@@ -1777,7 +1898,8 @@
           userMarker.setLatLng(userLocation());
           dropMarkers.forEach((marker, index) => { const drop = mapDrops[index]; const stage = stageFor(drop); marker.setIcon(markerIcon(stage === "outside" ? "map" : stage, drop)); marker.setOpacity(1); });
           openSquadMarker?.setOpacity(0);
-          map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [40, 40], maxZoom: 16 });
+          if (mapDrops.length) map.fitBounds([...mapDrops.map((drop) => drop.coordinates), userLocation()], { animate: true, padding: [40, 40], maxZoom: 16 });
+          else map.setView(userLocation(), 15, { animate: true });
         }
         renderEngine();
       }
@@ -1824,8 +1946,24 @@
         $("#goToCheckin").hidden = !ready;
       }
 
-      // Profile shows a fixed demo persona ("Joel"), matching the Figma frame.
-      function renderProfile() {}
+      // Profile keeps the Figma persona but shows the real account buffs
+      // earned by this demo session.
+      function renderProfile() {
+        const buff = $("#pfAccountBuff");
+        const unlocked = Object.values(state.badges);
+        if (buff) {
+          buff.textContent = unlocked.length
+            ? `Active account buffs: ${unlocked.map(badgeBuffLabel).join(" · ")}`
+            : "Complete Drops to unlock account buffs.";
+        }
+        const badgeGrid = $("#pfBadgeGrid");
+        if (badgeGrid) {
+          badgeGrid.innerHTML = badgeDefs.map((badge) => {
+            const isUnlocked = Boolean(state.badges[badge.code]);
+            return `<div class="pf-bcard ${isUnlocked ? "unlocked" : ""}"><i class="${isUnlocked ? "ph-fill ph-medal" : "ph ph-lock-simple"} pf-bico"></i><span class="pf-bname">${badge.name}</span><span class="pf-bdesc">${badge.description}</span><span class="pf-buff">${badgeBuffLabel(badge)}</span></div>`;
+          }).join("");
+        }
+      }
 
       function renderHistory() {
         const list = $("#historyList");
@@ -2213,7 +2351,7 @@
         applyStreak();
         const localHour = new Date().getHours(); // demo runs in the browser's own local time already
         const timeBucket = timeBucketForHour(localHour);
-        const bonusPct = badgeXpBonusPct(heldBadgeCodes)
+        const bonusPct = badgeXpBonusPct(heldBadgeCodes, drop.category)
           + specializationBonusPct(state.perks, drop.category)
           + timeSpecializationBonusPct(state.perks, timeBucket)
           + streakBonusPct(state.currentStreak);
@@ -2296,7 +2434,8 @@
         if (result.newlyUnlocked.length || notes.length) {
           badgeSection.hidden = false;
           $("#badgeUnlockName").textContent = result.newlyUnlocked.length ? result.newlyUnlocked[0].name : "Bonus round-up";
-          $("#badgeUnlockDesc").textContent = [result.newlyUnlocked[0]?.description, ...notes].filter(Boolean).join(" · ");
+          const accountEffect = result.newlyUnlocked[0] ? `Account effect active: ${badgeBuffLabel(result.newlyUnlocked[0])}. Applies from your next eligible Drop.` : null;
+          $("#badgeUnlockDesc").textContent = [result.newlyUnlocked[0]?.description, accountEffect, ...notes].filter(Boolean).join(" · ");
         } else {
           badgeSection.hidden = true;
         }
@@ -2343,12 +2482,19 @@
       }
 
       function setDistance(distance) {
-        const before = stageFor(drops[0]);
+        const before = drops[0] ? stageFor(drops[0]) : "outside";
         state.distance = distance;
+        // Demo controls intentionally teleport only after the user presses
+        // them; normal startup and API discovery use the real phone position.
+        state.currentCoordinates = [
+          state.demoTargetCoordinates[0] + distance / 111320,
+          state.demoTargetCoordinates[1],
+        ];
         checkTerritoryBonus();
-        const after = stageFor(drops[0]);
+        const after = drops[0] ? stageFor(drops[0]) : "outside";
         if (after !== before && after !== "outside") addEvent("drop.stage_update", `${after} · ${distance} m`);
         renderDiscover();
+        renderHomeMap();
       }
 
       function stopTrackingDemo() {
@@ -2385,13 +2531,35 @@
         $("#authError").textContent = "";
       }));
 
-      $("#authSubmit").addEventListener("click", () => {
+      $("#authSubmit").addEventListener("click", async () => {
         const email = $("#authEmail").value.trim();
         const password = $("#authPassword").value;
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("#authError").textContent = "Enter a valid email address."; return; }
         if (password.length < 10) { $("#authError").textContent = "Password must contain at least 10 characters."; return; }
         state.email = email;
         $("#authError").textContent = "";
+        if (LIVE_API_ORIGIN) {
+          try {
+            const endpoint = state.authMode === "create" ? "/api/v1/auth/register" : "/api/v1/auth/login";
+            const body = state.authMode === "create"
+              ? { email, password, display_name: $("#authName").value.trim() || "Explorer" }
+              : { email, password };
+            const response = await fetch(`${LIVE_API_ORIGIN}${endpoint}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.detail || "Could not sign in");
+            state.apiToken = payload.access_token;
+            state.name = payload.user.display_name;
+            state.preferences = new Set(payload.user.preferences || []);
+            beginLiveDropRefresh();
+            await refreshLiveDrops();
+            addEvent("auth.jwt_issued", `${email} signed in to live Drops`);
+            showScreen("home");
+            return;
+          } catch (error) {
+            $("#authError").textContent = error instanceof Error ? error.message : "Could not connect to the live API.";
+            return;
+          }
+        }
         addEvent("auth.jwt_issued", `${email} signed in`);
         if (state.authMode === "create") {
           state.name = $("#authName").value.trim() || "Joel";
@@ -2456,12 +2624,18 @@
         $("#pfCatches").hidden = b.dataset.pftab !== "catches";
         $("#pfBadges").hidden = b.dataset.pftab !== "badges";
       }));
-      let exploreCountdown = 28 * 60 + 19;
-      window.setInterval(() => {
-        exploreCountdown = exploreCountdown > 0 ? exploreCountdown - 1 : 0;
-        const clock = `${String(Math.floor(exploreCountdown / 60)).padStart(2, "0")}:${String(exploreCountdown % 60).padStart(2, "0")}`;
-        ["#homeClock"].forEach((sel) => { const el = $(sel); if (el) el.textContent = clock; });
-      }, 1000);
+      const homeCountdownEndsAt = Date.now() + (28 * 60 + 19) * 1000;
+      const dropCountdownEndsAt = Date.now() + (24 * 60 + 39) * 1000;
+      function renderExploreCountdown() {
+        const formatCountdown = (endsAt) => {
+          const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+          return `${String(Math.floor(remaining / 60)).padStart(2, "0")}:${String(remaining % 60).padStart(2, "0")}`;
+        };
+        const homeClock = $("#homeClock"); if (homeClock) homeClock.textContent = formatCountdown(homeCountdownEndsAt);
+        const exploreClock = $("#exploreTimeLeft"); if (exploreClock) exploreClock.textContent = formatCountdown(dropCountdownEndsAt);
+      }
+      renderExploreCountdown();
+      window.setInterval(renderExploreCountdown, 1000);
       $("#createSquad")?.addEventListener("click", () => { state.squadCount = 1; state.squadMaxPeopleBonus = 0; state.squadCode = `dropby-${Math.random().toString(36).slice(2, 10)}`; addEvent("group.state_update", `forming · 1/${selectedDrop().maxPeople}`); showScreen("squad"); });
       $("#joinSquad")?.addEventListener("click", () => {
         const code = ($("#joinCode")?.value || "").trim();

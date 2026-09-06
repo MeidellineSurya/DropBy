@@ -28,7 +28,10 @@ class Settings(BaseSettings):
     # Comma-separated browser origins allowed to call the API (the business
     # dashboard, and any deployed equivalent). Defaults cover the dashboard's
     # Vite dev server both bare and via Docker Compose's port mapping.
-    cors_allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # "null" is the origin used by an HTML document embedded in Expo Go's
+    # WebView. It is intentionally a development default alongside the local
+    # dashboard origins; production deployments should set this explicitly.
+    cors_allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173,null"
 
     @property
     def cors_allowed_origins_list(self) -> list[str]:

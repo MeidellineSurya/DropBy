@@ -39,6 +39,13 @@ class BusinessDropCreateRequest(BaseModel):
     publish: bool = False
 
 
+class BusinessDropLocationUpdate(BaseModel):
+    """Correct one published Drop without relocating the whole venue."""
+
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
 class BusinessDropResponse(BaseModel):
     id: str
     title: str

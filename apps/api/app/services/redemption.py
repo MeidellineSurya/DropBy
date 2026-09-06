@@ -1,10 +1,8 @@
 """Redemption module — a per-squad QR the business scans to confirm.
 
 The business is the one that verifies and confirms a claim — not a location
-claim the consumer self-reports (that was tried; see STATUS.md's "Dropping
-the venue QR for a location claim" and "Auto-confirm plus a dispute window"
-for why it wasn't enough on its own — no human ever looked at a redemption
-before a reward was granted, and GPS alone is spoofable).
+claim the consumer self-reports. GPS alone is spoofable, and the business
+must verify the redemption before a reward is granted.
 
 The QR now belongs to the *squad*, not the venue: once a Group reaches
 "ready", any member can pull up a signed, per-squad code in the app and show

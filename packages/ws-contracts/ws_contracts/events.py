@@ -3,7 +3,7 @@
 Every event published over the `ws:*` Redis topics (and delivered to
 mobile/dashboard clients via app/ws/manager.py) must be defined here first.
 Do not redefine payload shapes elsewhere — both frontends generate their TS
-types from this module (see packages/shared-types).
+types from this module.
 """
 
 from datetime import datetime

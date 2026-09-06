@@ -4,8 +4,7 @@ Revision ID: 0009_business_indexes
 Revises: 0008_progression_extras
 
 Rebased to follow the redemption/gamification/notifications chain
-(0003-0008) after both branched independently off 0002_detect_interest_tag —
-see STATUS.md for the merge note.
+(0003-0008) after both branched independently off 0002_detect_interest_tag.
 """
 
 from alembic import op

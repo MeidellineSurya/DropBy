@@ -9,8 +9,7 @@ from the Drop's platform-computed rarity at creation time (a fixed table,
 common=10 ... legendary=160), specifically so a business can't just declare
 a big number. Do not re-multiply it by rarity again at redemption time —
 that was tried (a RARITY_XP_MULTIPLIER applied here on top of an
-already-rarity-scaled base) and silently double-counted XP; see STATUS.md's
-merge notes.
+already-rarity-scaled base) and silently double-counted XP in an earlier implementation.
 """
 
 import random

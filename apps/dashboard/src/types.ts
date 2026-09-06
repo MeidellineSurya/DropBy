@@ -1,5 +1,5 @@
 // Mirrors apps/api/app/schemas/business_*.py — kept as a hand-written
-// counterpart until a real codegen step exists (see packages/shared-types).
+// counterpart until a shared code-generation step is introduced.
 
 export type DropStatus =
   | "draft"
