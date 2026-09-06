@@ -1,9 +1,14 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (renamed confusing dashboard pages — "Redemptions"
-to "Redemption Log", "Drops" to "Manage Drops", and its file from the
-stale, actively-misleading `LiveQueuePage.tsx` — see "Renamed dashboard
-pages for clarity" below; before that, fixed a real bug the user found by
+_Last updated: 2026-09-06 (added visual charts to Overview and Analytics —
+a reusable dependency-free SVG donut chart for a Drops-by-status
+breakdown, a fullest-live-Drops capacity list, and a squad-progress/
+capacity gauge on Analytics — see "Added visual charts to Overview and
+Analytics" below; before that, renamed confusing dashboard pages —
+"Redemptions" to "Redemption Log", "Drops" to "Manage Drops", and its file
+from the stale, actively-misleading `LiveQueuePage.tsx` — see "Renamed
+dashboard pages for clarity" below; before that, fixed a real bug the user
+found by
 actually opening the Scan page: the camera preview was never visible,
 because the video container was hidden while `html5-qrcode` measured it —
 see "The camera preview was never visible" below; before that, restyled the
@@ -77,6 +82,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Notification-driven discovery: every user with a known location is notified when any Drop activates (not just Rare+, not gated by proximity/freshness); notification shows category + distance only | Done |
 | Immediate-publish Drops (`create_drop(publish=True)` / `publish_drop`) trigger the new-Drop notification directly, not just the scheduled→active sweep | Done |
 | Business dashboard: login/register, Overview, Manage Drops, Create Drop, Scan to confirm, Redemption Log, Analytics | Done |
+| Dashboard visual charts: a reusable dependency-free `DonutChart` (SVG ring, no charting library) powering a Drops-by-status breakdown + a "fullest live Drops" capacity list on Overview, and a squad-progress ring + capacity gauge on Analytics (replacing plain stat-card numbers) | Done |
 | Create Drop's min/max squad size are range sliders (2–10) instead of unbounded number inputs — the backend schema still allows up to 100 (unchanged), the slider just keeps the common case fast to set and out of unrealistic territory | Done |
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
 | Dashboard restyled to match the mobile app's actual design system — paper/ink/pink/green palette, Lilita One/Candal fonts, per-tier rarity colours, an ink-panelled Sidebar mirroring the mobile bottom nav — replacing a placeholder dark theme that predated the mobile redesign | Done |
@@ -675,6 +681,57 @@ remaining reference to `LiveQueuePage` across the dashboard source (one
 left, the historical note in `ManageDropsPage.tsx`'s own comment
 explaining the rename).
 
+## Added visual charts to Overview and Analytics
+
+Both pages were plain stat cards and simple bars — numbers, no shape. Added
+a small reusable `DonutChart` component (`components/DonutChart.tsx`, one
+SVG ring built from `stroke-dasharray`/`stroke-dashoffset`, no charting
+library — this app has none installed, and one ring with a handful of
+segments doesn't need one) and used it in two places:
+
+- **Overview**: a "Drops by status" ring across *every* Drop the business
+  has ever created (not just active ones — `GET /business/drops` with no
+  status filter already returns everything, so this needed no backend
+  change), coloured with the exact same status→colour mapping
+  `StatusPill` uses (now exported from `StatusPill.tsx` as
+  `STATUS_COLORS`/`STATUS_LABELS` so the two can't drift apart). Alongside
+  it, a "Fullest live Drops" list — the business's active Drops sorted by
+  how full they are, each with the existing `CapacityBar`, linking through
+  to Manage Drops.
+- **Analytics**: the "Squads" stat-card grid replaced with a squad-progress
+  ring (forming/ready/completed) and a separate capacity-reserved gauge,
+  plus a plain-English conversion-rate line under the Detect→Reveal bars
+  ("38% of everyone who detected this Drop got close enough to reveal
+  it") instead of leaving that division to the reader.
+
+One real bug caught building this, before it shipped: `DonutChart`
+originally computed each segment's share against the *sum of the passed-in
+segments* — correct for a status/squad breakdown where every count is a
+segment, but wrong for the capacity gauge, which passes a single
+"Reserved" segment and expects the remaining space to render as plain
+empty track. With no explicit total, `reserved / reserved` is always `1`,
+so the gauge would always have rendered as a full ring regardless of the
+actual reserved/capacity ratio. Fixed by adding an optional `total` prop
+that overrides the sum-based default, and used it for the capacity gauge
+specifically.
+
+A second issue caught in review, before it ever became a real bug: the new
+Analytics panels were originally nested inside the same container as the
+"Discovery funnel" heading, and both used a generic `h2` selector at
+identical CSS specificity — a real, if latent, style conflict that would
+have made the panel headings' spacing depend on unpredictable CSS bundle
+ordering. Fixed by moving the new panels to their own sibling section
+rather than nesting them.
+
+Verified: `tsc --noEmit` and `vite build` clean; cross-checked every
+`var(--...)` used in `.tsx` files (not just `.css`, which the design
+migration's earlier check covered) against `theme.css` — zero mismatches;
+pulled real data from the running stack to confirm the empty-state paths
+(zero Drops, zero squads, an all-zero funnel) render their fallback text
+rather than a broken or empty chart, since the demo business account
+currently has very little data to look at. Not done: actually looking at
+the rendered charts — still no browser available in this environment.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -771,7 +828,12 @@ explaining the rename).
    patterns, not by looking at the rendered page. Also reconsider the
    rarity colours once the mobile app ships its own rarity display (see
    "Restyling the dashboard to match the mobile app" above) — they're
-   currently sourced from a prototype, not the shipped app.
+   currently sourced from a prototype, not the shipped app. This now
+   includes the new `DonutChart` visuals on Overview/Analytics (see "Added
+   visual charts to Overview and Analytics" above) — the demo business
+   account currently has almost no data, so the busy, multi-segment case
+   (several Drops across several statuses, squads at every stage) hasn't
+   actually been looked at rendered either, only reasoned through.
 3. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
 4. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a

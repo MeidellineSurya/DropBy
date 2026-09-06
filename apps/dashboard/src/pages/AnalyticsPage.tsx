@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { DonutChart } from "../components/DonutChart";
 import { ApiError, api } from "../services/api";
 import type { BusinessDrop, DropFunnel } from "../types";
 import "./AnalyticsPage.css";
@@ -60,28 +61,50 @@ export function AnalyticsPage() {
                   max={funnel.detect_count}
                 />
               </div>
+              {funnel.detect_count > 0 && (
+                <p className="funnel__conversion">
+                  {Math.round((funnel.revealed_count / funnel.detect_count) * 100)}% of everyone
+                  who detected this Drop got close enough to reveal it.
+                </p>
+              )}
+            </div>
+          )}
 
-              <h2>Squads</h2>
-              <div className="stat-grid">
-                <div className="stat-card">
-                  <span className="stat-card__value">{funnel.squads_forming}</span>
-                  <span className="stat-card__label">Forming</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-card__value">{funnel.squads_ready}</span>
-                  <span className="stat-card__label">Ready</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-card__value">{funnel.squads_completed}</span>
-                  <span className="stat-card__label">Completed</span>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-card__value">
-                    {funnel.reserved_count}/{funnel.max_capacity_participants}
-                  </span>
-                  <span className="stat-card__label">Capacity reserved</span>
-                </div>
-              </div>
+          {funnel && (
+            <div className="overview-panels">
+              <section className="overview-panel">
+                <h2>Squad progress</h2>
+                {funnel.squads_forming + funnel.squads_ready + funnel.squads_completed === 0 ? (
+                  <p className="form-hint">No squads have started forming yet.</p>
+                ) : (
+                  <DonutChart
+                    centerLabel="Squads"
+                    centerValue={funnel.squads_forming + funnel.squads_ready + funnel.squads_completed}
+                    legend
+                    segments={[
+                      { label: "Forming", value: funnel.squads_forming, color: "var(--color-info)" },
+                      { label: "Ready", value: funnel.squads_ready, color: "var(--color-warning)" },
+                      {
+                        label: "Completed",
+                        value: funnel.squads_completed,
+                        color: "var(--color-secondary)",
+                      },
+                    ]}
+                  />
+                )}
+              </section>
+
+              <section className="overview-panel">
+                <h2>Capacity reserved</h2>
+                <DonutChart
+                  centerLabel="Reserved"
+                  centerValue={`${funnel.reserved_count}/${funnel.max_capacity_participants}`}
+                  segments={[
+                    { label: "Reserved", value: funnel.reserved_count, color: "var(--color-primary)" },
+                  ]}
+                  total={funnel.max_capacity_participants}
+                />
+              </section>
             </div>
           )}
         </>

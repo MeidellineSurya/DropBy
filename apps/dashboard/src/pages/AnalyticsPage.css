@@ -41,6 +41,12 @@
   border-radius: var(--radius-pill);
 }
 
+.funnel__conversion {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
 .analytics-select {
   margin-top: 1rem;
   padding: 0.55rem 0.7rem;

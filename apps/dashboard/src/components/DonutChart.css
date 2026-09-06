@@ -1,0 +1,73 @@
+.donut-chart-block {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.donut-chart {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.donut-chart svg circle {
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.donut-chart__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.donut-chart__value {
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 1.4rem;
+}
+
+.donut-chart__label {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  max-width: 5.5rem;
+}
+
+.chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--color-text);
+}
+
+.chart-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+.chart-legend__label {
+  text-transform: capitalize;
+}
+
+.chart-legend__value {
+  color: var(--color-muted);
+  margin-left: auto;
+  padding-left: 0.75rem;
+}
