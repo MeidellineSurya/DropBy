@@ -1,9 +1,15 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (removed the dead "Detect radius" field from
-Create Drop, and audited the rest of the business side for the same
-pattern — two more dead fields and several real gaps found, not yet acted
-on — see "Removed the dead 'Detect radius' field from Create Drop" below;
+_Last updated: 2026-09-06 (fixed a severe pre-existing bug: Create Drop
+never sent latitude/longitude at all, so no Drop could ever be created
+through the real dashboard UI — only through direct API calls, which is
+how every "live verification" this whole session actually happened. Found
+by the user hitting it directly. See "Create Drop never sent a location —
+no Drop could ever be created through the UI" below; before that, removed
+the dead "Detect radius" field from Create Drop, and audited the rest of
+the business side for the same pattern — two more dead fields and several
+real gaps found, not yet acted on — see "Removed the dead 'Detect radius'
+field from Create Drop" below;
 before that, added visual charts to Overview and Analytics —
 a reusable dependency-free SVG donut chart for a Drops-by-status
 breakdown, a fullest-live-Drops capacity list, and a squad-progress/
@@ -67,6 +73,7 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Discovery schema and initial Alembic migration | Done |
 | Business registration/login, separate JWT audience from consumer auth | Done |
 | Business Drop CRUD (create/list/publish/pause/resume/cancel) | Done |
+| Create Drop defaults every Drop's location to the business's own registered venue (`GET /business/auth/me` now returns `latitude`/`longitude`) | Done — fixes a severe pre-existing bug: the form never sent a location at all, so no Drop could ever be created through the real dashboard UI, only via direct API calls |
 | Drop requires an approved (`active`) business before it can be published | Done |
 | Computed (not business-declared) rarity from discount depth + venue capacity/min group size scarcity signals | Done |
 | Computed XP reward derived from that same computed rarity | Done |
@@ -812,6 +819,61 @@ all yet, not just a missing dashboard page):
   others, since surfacing user names to a business is a privacy-scoping
   decision to make deliberately, not an obvious oversight to just fix.
 
+## Create Drop never sent a location — no Drop could ever be created through the UI
+
+The user pasted the exact contents of a filled-out Create Drop form after
+submitting it, along with the error it produced: `Field required, Field
+required`. `BusinessDropCreateRequest.latitude`/`.longitude` are required
+fields with no default — and `CreateDropPage.tsx` never included either
+key in its request body at all. Not a typo, not an edge case: the payload
+object literally never had a `latitude`/`longitude` property, at any point
+in this session. There is, and never was, a location input anywhere on the
+form.
+
+This means the Create Drop page has never been able to successfully create
+a Drop, for the entire duration of this session — every single "live
+verification" of Drop creation logged in this document was done by hand-
+crafting a JSON payload with `requests.post(...)` and always including
+`latitude`/`longitude` myself, because that's what the *API* needs, not
+because that's what the *dashboard* actually sends. The two never matched,
+and nothing caught it until the user tried the real form. This is the
+sharpest version yet of the gap this document has been flagging
+repeatedly ("no browser available in this environment") — this one wasn't
+a rendering nuance, it was a completely broken core flow that a hand-built
+API payload structurally cannot catch, because the whole point of a
+hand-built payload is that a human decides what goes in it.
+
+**The fix isn't adding a latitude/longitude input to the form.** A Drop
+has no legitimate reason to be anywhere other than the business's own
+venue — that's the entire redemption model, a squad travels *to the
+venue*. The right fix is for a Drop to default to the business's own
+registered coordinates automatically, the same way `max_capacity_participants`
+already gets checked against `venue_capacity` without asking the business
+to re-declare it. The blocker: `GET /business/auth/me` didn't return the
+business's own location at all — nothing to default *to*.
+
+- `BusinessResponse` gained `latitude`/`longitude`, extracted with
+  `ST_Y`/`ST_X` at request time (the same pattern every other
+  Geography-to-lat/lng extraction in this codebase already uses — see
+  `gamification.py`'s `_drop_lat_lng`) since geoalchemy2 doesn't let you
+  read a loaded location column back as plain floats without a query.
+  `_business_response()` now takes `db` (added to `/me`, which didn't
+  request it before) to run that query.
+- `CreateDropPage.tsx` now fetches the business's location in the same
+  `api.me()` call already made for `venue_capacity`, and sends it as-is on
+  every submission. The submit button reads "Loading venue…" and stays
+  disabled until that resolves, and submitting before it resolves (a
+  fast double-click, or the request failing) shows an actual error instead
+  of the opaque "Field required, Field required" the user hit.
+
+Live-verified end to end: `GET /business/auth/me` now returns real
+coordinates; recreated the user's exact form values ("WIT - Code to
+Connect", squad 2–5, 50% off, activity_entertainment) through the API with
+those coordinates and no other change — `201`, rarity `rare` at `40 XP`,
+matching the estimate the form itself had already shown them before they
+even submitted. `pytest -q` 198/198, `tsc --noEmit` and `vite build` both
+clean.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -850,6 +912,12 @@ all yet, not just a missing dashboard page):
 - `venue_capacity` is captured once at business registration, not left as a
   freely-editable per-Drop field — otherwise a business could inflate rarity
   by declaring a tiny capacity on every Drop.
+- A Drop's location isn't a per-Drop input at all — every Drop is placed at
+  the business's own registered venue, fetched from `GET /business/auth/me`
+  and sent as-is on create. There's no legitimate reason for a Drop to be
+  anywhere else in this product's redemption model (a squad has to travel
+  *to the venue*), so a lat/lng form field would just be a way to get it
+  wrong, not a real choice a business needs to make.
 - Check-in is a squad-generated, business-scanned QR, not a location claim
   and not the original venue QR — each `ready` squad signs its own token
   (`qr_signing_secret`, separate from `jwt_secret`); the business scans it,

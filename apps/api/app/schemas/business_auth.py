@@ -37,6 +37,11 @@ class BusinessResponse(BaseModel):
     venue_capacity: int
     verified: bool
     status: str
+    # The venue's own registered location — the dashboard defaults a new
+    # Drop's location to this (see CreateDropPage.tsx) rather than asking a
+    # business to re-enter coordinates it already gave at registration.
+    latitude: float
+    longitude: float
 
 
 class BusinessTokenResponse(BaseModel):

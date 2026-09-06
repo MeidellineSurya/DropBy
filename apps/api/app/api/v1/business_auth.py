@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import select
+from sqlalchemy import cast, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -17,7 +18,11 @@ from app.schemas.business_auth import (
 router = APIRouter()
 
 
-def _business_response(business: Business) -> BusinessResponse:
+def _business_response(db: Session, business: Business) -> BusinessResponse:
+    geom = cast(Business.location, Geometry(geometry_type="POINT", srid=4326))
+    latitude, longitude = db.execute(
+        select(func.ST_Y(geom), func.ST_X(geom)).where(Business.id == business.id)
+    ).one()
     return BusinessResponse(
         id=str(business.id),
         name=business.name,
@@ -28,6 +33,8 @@ def _business_response(business: Business) -> BusinessResponse:
         venue_capacity=business.venue_capacity,
         verified=business.verified,
         status=business.status.value,
+        latitude=float(latitude),
+        longitude=float(longitude),
     )
 
 
@@ -66,7 +73,7 @@ def register(
     db.refresh(business)
     return BusinessTokenResponse(
         access_token=create_access_token(str(business.id), audience="business"),
-        business=_business_response(business),
+        business=_business_response(db, business),
     )
 
 
@@ -81,10 +88,12 @@ def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
     return BusinessTokenResponse(
         access_token=create_access_token(str(business.id), audience="business"),
-        business=_business_response(business),
+        business=_business_response(db, business),
     )
 
 
 @router.get("/me", response_model=BusinessResponse)
-def me(business: Business = Depends(get_current_business)) -> BusinessResponse:
-    return _business_response(business)
+def me(
+    business: Business = Depends(get_current_business), db: Session = Depends(get_db)
+) -> BusinessResponse:
+    return _business_response(db, business)

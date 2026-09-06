@@ -67,9 +67,23 @@ export function CreateDropPage() {
   const [discoverRadius, setDiscoverRadius] = useState(100);
   const [publishNow, setPublishNow] = useState(true);
   const [venueCapacity, setVenueCapacity] = useState<number | null>(null);
+  // Every Drop is placed at the business's own registered venue — there's
+  // no legitimate reason for one to be anywhere else, so this is fetched
+  // once and sent as-is rather than asking the business to re-enter
+  // coordinates it already gave at registration. Fetched alongside
+  // venue_capacity below (same api.me() call).
+  const [venueLocation, setVenueLocation] = useState<{ latitude: number; longitude: number } | null>(
+    null,
+  );
 
   useEffect(() => {
-    api.me().then((business) => setVenueCapacity(business.venue_capacity)).catch(() => {});
+    api
+      .me()
+      .then((business) => {
+        setVenueCapacity(business.venue_capacity);
+        setVenueLocation({ latitude: business.latitude, longitude: business.longitude });
+      })
+      .catch(() => {});
   }, []);
 
   const effectiveMinGroupSize = dropType === "solo" ? 1 : minGroupSize;
@@ -82,6 +96,14 @@ export function CreateDropPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    if (!venueLocation) {
+      // api.me() hasn't resolved yet (or failed) — latitude/longitude are
+      // required by the API with no client-side default, so submitting
+      // without them would just come back as two opaque "Field required"
+      // errors. Bail here with something a business can actually act on.
+      setError("Still loading your venue's location — try again in a moment.");
+      return;
+    }
     setSubmitting(true);
     try {
       await api.createDrop({
@@ -89,6 +111,8 @@ export function CreateDropPage() {
         description: description || undefined,
         interest_tag: interestTag || undefined,
         category,
+        latitude: venueLocation.latitude,
+        longitude: venueLocation.longitude,
         discount_percent: discountPercent,
         drop_type: dropType,
         min_group_size: dropType === "solo" ? 1 : minGroupSize,
@@ -276,7 +300,8 @@ export function CreateDropPage() {
           </label>
           <p className="form-hint">
             Every active Drop is detectable from any distance — a mystery signal only, with no
-            details. The full offer unlocks once someone gets within this Reveal radius.
+            details. The full offer unlocks once someone gets within this Reveal radius. Every
+            Drop is placed at your venue's own registered location.
           </p>
         </section>
 
@@ -294,8 +319,12 @@ export function CreateDropPage() {
 
         {error && <p className="page-error">{error}</p>}
 
-        <button type="submit" className="create-drop-form__submit" disabled={submitting}>
-          {publishNow ? "Create & publish" : "Save draft"}
+        <button
+          type="submit"
+          className="create-drop-form__submit"
+          disabled={submitting || !venueLocation}
+        >
+          {!venueLocation ? "Loading venue…" : publishNow ? "Create & publish" : "Save draft"}
         </button>
       </form>
     </div>
