@@ -19,6 +19,12 @@
         {
           "locationWhenInUsePermission": "DropBy uses your location to reveal nearby Drops."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "drop-alerts"
+        }
       ]
     ]
   }
