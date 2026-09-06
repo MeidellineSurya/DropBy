@@ -9,12 +9,11 @@ def test_production_rejects_default_secrets() -> None:
         Settings(_env_file=None, environment="production")
 
 
-def test_production_accepts_distinct_strong_secrets() -> None:
+def test_production_accepts_a_strong_secret() -> None:
     configured = Settings(
         _env_file=None,
         environment="production",
         jwt_secret="jwt-" + "a" * 40,
-        qr_signing_secret="qr-" + "b" * 40,
     )
 
     assert configured.environment == "production"

@@ -1,30 +1,36 @@
-"""Redemption module — venue QR + check-in/confirm flow.
+"""Redemption module — location-claim check-in/confirm flow.
 
-The QR is venue-facing and per-Drop (not per-user): one HMAC-signed token
-{drop_id, business_id, iat, nonce} generated once at Drop activation and
-displayed/printed by the business for the Drop's whole lifetime. The token is
-self-verifying (the signature covers everything needed to check it), so
-re-fetching it via get_venue_qr any number of times is safe and never
-invalidates an already-printed copy.
+Check-in is a location claim, not a QR scan: any squad member taps "Claim"
+in the app, the server verifies their last known location is genuinely close
+to the venue (a much tighter radius than the Reveal distance — see
+settings.check_in_radius_m), and the whole squad checks in. There's no
+per-Drop artifact for the business to generate, print, or display.
+
+The tradeoff this makes deliberately: a printed QR would additionally prove
+someone is at the venue's specific counter rather than just nearby, and
+resists GPS spoofing in a way a location claim alone does not. That's
+accepted for now — the business's Confirm/Reject step on the live queue
+(staff looking at who's actually there) is the real fraud backstop either
+way, and removing the QR removes an entire physical setup step and mobile
+scanner UI for very little marketplace-simplicity gain. Revisit this if
+spoofed claims turn out to be a real problem beyond pilot scale — see
+STATUS.md.
 
 Flow:
   1. Group reaches "ready" (app/services/squad_state.py).
-  2. Any member scans the venue QR -> check_in_group() verifies the QR,
-     confirms the scanning member is nearby (geofence), and transitions the
+  2. Any member taps Claim -> check_in_group() confirms membership, confirms
+     the group is ready, confirms the scanning member is within
+     check_in_radius_m of the Drop's venue, and transitions the
      Group/Redemption to checked_in. Pushed to the rest of the squad and to
      ws:business:{business_id}.
   3. Business staff tap Confirm (optionally correcting headcount) ->
      confirm_redemption() -> Redemption/Group -> completed, capacity
      reconciled, award_xp_for_redemption Celery task enqueued by the caller.
-     Staff can instead tap Reject (a mistaken or fraudulent scan) ->
+     Staff can instead tap Reject (a mistaken or fraudulent claim) ->
      reject_redemption() -> Redemption/Group -> rejected/cancelled, with the
      squad's reserved capacity released back to the Drop.
 """
 
-import hashlib
-import hmac
-import time
-import uuid
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -47,41 +53,14 @@ from app.services.drop_lifecycle import release_capacity, reserve_capacity
 CHECK_IN_LOCATION_FRESHNESS = timedelta(minutes=15)
 
 
-def sign_venue_qr(drop_id: str, business_id: str) -> str:
-    nonce = uuid.uuid4().hex
-    iat = str(int(time.time()))
-    message = f"{drop_id}:{business_id}:{iat}:{nonce}"
-    signature = hmac.new(settings.qr_signing_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
-    return f"{message}:{signature}"
-
-
-def verify_venue_qr(token: str) -> dict:
-    try:
-        drop_id, business_id, iat, nonce, signature = token.split(":")
-    except ValueError as exc:
-        raise ValueError("malformed QR token") from exc
-    message = f"{drop_id}:{business_id}:{iat}:{nonce}"
-    expected = hmac.new(settings.qr_signing_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(signature, expected):
-        raise ValueError("invalid QR signature")
-    return {"drop_id": drop_id, "business_id": business_id}
-
-
-def get_venue_qr(db: Session, drop_id: UUID, business: Business) -> str:
-    drop = db.get(Drop, drop_id)
-    if drop is None or drop.business_id != business.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Drop not found")
-    return sign_venue_qr(str(drop.id), str(business.id))
-
-
-def _within_geofence(db: Session, user: User, drop: Drop) -> bool:
+def _within_check_in_range(db: Session, user: User, drop: Drop) -> bool:
     if user.last_location is None or user.last_location_at is None:
         return False
     if user.last_location_at < datetime.now(timezone.utc) - CHECK_IN_LOCATION_FRESHNESS:
         return False
     return bool(
         db.scalar(
-            select(func.ST_DWithin(Drop.location, User.last_location, Drop.discover_radius_m))
+            select(func.ST_DWithin(Drop.location, User.last_location, settings.check_in_radius_m))
             .select_from(Drop)
             .join(User, User.id == user.id)
             .where(Drop.id == drop.id)
@@ -89,17 +68,8 @@ def _within_geofence(db: Session, user: User, drop: Drop) -> bool:
     )
 
 
-def check_in_group(
-    db: Session, group_id: UUID, qr_token: str, scanning_user: User
-) -> Redemption:
-    """Verify the QR, ensure it matches the Group's Drop, transition to checked_in."""
-    try:
-        claims = verify_venue_qr(qr_token)
-    except ValueError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
-    drop_id = UUID(claims["drop_id"])
-    business_id = UUID(claims["business_id"])
-
+def check_in_group(db: Session, group_id: UUID, scanning_user: User) -> Redemption:
+    """Confirm membership and proximity, transition the Group to checked_in."""
     group = db.scalar(select(Group).where(Group.id == group_id).with_for_update())
     if group is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Squad not found")
@@ -112,22 +82,20 @@ def check_in_group(
     )
     if member is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not in this squad")
-    if group.drop_id != drop_id:
-        raise HTTPException(status.HTTP_409_CONFLICT, "This QR code is for a different Drop")
 
     existing = db.scalar(select(Redemption).where(Redemption.group_id == group.id))
     if group.status == GroupStatus.checked_in and existing is not None:
-        return existing  # idempotent re-scan by another member
+        return existing  # idempotent repeat claim by another member
     if group.status != GroupStatus.ready:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Squad is not ready to check in (status={group.status.value})",
         )
 
-    drop = db.get(Drop, drop_id)
-    if drop is None or drop.business_id != business_id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "QR code does not match this venue")
-    if not _within_geofence(db, scanning_user, drop):
+    drop = db.get(Drop, group.drop_id)
+    if drop is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Drop not found")
+    if not _within_check_in_range(db, scanning_user, drop):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Move closer to the venue to check in"
         )
@@ -135,9 +103,9 @@ def check_in_group(
     now = datetime.now(timezone.utc)
     if existing is None:
         existing = Redemption(
-            drop_id=drop_id,
+            drop_id=drop.id,
             group_id=group.id,
-            business_id=business_id,
+            business_id=drop.business_id,
             status=RedemptionStatus.checked_in,
             checked_in_at=now,
         )
@@ -221,7 +189,7 @@ def confirm_redemption(
 
 
 def reject_redemption(db: Session, redemption_id: UUID, business: Business) -> Redemption:
-    """Business rejects a checked-in squad — a mistaken or fraudulent scan —
+    """Business rejects a checked-in squad — a mistaken or fraudulent claim —
     instead of confirming it. Releases the squad's reserved capacity back to
     the Drop rather than leaving it stuck as checked_in forever with no way
     for anyone else to claim that spot.

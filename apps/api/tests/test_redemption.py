@@ -1,44 +1,20 @@
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.models.drops import Drop
 from app.models.groups import Group, GroupStatus
 from app.models.redemption import Redemption, RedemptionStatus
-from app.services.redemption import reject_redemption, sign_venue_qr, verify_venue_qr
-
-
-def test_sign_and_verify_venue_qr_roundtrip() -> None:
-    token = sign_venue_qr("drop-123", "business-456")
-
-    claims = verify_venue_qr(token)
-
-    assert claims == {"drop_id": "drop-123", "business_id": "business-456"}
-
-
-def test_verify_venue_qr_rejects_tampered_signature() -> None:
-    token = sign_venue_qr("drop-123", "business-456")
-    drop_id, _business_id, iat, nonce, signature = token.split(":")
-    tampered = f"{drop_id}:attacker-business:{iat}:{nonce}:{signature}"
-
-    with pytest.raises(ValueError, match="invalid QR signature"):
-        verify_venue_qr(tampered)
-
-
-def test_verify_venue_qr_rejects_malformed_token() -> None:
-    with pytest.raises(ValueError, match="malformed QR token"):
-        verify_venue_qr("not-a-real-token")
-
-
-def test_repeated_signing_produces_independently_valid_tokens() -> None:
-    """Re-fetching the QR (get_venue_qr) any number of times must never
-    invalidate a copy already printed/displayed by the business."""
-    first = sign_venue_qr("drop-123", "business-456")
-    second = sign_venue_qr("drop-123", "business-456")
-
-    assert first != second
-    assert verify_venue_qr(first) == verify_venue_qr(second)
+from app.models.users import User
+from app.services.redemption import (
+    _within_check_in_range,
+    check_in_group,
+    reject_redemption,
+)
 
 
 def _business(business_id) -> MagicMock:
@@ -117,8 +93,6 @@ def test_reject_redemption_is_idempotent_when_already_rejected() -> None:
 
 
 def test_reject_redemption_rejects_a_different_businesss_redemption() -> None:
-    from fastapi import HTTPException
-
     redemption = Redemption(
         id=uuid4(), drop_id=uuid4(), group_id=uuid4(), business_id=uuid4(),
         status=RedemptionStatus.checked_in,
@@ -133,8 +107,6 @@ def test_reject_redemption_rejects_a_different_businesss_redemption() -> None:
 
 
 def test_reject_redemption_rejects_a_confirmed_redemption() -> None:
-    from fastapi import HTTPException
-
     business_id = uuid4()
     redemption = Redemption(
         id=uuid4(), drop_id=uuid4(), group_id=uuid4(), business_id=business_id,
@@ -147,3 +119,94 @@ def test_reject_redemption_rejects_a_confirmed_redemption() -> None:
         reject_redemption(db, redemption.id, _business(business_id))
 
     assert exc_info.value.status_code == 409
+
+
+def test_within_check_in_range_false_without_a_known_location() -> None:
+    user = User(id=uuid4(), last_location=None, last_location_at=None)
+    drop = Drop(id=uuid4())
+
+    assert _within_check_in_range(MagicMock(spec=Session), user, drop) is False
+
+
+def test_within_check_in_range_false_when_location_is_stale() -> None:
+    stale = datetime.now(timezone.utc) - timedelta(minutes=16)
+    user = User(id=uuid4(), last_location="POINT(0 0)", last_location_at=stale)
+    drop = Drop(id=uuid4())
+
+    assert _within_check_in_range(MagicMock(spec=Session), user, drop) is False
+
+
+def _member() -> MagicMock:
+    return MagicMock()
+
+
+def test_check_in_group_requires_membership() -> None:
+    group = Group(id=uuid4(), drop_id=uuid4(), status=GroupStatus.ready)
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [group, None]  # group lookup, membership lookup (not found)
+
+    with pytest.raises(HTTPException) as exc_info:
+        check_in_group(db, group.id, User(id=uuid4()))
+
+    assert exc_info.value.status_code == 403
+
+
+def test_check_in_group_requires_ready_status() -> None:
+    group = Group(id=uuid4(), drop_id=uuid4(), status=GroupStatus.forming)
+    db = MagicMock(spec=Session)
+    # group lookup, membership lookup (found), existing-redemption lookup (none)
+    db.scalar.side_effect = [group, _member(), None]
+
+    with pytest.raises(HTTPException) as exc_info:
+        check_in_group(db, group.id, User(id=uuid4()))
+
+    assert exc_info.value.status_code == 409
+
+
+def test_check_in_group_requires_proximity(monkeypatch) -> None:
+    drop_id = uuid4()
+    group = Group(id=uuid4(), drop_id=drop_id, status=GroupStatus.ready)
+    drop = Drop(id=drop_id, business_id=uuid4())
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [group, _member(), None]
+    db.get.return_value = drop
+    monkeypatch.setattr("app.services.redemption._within_check_in_range", lambda *a: False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        check_in_group(db, group.id, User(id=uuid4()))
+
+    assert exc_info.value.status_code == 403
+    assert "closer" in exc_info.value.detail
+
+
+def test_check_in_group_succeeds_within_range(monkeypatch) -> None:
+    drop_id = uuid4()
+    business_id = uuid4()
+    group = Group(id=uuid4(), drop_id=drop_id, status=GroupStatus.ready)
+    drop = Drop(id=drop_id, business_id=business_id)
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [group, _member(), None]
+    db.get.return_value = drop
+    monkeypatch.setattr("app.services.redemption._within_check_in_range", lambda *a: True)
+
+    redemption = check_in_group(db, group.id, User(id=uuid4()))
+
+    assert redemption.status == RedemptionStatus.checked_in
+    assert redemption.business_id == business_id
+    assert group.status == GroupStatus.checked_in
+    db.add.assert_called_once()
+    db.commit.assert_called_once()
+
+
+def test_check_in_group_is_idempotent_for_an_already_checked_in_squad(monkeypatch) -> None:
+    """A second squad member claiming after the squad already checked in
+    returns the existing Redemption instead of erroring or double-creating."""
+    group = Group(id=uuid4(), drop_id=uuid4(), status=GroupStatus.checked_in)
+    existing = Redemption(id=uuid4(), status=RedemptionStatus.checked_in)
+    db = MagicMock(spec=Session)
+    db.scalar.side_effect = [group, _member(), existing]
+
+    result = check_in_group(db, group.id, User(id=uuid4()))
+
+    assert result is existing
+    db.commit.assert_not_called()

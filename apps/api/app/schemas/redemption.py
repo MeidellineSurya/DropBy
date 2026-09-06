@@ -6,10 +6,6 @@ from pydantic import BaseModel, ConfigDict
 from app.models.redemption import RedemptionStatus
 
 
-class CheckInRequest(BaseModel):
-    qr_token: str
-
-
 class ConfirmRequest(BaseModel):
     # Business can correct the headcount actually present; omit to accept
     # the squad's current joined member count as-is.
@@ -32,7 +28,3 @@ class RedemptionResponse(BaseModel):
     # by the route from the Drop and the Group's current joined members.
     member_count: int
     xp_reward_base: int
-
-
-class VenueQrResponse(BaseModel):
-    qr_token: str

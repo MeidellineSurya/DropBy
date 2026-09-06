@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import * as Location from "expo-location";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +26,7 @@ export function SquadScreen({ navigation, route }: Props) {
   const [group, setGroup] = useState<GroupSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const [claiming, setClaiming] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +65,36 @@ export function SquadScreen({ navigation, route }: Props) {
     });
   }
 
+  async function claimDrop() {
+    setClaiming(true);
+    setError(null);
+    try {
+      // Check-in is a location claim, not a QR scan — freshen the server's
+      // record of where we are right before claiming, so a stale location
+      // from minutes ago (or from before this screen was even opened)
+      // doesn't fail the venue-proximity check.
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        setError("Location permission is required to check in.");
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      await api.locationPing(location.coords.latitude, location.coords.longitude);
+      await api.checkIn(groupId);
+      await refresh();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Could not check in — move closer to the venue and try again.",
+      );
+    } finally {
+      setClaiming(false);
+    }
+  }
+
   async function leaveSquad() {
     setLeaving(true);
     setError(null);
@@ -87,6 +119,23 @@ export function SquadScreen({ navigation, route }: Props) {
   const maximum = group?.max_allowed ?? 4;
   const progress = `${Math.min(100, Math.round((count / maximum) * 100))}%` as const;
   const ready = group?.status === "ready";
+  const checkedIn = group?.status === "checked_in";
+  const completed = group?.status === "completed";
+
+  const eyebrow = completed
+    ? "REDEEMED"
+    : checkedIn
+      ? "CHECKED IN"
+      : ready
+        ? "SQUAD READY"
+        : "ASSEMBLING";
+  const subtitle = completed
+    ? "The business confirmed your squad. XP is on its way to everyone."
+    : checkedIn
+      ? "You're checked in — waiting for the business to confirm at the counter."
+      : ready
+        ? "Your minimum squad is ready. You can still fill the remaining spaces."
+        : `${Math.max(0, (group?.min_required ?? 2) - count)} more needed to unlock the Drop.`;
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.page}>
@@ -95,17 +144,43 @@ export function SquadScreen({ navigation, route }: Props) {
         <Text style={styles.liveText}>{connected ? "Live squad updates" : "Reconnecting"}</Text>
       </View>
 
-      <Text style={styles.eyebrow}>{ready ? "SQUAD READY" : "ASSEMBLING"}</Text>
+      <Text style={styles.eyebrow}>{eyebrow}</Text>
       <Text style={styles.title}>{count}/{maximum} explorers</Text>
-      <Text style={styles.subtitle}>
-        {ready
-          ? "Your minimum squad is ready. You can still fill the remaining spaces."
-          : `${Math.max(0, (group?.min_required ?? 2) - count)} more needed to unlock the Drop.`}
-      </Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
 
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: progress }]} />
       </View>
+
+      {ready && (
+        <View style={styles.claimCard}>
+          <Text style={styles.claimTitle}>At the venue?</Text>
+          <Text style={styles.claimSubtitle}>
+            Check in once you've arrived — we'll confirm you're close enough, no
+            code to scan.
+          </Text>
+          <Pressable
+            disabled={claiming}
+            onPress={() => void claimDrop()}
+            style={styles.claimButton}
+          >
+            {claiming ? (
+              <ActivityIndicator color={colors.black} />
+            ) : (
+              <Text style={styles.claimButtonText}>Check in now</Text>
+            )}
+          </Pressable>
+        </View>
+      )}
+
+      {checkedIn && (
+        <View style={styles.waitingCard}>
+          <Text style={styles.waitingText}>
+            ✓ Checked in. Sit tight — the business confirms redemptions from their
+            counter. Tap "Refresh now" below to see when it lands.
+          </Text>
+        </View>
+      )}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Members</Text>
@@ -129,24 +204,28 @@ export function SquadScreen({ navigation, route }: Props) {
         ))}
       </View>
 
-      <View style={styles.codeCard}>
-        <Text style={styles.codeLabel}>SQUAD ID</Text>
-        <Text selectable style={styles.code}>{groupId}</Text>
-        <Pressable onPress={() => void shareSquad()} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Share squad invite</Text>
-        </Pressable>
-      </View>
+      {!checkedIn && !completed && (
+        <View style={styles.codeCard}>
+          <Text style={styles.codeLabel}>SQUAD ID</Text>
+          <Text selectable style={styles.code}>{groupId}</Text>
+          <Pressable onPress={() => void shareSquad()} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Share squad invite</Text>
+          </Pressable>
+        </View>
+      )}
 
       <Pressable onPress={() => void refresh()} style={styles.secondaryButton}>
         <Text style={styles.secondaryButtonText}>Refresh now</Text>
       </Pressable>
-      <Pressable disabled={leaving} onPress={() => void leaveSquad()} style={styles.leaveButton}>
-        {leaving ? (
-          <ActivityIndicator color={colors.danger} />
-        ) : (
-          <Text style={styles.leaveText}>Leave squad</Text>
-        )}
-      </Pressable>
+      {!checkedIn && !completed && (
+        <Pressable disabled={leaving} onPress={() => void leaveSquad()} style={styles.leaveButton}>
+          {leaving ? (
+            <ActivityIndicator color={colors.danger} />
+          ) : (
+            <Text style={styles.leaveText}>Leave squad</Text>
+          )}
+        </Pressable>
+      )}
       {error && <Text style={styles.error}>{error}</Text>}
     </ScrollView>
   );
@@ -165,6 +244,13 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 8 },
   progressTrack: { backgroundColor: colors.surfaceRaised, borderRadius: 5, height: 10, marginTop: 22, overflow: "hidden" },
   progressFill: { backgroundColor: colors.lime, borderRadius: 5, height: "100%" },
+  claimCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.lime, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
+  claimTitle: { color: colors.text, fontSize: 17, fontWeight: "900" },
+  claimSubtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 6 },
+  claimButton: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 11, marginTop: 14, paddingVertical: 14 },
+  claimButtonText: { color: colors.black, fontSize: 14, fontWeight: "900" },
+  waitingCard: { backgroundColor: colors.surfaceRaised, borderColor: colors.cyan, borderRadius: 18, borderWidth: 1, marginTop: 18, padding: 16 },
+  waitingText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 18, borderWidth: 1, marginTop: 22, padding: 16 },
   cardTitle: { color: colors.text, fontSize: 18, fontWeight: "900", marginBottom: 8 },
   memberRow: { alignItems: "center", borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", minHeight: 60 },

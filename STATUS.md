@@ -1,7 +1,9 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (merged the business/supply-side workstream with the
-independently-built redemption/gamification/notifications workstream)_
+_Last updated: 2026-09-06 (reworked check-in from a QR scan to a location
+claim, and built the mobile claim screen — after merging the business/
+supply-side workstream with the independently-built redemption/
+gamification/notifications workstream)_
 
 ## Status
 
@@ -9,9 +11,11 @@ All three original workstreams are now implemented on the shared FastAPI
 scaffold: the real-time discovery engine, the business/supply-side platform,
 and redemption + gamification + notifications. The last two were built in
 parallel, unaware of each other, and converged on a near-identical
-`redemptions` table and QR design — see "Merging two independent redemption
-implementations" below for how that got reconciled. Mobile/dashboard product
-polish (wiring the newer gamification endpoints into the UI) is what's left.
+`redemptions` table and check-in design — see "Merging two independent
+redemption implementations" below for how that got reconciled. Check-in
+itself was later reworked from a QR scan to a location claim — see "Dropping
+the venue QR for a location claim" below. Mobile/dashboard product polish
+(wiring the newer gamification endpoints into the UI) is what's left.
 
 ## Progress
 
@@ -35,8 +39,8 @@ polish (wiring the newer gamification endpoints into the UI) is what's left.
 | Business Drop performance and account overview analytics | Done |
 | CORS so the dashboard can call the API cross-origin | Done |
 | Automatic Drop expiry / scheduled-activation worker (Celery beat) | Done |
-| Venue QR sign/verify (HMAC, per-Drop, venue-facing), fetchable via `GET /redemptions/drops/{id}/qr` | Done |
-| Check-in requires both the QR and a geofence check against the scanning member's last known location | Done |
+| Check-in as a location claim — no QR at all, just a tight-radius (`check_in_radius_m`, default 20 m) geofence check against the scanning member's last known location | Done |
+| Mobile "Check in now" claim button on `SquadScreen`, wired to the check-in endpoint | Done |
 | Redemption queue, confirm, and reject, with capacity correctly reconciled either way | Done |
 | XP ledger (`UserXpTransaction`), badges, leveling, streaks | Done |
 | Powerups, level-milestone perks, weekly challenges, territory-exploration bonus | Done |
@@ -44,21 +48,21 @@ polish (wiring the newer gamification endpoints into the UI) is what's left.
 | Business dashboard: login/register, Overview, Drops, Create Drop, Analytics, Live Queue | Done |
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
 | Business moderation endpoints (approve/reject registrations) | Not built — only direct DB/seed access sets `Business.status = active` |
-| Dashboard UI to display/print a Drop's venue QR | Not built (backend endpoint exists, nothing renders it) |
-| Mobile app redemption/QR-scan screen | Not built |
 | Redemption `pending`/`expired` statuses, automatic redemption-expiry sweep | Not built (enum values reserved, unused) |
+| A push/live update to the squad when the business confirms or rejects | Not built — confirm/reject don't publish any WS event today, so the app only learns the outcome on a manual refresh |
 | Mobile UI for a cancelled/expired/completed squad | Not built — `SquadScreen` always renders the assembling/ready layout regardless of status, and the mobile `GroupSnapshot` type is missing `cancelled_reason` (the backend has carried it since the capacity-race fix; `packages/shared-types` already models it as `reason`) |
 | `packages/shared-types` codegen from `ws-contracts` | Not built — the package is a hand-mirrored placeholder (says so in its own file); neither mobile nor the dashboard actually imports from it, both keep separate hand-written types |
 
-**Verified (2026-09-06):** 177/177 backend tests pass (`pytest -q`) after the
-merge; a single linear Alembic head (`0011_business_venue_capacity`).
-Live-verified separately before merging: the business platform's full loop
-(registration → Drop creation with computed rarity/XP → a squad reaching the
-Drop → venue-QR check-in → confirm with an actual XP mutation → reject with
-capacity released) against the Docker stack, and the gamification
-workstream's mechanics against a live Postgres/Redis/Celery stack (per its
-own verification notes, this caught a real `UserStats` initialization crash
-and a duplicate `CREATE TYPE` migration bug that unit tests didn't surface).
+**Verified (2026-09-06):** 187/187 backend tests pass (`pytest -q`); a single
+linear Alembic head (`0012_connections_and_messages`). Live-verified: the
+business platform's full loop (registration → Drop creation with computed
+rarity/XP → a squad reaching the Drop → claim-based check-in → confirm with
+an actual XP mutation → reject with capacity released) against the Docker
+stack, including a claim attempt from ~350m away correctly rejected by the
+tight check-in radius; and the gamification workstream's mechanics against a
+live Postgres/Redis/Celery stack (per its own verification notes, this
+caught a real `UserStats` initialization crash and a duplicate `CREATE TYPE`
+migration bug that unit tests didn't surface).
 
 ## Merging two independent redemption implementations
 
@@ -115,6 +119,46 @@ The dashboard's Live Queue page was repointed from this branch's old
 `/business/redemptions` routes to `main`'s `/redemptions/*` routes
 accordingly.
 
+## Dropping the venue QR for a location claim
+
+The QR-based check-in above worked, but before building the mobile in-app
+scanner for it, we reconsidered whether a QR was needed at all. Check-in is
+now a **location claim**: any squad member taps "Check in now" in the app,
+the server verifies their last known location is within a tight radius of
+the venue (`settings.check_in_radius_m`, default 20 m — separate from and
+much tighter than the 100 m Reveal radius used to form the squad in the
+first place), and the squad checks in. No per-Drop artifact for the business
+to generate, print, or display, and no camera/scanner screen to build.
+
+This is a deliberate tradeoff, not a pure simplification:
+
+- **Lost**: a printed QR additionally proves someone is at the venue's
+  specific counter, not just generally nearby, and it resists GPS spoofing
+  in a way a location claim alone does not (a location-mocking app can fake
+  "I'm near this venue" far more easily than it can fake having scanned a
+  code physically printed at a specific business).
+- **Kept**: the actual fraud backstop was never the QR — it's the business's
+  Confirm/Reject step on the Live Queue, where staff look at who's actually
+  there. That's identical either way. A bogus claim just becomes dashboard
+  noise a business rejects, same as a bogus scan would have.
+- **Gained**: no printing/signage setup step for a business going live, and
+  no mobile camera-scanner UI to build, test, or maintain — a meaningfully
+  smaller surface for an early pilot with a handful of hand-onboarded
+  venues.
+
+`sign_venue_qr`/`verify_venue_qr`/`get_venue_qr` and the
+`GET /redemptions/drops/{id}/qr` endpoint were removed entirely, along with
+`QR_SIGNING_SECRET` (one fewer production secret to provision and rotate).
+`check_in_group` no longer takes any request body — proximity is the only
+check. Revisit if spoofed claims turn out to be a real problem beyond pilot
+scale; the geofence radius is a single settings value
+(`CHECK_IN_RADIUS_M`) to tighten further if so.
+
+Live-verified: a claim from ~350 m away is rejected
+(`403 Move closer to the venue to check in`); a claim from at the venue
+succeeds and reaches the business's Live Queue with no QR involved at any
+point.
+
 ## Key decisions
 
 - Keep a modular FastAPI monolith so Drop → Group → Redemption → XP can remain
@@ -142,14 +186,12 @@ accordingly.
 - `venue_capacity` is captured once at business registration, not left as a
   freely-editable per-Drop field — otherwise a business could inflate rarity
   by declaring a tiny capacity on every Drop.
-- The venue QR is per-Drop and venue-facing (printed/displayed once by the
-  business, self-verifying so re-fetching it never invalidates an
-  already-printed copy), not per-customer or per-squad.
-- Check-in requires both the QR (proves the venue) and a geofence check
-  against the scanning member's last location (proves the person), reusing
-  the discovery engine's `ST_DWithin` pattern with a 15-minute freshness
-  window — longer than the 5-minute assemble window, since walking to the
-  venue after assembling legitimately takes longer.
+- Check-in is a location claim, not a QR scan — a tight-radius geofence
+  check against the scanning member's last location, reusing the discovery
+  engine's `ST_DWithin` pattern with a 15-minute freshness window — longer
+  than the 5-minute assemble window, since walking to the venue after
+  assembling legitimately takes longer. See "Dropping the venue QR for a
+  location claim" above for the tradeoff this makes.
 - One Redemption row per Group (`uq_redemption_group`), created lazily on
   first check-in rather than eagerly when the squad becomes ready.
 - A Drop cannot go live until its business is `active` — an unverified
@@ -167,21 +209,24 @@ accordingly.
 
 ## Next steps
 
-1. Build a dashboard view to display/print a Drop's venue QR (backend
-   endpoint exists: `GET /redemptions/drops/{id}/qr`).
+1. Publish a `redemption.confirmed`/`redemption.rejected` WS event when a
+   business acts on the Live Queue — right now the squad only learns the
+   outcome by manually refreshing, which is the one real gap the mobile
+   claim screen surfaced (see "Dropping the venue QR..." above).
 2. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
-3. Mobile: wire the check-in/confirm loop, `GET /gamification/me/stats` and
-   `/me/history` for a Collection/Profile screen, and the powerup/perk/weekly
-   -challenge endpoints — the mobile app currently only exercises discovery.
+3. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
+   Collection/Profile screen, and the powerup/perk/weekly-challenge
+   endpoints — check-in/confirm is now wired; gamification display isn't.
 4. Mobile: register a real FCM token via `POST /devices` and subscribe to the
    `territory.bonus_awarded` WS event, so push notifications and territory
    popups actually reach the phone.
 5. Mobile: add `cancelled_reason` to `GroupSnapshot` and give `SquadScreen` an
-   actual cancelled/expired/completed layout — right now a squad that loses a
-   capacity race just looks stuck in the assembling/ready view with no
-   explanation, even though the backend has carried the reason since the
-   capacity-race fix.
+   actual cancelled/expired layout — right now a squad that loses a capacity
+   race just looks stuck in the assembling/ready view with no explanation,
+   even though the backend has carried the reason since the capacity-race
+   fix. (`checked_in`/`completed` now have their own layout, added alongside
+   the claim button.)
 6. Set up real codegen for `packages/shared-types` from `ws-contracts`, or
    drop the package — right now it's a hand-mirrored placeholder nothing
    actually imports.

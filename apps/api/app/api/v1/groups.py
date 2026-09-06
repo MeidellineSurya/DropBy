@@ -9,7 +9,7 @@ from app.models.drops import Drop, DropStatus, DropViewEvent
 from app.models.groups import GroupStatus
 from app.models.users import User
 from app.schemas.groups import GroupCreateRequest, GroupResponse
-from app.schemas.redemption import CheckInRequest, RedemptionResponse
+from app.schemas.redemption import RedemptionResponse
 from app.services.redemption import build_response, check_in_group
 from app.services.squad_state import (
     create_group as create_group_state,
@@ -188,12 +188,12 @@ async def leave_group(
 @router.post("/{group_id}/checkin", response_model=RedemptionResponse)
 async def checkin_group(
     group_id: UUID,
-    body: CheckInRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> RedemptionResponse:
-    """Any squad member scans the venue QR to check the whole squad in."""
-    redemption = check_in_group(db, group_id, body.qr_token, user)
+    """Any squad member claims check-in for the whole squad — verified by
+    proximity to the venue, not a QR scan (see services/redemption.py)."""
+    redemption = check_in_group(db, group_id, user)
     group = get_group_for_member(db, group_id, user.id)
     event = RedemptionCheckedIn(
         group_id=group.id,

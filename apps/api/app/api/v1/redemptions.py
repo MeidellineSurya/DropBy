@@ -5,11 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_business, get_db
 from app.models.businesses import Business
-from app.schemas.redemption import ConfirmRequest, RedemptionResponse, VenueQrResponse
+from app.schemas.redemption import ConfirmRequest, RedemptionResponse
 from app.services.redemption import (
     build_response,
     confirm_redemption,
-    get_venue_qr,
     list_redemption_queue,
     reject_redemption,
 )
@@ -25,16 +24,6 @@ def redemption_queue(
 ) -> list[RedemptionResponse]:
     """The business dashboard's live redemption queue (checked-in, awaiting confirm)."""
     return [build_response(db, redemption) for redemption in list_redemption_queue(db, business)]
-
-
-@router.get("/drops/{drop_id}/qr", response_model=VenueQrResponse)
-def drop_qr(
-    drop_id: UUID,
-    business: Business = Depends(get_current_business),
-    db: Session = Depends(get_db),
-) -> VenueQrResponse:
-    """The venue-facing QR for this Drop, to display/print at the counter."""
-    return VenueQrResponse(qr_token=get_venue_qr(db, drop_id, business))
 
 
 @router.post("/{redemption_id}/confirm", response_model=RedemptionResponse)
@@ -56,7 +45,7 @@ def reject(
     business: Business = Depends(get_current_business),
     db: Session = Depends(get_db),
 ) -> RedemptionResponse:
-    """Business rejects a mistaken or fraudulent scan, releasing the squad's
+    """Business rejects a mistaken or fraudulent claim, releasing the squad's
     reserved capacity back to the Drop."""
     redemption = reject_redemption(db, redemption_id, business)
     return build_response(db, redemption)

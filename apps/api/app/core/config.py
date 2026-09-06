@@ -14,12 +14,16 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
 
-    qr_signing_secret: str = "change-me-too"
     fcm_credentials_json_path: str = ""
 
     default_detect_radius_m: int = 700
     default_reveal_radius_m: int = 180
     default_discover_radius_m: int = 100
+    # Check-in is a location claim, not a QR scan (see services/redemption.py) —
+    # deliberately much tighter than the Reveal radius above, since "near
+    # enough to see the offer" and "actually at the counter" need different
+    # thresholds.
+    check_in_radius_m: int = 20
 
     # Comma-separated browser origins allowed to call the API (the business
     # dashboard, and any deployed equivalent). Defaults cover the dashboard's
@@ -34,10 +38,7 @@ class Settings(BaseSettings):
     def reject_unsafe_production_secrets(self) -> "Settings":
         if self.environment.lower() != "production":
             return self
-        secrets = {
-            "JWT_SECRET": self.jwt_secret,
-            "QR_SIGNING_SECRET": self.qr_signing_secret,
-        }
+        secrets = {"JWT_SECRET": self.jwt_secret}
         for name, value in secrets.items():
             if (
                 len(value) < 32
@@ -45,8 +46,6 @@ class Settings(BaseSettings):
                 or value.startswith("replace-with")
             ):
                 raise ValueError(f"{name} must be a strong production secret")
-        if self.jwt_secret == self.qr_signing_secret:
-            raise ValueError("JWT_SECRET and QR_SIGNING_SECRET must be different")
         return self
 
 
