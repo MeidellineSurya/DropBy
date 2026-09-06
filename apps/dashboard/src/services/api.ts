@@ -82,6 +82,24 @@ export const api = {
 
   me: () => request<Business>("/business/auth/me"),
 
+  // Partial update — only send what actually changed (see Settings.tsx).
+  // owner_email/password aren't editable here; changing sign-in identity
+  // is a separate, not-yet-built concern from editing a profile.
+  updateProfile: (payload: {
+    name?: string;
+    category?: string;
+    description?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    venue_capacity?: number;
+    latitude?: number;
+    longitude?: number;
+  }) =>
+    request<Business>("/business/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
   createDrop: (payload: Record<string, unknown>) =>
     request<BusinessDrop>("/business/drops", {
       method: "POST",

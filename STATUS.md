@@ -1,6 +1,11 @@
 # DropBy — Status, Progress & Decisions
 
-_Last updated: 2026-09-06 (fixed a severe pre-existing bug: Create Drop
+_Last updated: 2026-09-06 (added a Settings page — `PATCH /business/auth/me`
+lets a business edit its own name, category, description, address, phone,
+venue capacity, and location; caught and fixed a real bug in the process
+where a naive update would have silently corrupted `category` to an enum
+repr string instead of the plain value — see "Added a Settings page"
+below; before that, fixed a severe pre-existing bug: Create Drop
 never sent latitude/longitude at all, so no Drop could ever be created
 through the real dashboard UI — only through direct API calls, which is
 how every "live verification" this whole session actually happened. Found
@@ -92,7 +97,8 @@ the venue QR for a location claim" below. Mobile/dashboard product polish
 | Push notifications (FCM) with graceful skip when unconfigured; notification log | Done |
 | Notification-driven discovery: every user with a known location is notified when any Drop activates (not just Rare+, not gated by proximity/freshness); notification shows category + distance only | Done |
 | Immediate-publish Drops (`create_drop(publish=True)` / `publish_drop`) trigger the new-Drop notification directly, not just the scheduled→active sweep | Done |
-| Business dashboard: login/register, Overview, Manage Drops, Create Drop, Scan to confirm, Redemption Log, Analytics | Done |
+| Business dashboard: login/register, Overview, Manage Drops, Create Drop, Scan to confirm, Redemption Log, Analytics, Settings | Done |
+| `PATCH /business/auth/me` — a business can edit its own name, category, description, address, phone, venue capacity, and location after registering (partial update; owner_email/password excluded on purpose, a separate concern) | Done |
 | Dashboard visual charts: a reusable dependency-free `DonutChart` (SVG ring, no charting library) powering a Drops-by-status breakdown + a "fullest live Drops" capacity list on Overview, and a squad-progress ring + capacity gauge on Analytics (replacing plain stat-card numbers) | Done |
 | Create Drop's min/max squad size are range sliders (2–10) instead of unbounded number inputs — the backend schema still allows up to 100 (unchanged), the slider just keeps the common case fast to set and out of unrealistic territory | Done |
 | Dashboard session-expiry handling (401 → clear token → redirect to login) | Done |
@@ -798,14 +804,9 @@ all yet, not just a missing dashboard page):
 - **No way to edit a Drop after creating it, not even in `draft`.** Only
   create/publish/pause/resume/cancel exist — a typo in the title or the
   wrong discount means cancel-and-recreate, not fix-in-place.
-- **No business profile page, and no route to support one.** Nowhere to
-  view or edit your own business's name, address, venue capacity,
-  description, or phone after registering — `business_auth.py` only has
-  register/login/`me` (read-only).
-- **`phone` is collect-only, into a void.** `BusinessRegisterRequest`
-  accepts it, but the dashboard's registration form never asks for it, and
-  `BusinessResponse` doesn't return it even if it were set another way —
-  nobody can currently see or use a business's phone number anywhere.
+- ~~No business profile page~~ **Fixed — see "Added a Settings page" below.**
+- ~~`phone` is collect-only, into a void~~ **Fixed in the same change** —
+  `BusinessResponse` now returns it and Settings can edit it.
 - **No password change or reset flow.** A business is stuck with whatever
   password it registered with; there's no recovery path if forgotten.
 - **No status filter on Manage Drops, despite the API already supporting
@@ -873,6 +874,55 @@ those coordinates and no other change — `201`, rarity `rare` at `40 XP`,
 matching the estimate the form itself had already shown them before they
 even submitted. `pytest -q` 198/198, `tsc --noEmit` and `vite build` both
 clean.
+
+## Added a Settings page
+
+Asked whether a settings page for profile data should be added — yes, this
+was already flagged in the audit above ("no business profile page, and no
+route to support one"). Built it as `PATCH /business/auth/me` plus a new
+Settings page in the sidebar.
+
+Editable: name, category, description, address, phone, venue capacity,
+location. Deliberately **not** editable here: `owner_email` and password —
+changing sign-in identity is a separate concern needing its own
+verification flow, not a profile edit; password change/reset is still an
+open gap (see the audit above). `Business.verified`/`logo_url` (the two
+dead fields from the same audit) aren't wired into this either — they're
+still genuinely unused, this didn't try to retrofit a purpose for them.
+
+- **Partial update, not full-replace**: the request schema
+  (`BusinessUpdateRequest`) makes every field optional, and the route reads
+  `body.model_dump(exclude_unset=True)` — a request that only touches
+  `phone` doesn't overwrite everything else back to whatever the client
+  happened to be holding. `latitude`/`longitude` must be sent together or
+  not at all (checked explicitly); sending just one comes back a `422`
+  with a message that says why, not a silent partial move.
+- **A real bug caught before it shipped**: `category` on the update
+  request is a `DropCategory` enum, and naively doing
+  `setattr(business, "category", value)` on the dict produced by
+  `model_dump()` would have stored the *enum member*, not its string
+  value — `Business.category` is a plain `String` column, and Pydantic's
+  `model_dump()` keeps enum fields as enum instances by default (confirmed
+  directly, not assumed). Because `DropCategory` mixes in `str`, this
+  wouldn't have crashed — it would have silently written something whose
+  `str()` is `"DropCategory.nightlife"`, not `"nightlife"`, since the
+  `str, Enum` mixin's own `__str__`/`__format__` don't return the raw
+  value despite the object satisfying `isinstance(x, str)`. Confirmed this
+  precisely with a throwaway script before touching the real route, not
+  by guessing. Fixed by extracting `.value` explicitly, the same way
+  `register()` already does.
+- `GET /business/auth/me` also gained `phone` in its response (previously
+  accepted at registration but never returned to anyone, by anything).
+
+Live-verified against the running stack: a partial update touching only
+`phone` and `category` left `name`/`venue_capacity`/`latitude` untouched;
+the stored `category` came back as the plain string `"nightlife"`, not a
+corrupted enum repr; a location update with only `latitude` was rejected
+with `422`; a full paired location update succeeded. Restored the demo
+account to its original values afterward so nothing was left mutated.
+`pytest -q` 202/202 (4 new schema tests), `tsc --noEmit` and `vite build`
+both clean, single Alembic head (no schema change — every field already
+existed on `Business`).
 
 ## Key decisions
 
@@ -984,14 +1034,13 @@ clean.
    actually been looked at rendered either, only reasoned through.
 3. Business moderation UI/endpoints for approving a pending registration —
    right now only direct DB/seed access sets `Business.status = active`.
-4. Pick from the business-side gaps found in "Removed the dead 'Detect
-   radius' field from Create Drop" above and decide which are worth
-   building: Drop editing (currently cancel-and-recreate for even a typo),
-   a business profile view/edit page (+ the backend route it needs), a
-   password change/reset flow, wiring `phone` through end to end (form +
-   `BusinessResponse`) or dropping it, a status filter on Manage Drops
-   (the API already supports it), and whether `Business.verified`/
-   `logo_url` should be wired up for real or removed as dead weight.
+4. Remaining business-side gaps from "Removed the dead 'Detect radius'
+   field from Create Drop" above, not yet built (the profile page and
+   `phone` are now done — see "Added a Settings page"): Drop editing
+   (currently cancel-and-recreate for even a typo), a password change/reset
+   flow, a status filter on Manage Drops (the API already supports it),
+   and whether `Business.verified`/`logo_url` should be wired up for real
+   or removed as dead weight.
 5. Mobile: wire `GET /gamification/me/stats` and `/me/history` for a
    Collection/Profile screen, and the powerup/perk/weekly-challenge
    endpoints — check-in is now wired; gamification display isn't.

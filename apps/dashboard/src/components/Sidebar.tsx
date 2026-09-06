@@ -32,6 +32,7 @@ export function Sidebar() {
         <NavLink to="/scan">Scan to confirm</NavLink>
         <NavLink to="/queue">Redemption Log</NavLink>
         <NavLink to="/analytics">Analytics</NavLink>
+        <NavLink to="/settings">Settings</NavLink>
       </nav>
       <button type="button" className="sidebar__logout" onClick={logout}>
         Log out

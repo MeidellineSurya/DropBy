@@ -9,6 +9,7 @@ import { ManageDropsPage } from "./pages/ManageDropsPage";
 import { OverviewPage } from "./pages/OverviewPage";
 import { RedemptionQueuePage } from "./pages/RedemptionQueuePage";
 import { ScanPage } from "./pages/ScanPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { isLoggedIn } from "./services/auth";
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -70,6 +71,14 @@ function App() {
         element={
           <ProtectedLayout>
             <ScanPage />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedLayout>
+            <SettingsPage />
           </ProtectedLayout>
         }
       />

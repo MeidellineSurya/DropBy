@@ -27,6 +27,25 @@ class BusinessLoginRequest(BaseModel):
     password: str
 
 
+# Everything a business can change about itself after registering, via
+# PATCH /business/auth/me — the Settings page. Deliberately excludes
+# owner_email (a login-identity change, not a profile edit — would need its
+# own verification flow) and password (see PasswordChangeRequest, a
+# separate, not-yet-built concern). All fields optional so a request only
+# needs to carry what's actually changing; the route reads exclude_unset to
+# tell "not sent" apart from "sent as null" for the nullable ones.
+class BusinessUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    category: DropCategory | None = None
+    description: str | None = Field(default=None, max_length=2000)
+    address: str | None = Field(default=None, max_length=250)
+    phone: str | None = Field(default=None, max_length=40)
+    venue_capacity: int | None = Field(default=None, gt=0, le=10_000)
+    # Must be updated together — see the route for the pairing check.
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+
 class BusinessResponse(BaseModel):
     id: str
     name: str
@@ -37,6 +56,7 @@ class BusinessResponse(BaseModel):
     venue_capacity: int
     verified: bool
     status: str
+    phone: str | None
     # The venue's own registered location — the dashboard defaults a new
     # Drop's location to this (see CreateDropPage.tsx) rather than asking a
     # business to re-enter coordinates it already gave at registration.

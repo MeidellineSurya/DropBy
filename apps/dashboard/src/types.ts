@@ -34,6 +34,7 @@ export interface Business {
   venue_capacity: number;
   verified: boolean;
   status: string;
+  phone: string | null;
   // The venue's own registered location — Create Drop defaults a new
   // Drop's location to this instead of asking for coordinates again.
   latitude: number;

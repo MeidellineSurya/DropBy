@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from app.core.deps import get_current_business_id, get_current_user_id
 from app.core.security import create_access_token, decode_access_token
-from app.schemas.business_auth import BusinessRegisterRequest
+from app.schemas.business_auth import BusinessRegisterRequest, BusinessUpdateRequest
 
 
 def _bearer(token: str) -> HTTPAuthorizationCredentials:
@@ -70,3 +70,29 @@ def test_business_register_rejects_an_out_of_range_venue_capacity(
 ) -> None:
     with pytest.raises(ValidationError):
         BusinessRegisterRequest(**_valid_registration(venue_capacity=venue_capacity))
+
+
+def test_business_update_allows_an_empty_request() -> None:
+    # The Settings page only ever sends what actually changed — every field
+    # is optional so a request touching just `phone` doesn't need to also
+    # resend name/description/etc.
+    request = BusinessUpdateRequest()
+    assert request.model_dump(exclude_unset=True) == {}
+
+
+def test_business_update_exclude_unset_only_carries_provided_fields() -> None:
+    # This is what api/v1/business_auth.py's update_me route relies on to
+    # do a real partial update instead of clobbering everything else back
+    # to None.
+    request = BusinessUpdateRequest(phone="0400 000 000")
+    assert request.model_dump(exclude_unset=True) == {"phone": "0400 000 000"}
+
+
+def test_business_update_rejects_an_out_of_range_venue_capacity() -> None:
+    with pytest.raises(ValidationError):
+        BusinessUpdateRequest(venue_capacity=10_001)
+
+
+def test_business_update_rejects_a_too_short_name() -> None:
+    with pytest.raises(ValidationError):
+        BusinessUpdateRequest(name="A")

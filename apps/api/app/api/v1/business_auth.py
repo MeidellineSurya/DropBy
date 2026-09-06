@@ -13,6 +13,7 @@ from app.schemas.business_auth import (
     BusinessRegisterRequest,
     BusinessResponse,
     BusinessTokenResponse,
+    BusinessUpdateRequest,
 )
 
 router = APIRouter()
@@ -33,6 +34,7 @@ def _business_response(db: Session, business: Business) -> BusinessResponse:
         venue_capacity=business.venue_capacity,
         verified=business.verified,
         status=business.status.value,
+        phone=business.phone,
         latitude=float(latitude),
         longitude=float(longitude),
     )
@@ -96,4 +98,40 @@ def login(
 def me(
     business: Business = Depends(get_current_business), db: Session = Depends(get_db)
 ) -> BusinessResponse:
+    return _business_response(db, business)
+
+
+@router.patch("/me", response_model=BusinessResponse)
+def update_me(
+    body: BusinessUpdateRequest,
+    business: Business = Depends(get_current_business),
+    db: Session = Depends(get_db),
+) -> BusinessResponse:
+    """The Settings page — everything editable about a business's own
+    profile after registration. Partial update: exclude_unset means a
+    request only touching `phone` doesn't clobber name/description/etc.
+    back to whatever the client happened to hold in memory."""
+    updates = body.model_dump(exclude_unset=True)
+    latitude = updates.pop("latitude", None)
+    longitude = updates.pop("longitude", None)
+    if (latitude is None) != (longitude is None):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "latitude and longitude must be updated together",
+        )
+    if latitude is not None and longitude is not None:
+        business.location = WKTElement(f"POINT({longitude} {latitude})", srid=4326)
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()
+    if "category" in updates:
+        # Business.category is a plain String column, not a SQLAlchemy
+        # Enum — store the raw value, same as register() does, rather
+        # than the DropCategory member itself (a str subclass, but its
+        # __str__ gives "DropCategory.food_dining", not "food_dining").
+        updates["category"] = updates["category"].value
+    for field, value in updates.items():
+        setattr(business, field, value)
+    db.add(business)
+    db.commit()
+    db.refresh(business)
     return _business_response(db, business)
