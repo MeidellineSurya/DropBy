@@ -5,6 +5,8 @@ for the canonical definitions consumed by both frontends.
 
 from ws_contracts.events import (  # noqa: F401
     BadgeUnlocked,
+    ConnectionRequestAccepted,
+    ConnectionRequestReceived,
     DropCapacityReached,
     DropCountdownWarning,
     DropExpired,
@@ -12,6 +14,7 @@ from ws_contracts.events import (  # noqa: F401
     GroupMemberJoined,
     GroupReady,
     GroupStateUpdate,
+    MessageSent,
     PowerupGranted,
     RedemptionCheckedIn,
     RedemptionConfirmed,

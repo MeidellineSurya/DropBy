@@ -63,6 +63,68 @@ export interface GroupSnapshot {
   members: GroupMember[];
 }
 
+export type ConnectionStatusView = "none" | "pending_outgoing" | "pending_incoming" | "connected" | "blocked";
+
+export interface UserSummary {
+  user_id: string;
+  display_name: string;
+  avatar_url?: string | null;
+}
+
+export interface UserSearchResult extends UserSummary {
+  connection_status: ConnectionStatusView;
+}
+
+export interface RecentSquadmate extends UserSummary {
+  connection_status: ConnectionStatusView;
+  met_via_drop_title?: string | null;
+  met_at?: string | null;
+}
+
+export interface ConnectionSummary {
+  id: string;
+  status: "pending" | "accepted" | "declined" | "blocked";
+  other_user: UserSummary;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  connection_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+}
+
+export interface Conversation {
+  connection_id: string;
+  other_user: UserSummary;
+  last_message: Message | null;
+}
+
+export interface ConnectionRequestReceivedEvent {
+  type: "connection.request_received";
+  connection_id: string;
+  requester_id: string;
+  requester_display_name: string;
+}
+
+export interface ConnectionRequestAcceptedEvent {
+  type: "connection.request_accepted";
+  connection_id: string;
+  addressee_id: string;
+  addressee_display_name: string;
+}
+
+export interface MessageSentEvent {
+  type: "chat.message_sent";
+  connection_id: string;
+  message_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+}
+
 export interface DropStageEvent {
   type: "drop.stage_update";
   drop_id: string;
@@ -80,4 +142,7 @@ export interface GroupEvent {
 export type LiveEvent =
   | DropStageEvent
   | GroupEvent
+  | ConnectionRequestReceivedEvent
+  | ConnectionRequestAcceptedEvent
+  | MessageSentEvent
   | { type: "drop.capacity_reached" | "drop.expired" | "drop.countdown_warning"; drop_id: string; [key: string]: unknown };

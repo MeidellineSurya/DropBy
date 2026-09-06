@@ -195,9 +195,14 @@ export function MapScreen({ navigation }: Props) {
             <Text style={styles.title}>Nearby Drops</Text>
             <Text style={styles.greeting}>Hey {user?.display_name.split(" ")[0]}</Text>
           </View>
-          <Pressable onPress={() => navigation.navigate("Profile")} style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.display_name.slice(0, 1).toUpperCase()}</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable onPress={() => navigation.navigate("Connections")} style={styles.connectionsButton}>
+              <Text style={styles.connectionsButtonText}>👥</Text>
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate("Profile")} style={styles.avatar}>
+              <Text style={styles.avatarText}>{user?.display_name.slice(0, 1).toUpperCase()}</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.connectionRow}>
@@ -362,8 +367,11 @@ const styles = StyleSheet.create({
   eyebrow: { color: colors.violet, fontSize: 12, fontWeight: "900", letterSpacing: 1.6 },
   title: { color: colors.text, fontSize: 32, fontWeight: "900", letterSpacing: -1, marginTop: 3 },
   greeting: { color: colors.muted, fontSize: 14, marginTop: 3 },
+  headerActions: { alignItems: "center", flexDirection: "row", gap: 10 },
   avatar: { alignItems: "center", backgroundColor: colors.lime, borderRadius: 20, height: 40, justifyContent: "center", width: 40 },
   avatarText: { color: colors.black, fontSize: 17, fontWeight: "900" },
+  connectionsButton: { alignItems: "center", backgroundColor: colors.surfaceRaised, borderColor: colors.border, borderRadius: 20, borderWidth: 1, height: 40, justifyContent: "center", width: 40 },
+  connectionsButtonText: { fontSize: 17 },
   connectionRow: { alignItems: "center", flexDirection: "row", marginHorizontal: 20, marginVertical: 14 },
   dot: { backgroundColor: colors.muted, borderRadius: 4, height: 8, marginRight: 7, width: 8 },
   dotLive: { backgroundColor: colors.cyan },

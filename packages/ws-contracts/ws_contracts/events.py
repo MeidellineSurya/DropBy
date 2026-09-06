@@ -118,3 +118,26 @@ class TerritoryBonusAwarded(BaseModel):
     type: Literal["territory.bonus_awarded"] = "territory.bonus_awarded"
     cell: str
     xp_awarded: int
+
+
+class ConnectionRequestReceived(BaseModel):
+    type: Literal["connection.request_received"] = "connection.request_received"
+    connection_id: str
+    requester_id: str
+    requester_display_name: str
+
+
+class ConnectionRequestAccepted(BaseModel):
+    type: Literal["connection.request_accepted"] = "connection.request_accepted"
+    connection_id: str
+    addressee_id: str
+    addressee_display_name: str
+
+
+class MessageSent(BaseModel):
+    type: Literal["chat.message_sent"] = "chat.message_sent"
+    connection_id: str
+    message_id: str
+    sender_id: str
+    body: str
+    created_at: datetime

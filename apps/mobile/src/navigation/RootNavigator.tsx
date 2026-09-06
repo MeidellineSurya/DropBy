@@ -7,6 +7,8 @@ import { useSession } from "../SessionContext";
 import { colors } from "../theme";
 import type { DropSnapshot } from "../types";
 import { AuthScreen } from "../screens/AuthScreen";
+import { ChatThreadScreen } from "../screens/ChatThreadScreen";
+import { ConnectionsScreen } from "../screens/ConnectionsScreen";
 import { DropDetailScreen } from "../screens/DropDetailScreen";
 import { MapScreen } from "../screens/MapScreen";
 import { OnboardingScreen } from "../screens/OnboardingScreen";
@@ -18,6 +20,8 @@ export type RootStackParamList = {
   DropDetail: { drop: DropSnapshot };
   Squad: { groupId: string };
   Profile: undefined;
+  Connections: undefined;
+  ChatThread: { connectionId: string; displayName: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,6 +72,12 @@ export function RootNavigator() {
         <Stack.Screen name="DropDetail" component={DropDetailScreen} options={{ title: "Drop" }} />
         <Stack.Screen name="Squad" component={SquadScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen
+          name="Connections"
+          component={ConnectionsScreen}
+          options={{ presentation: "modal", title: "Connections" }}
+        />
+        <Stack.Screen name="ChatThread" component={ChatThreadScreen} options={{ title: "Chat" }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

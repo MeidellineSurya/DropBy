@@ -407,6 +407,28 @@
       .earned-perk .tag { color: var(--muted); text-transform: capitalize; }
       .territory-toast-icon { margin-right: 6px; }
 
+      .connections-button { position: relative; display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--border); border-radius: 50%; color: var(--text); background: var(--raised); cursor: pointer; font-size: 18px; }
+      .person-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; align-items: center; width: 100%; margin-bottom: 9px; padding: 13px; border: 1px solid var(--border); border-radius: 16px; color: var(--text); background: var(--surface); text-align: left; }
+      .person-row.clickable { cursor: pointer; }
+      .person-avatar { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 50%; color: var(--black); background: var(--violet); font-weight: 900; }
+      .person-copy { display: grid; min-width: 0; }
+      .person-name { overflow: hidden; font-size: 0.95rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+      .person-meta { margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 0.77rem; text-overflow: ellipsis; white-space: nowrap; }
+      .person-action { min-width: 84px; min-height: 38px; padding: 0 12px; border: 1px solid var(--lime); border-radius: 9px; color: var(--black); background: var(--lime); font-size: 0.78rem; font-weight: 900; cursor: pointer; white-space: nowrap; }
+      .person-action.secondary { border-color: var(--border); color: var(--text); background: transparent; }
+      .person-actions-inline { display: flex; gap: 6px; }
+      .person-action-hint { justify-self: end; color: var(--lime); font-size: 1.3rem; }
+
+      .screen[data-screen="chatThread"].active { display: flex; flex-direction: column; }
+      .chat-content { flex: 1; padding: 12px 16px; overflow-y: auto; }
+      .chat-bubble-row { display: flex; margin-bottom: 8px; }
+      .chat-bubble-row.mine { justify-content: flex-end; }
+      .chat-bubble { max-width: 78%; padding: 10px 14px; border-radius: 16px; color: var(--text); background: var(--surface); font-size: 0.9rem; line-height: 1.4; }
+      .chat-bubble-row.mine .chat-bubble { color: var(--black); background: var(--lime); }
+      .chat-composer { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); }
+      .chat-composer .input { flex: 1; min-height: 44px; margin: 0; }
+      .chat-send { width: auto; min-width: 78px; min-height: 44px; padding: 0 16px; }
+
       @media (max-width: 520px) {
         body { display: block; padding: 0; }
         .phone { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
@@ -492,6 +514,9 @@
           <div class="header-actions">
             <button class="rewards-quickaccess" id="openRewardsQuick" type="button" aria-label="Powerups, perks and challenges">
               🎁<span class="notify-dot" id="rewardsNotifyDot" hidden>0</span>
+            </button>
+            <button class="connections-button" id="openConnections" type="button" aria-label="Connections">
+              👥<span class="notify-dot" id="connectionsNotifyDot" hidden>0</span>
             </button>
             <button class="avatar" id="openProfile" type="button" aria-label="Open profile">M</button>
           </div>
@@ -673,6 +698,50 @@
         </div>
       </section>
 
+      <section class="screen" data-screen="connections" aria-labelledby="connectionsTitle">
+        <header class="app-header">
+          <button class="back" data-back="discover" type="button" aria-label="Back">‹</button>
+          <h1 class="nav-title" id="connectionsTitle">Connections</h1>
+          <span class="header-spacer"></span>
+        </header>
+        <div class="content">
+          <div class="tabs" aria-label="Connections tabs">
+            <button class="tab active" id="connectionsTabFriends" type="button" data-connections-tab="friends">Add Friends</button>
+            <button class="tab" id="connectionsTabChat" type="button" data-connections-tab="chat">Chat</button>
+          </div>
+
+          <div id="connectionsFriendsPanel">
+            <input class="input" id="connectionsSearch" placeholder="Search by name" aria-label="Search people" />
+            <div id="connectionsSearchResults"></div>
+
+            <div id="connectionsRequestsSection" hidden>
+              <div class="section-row"><h2>Requests</h2></div>
+              <div id="connectionsRequestsList"></div>
+            </div>
+
+            <div class="section-row"><h2>People you've met</h2><span class="section-hint">From your squads</span></div>
+            <div id="connectionsRecentList"></div>
+          </div>
+
+          <div id="connectionsChatPanel" hidden>
+            <div id="connectionsChatList"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="chatThread" aria-labelledby="chatThreadTitle">
+        <header class="app-header">
+          <button class="back" data-back="connections" type="button" aria-label="Back">‹</button>
+          <h1 class="nav-title" id="chatThreadTitle">Chat</h1>
+          <span class="header-spacer"></span>
+        </header>
+        <div class="chat-content" id="chatMessages"></div>
+        <div class="chat-composer">
+          <input class="input" id="chatInput" placeholder="Message" aria-label="Message" />
+          <button class="primary chat-send" id="chatSend" type="button">Send</button>
+        </div>
+      </section>
+
       <section class="screen" data-screen="rewards" aria-labelledby="rewardsTitle">
         <header class="app-header">
           <button class="back" id="rewardsBack" data-back="profile" type="button" aria-label="Back">‹</button>
@@ -803,6 +872,28 @@
         activeXpBoost: false, activeDoubleOrNothingDeadline: null, revealBoostUntil: 0,
         currentStreak: 0, longestStreak: 0, lastRedemptionDay: null, simulatedDayOffset: 0,
         visitedCells: new Set(), weeklyClaims: {},
+        connectionsTab: "friends", connectionsSearchQuery: "", activeConnectionId: null,
+        directory: [
+          { id: "conn_jordan", name: "Jordan Lee" },
+          { id: "conn_sam", name: "Sam Rivera" },
+          { id: "conn_casey", name: "Casey Chen" },
+          { id: "conn_priya", name: "Priya Nair" },
+          { id: "conn_liam", name: "Liam O'Connor" },
+        ],
+        recentSquadmates: [
+          { id: "conn_jordan", metVia: "Rare Korean BBQ Drop" },
+          { id: "conn_sam", metVia: "Hidden Jazz Session" },
+          { id: "conn_casey", metVia: "Epic Dumpling Feast" },
+        ],
+        // Seeded so the screen shows something interesting on first open:
+        // one existing friend (with a chat thread), one incoming request.
+        connectionStatus: { conn_jordan: "connected", conn_sam: "pending_incoming" },
+        chats: {
+          conn_jordan: [
+            { from: "them", text: "Hey! Great meeting you at Seoul Table 🥩", at: Date.now() - 3600000 },
+            { from: "me", text: "You too! Same time next week?", at: Date.now() - 3500000 },
+          ],
+        },
       };
       const primaryLocation = [-37.8119, 144.9674];
       // xpBase mirrors Drop.xp_reward_base's default in apps/api/app/models/drops.py.
@@ -967,6 +1058,7 @@
       function showScreen(name) {
         state.screen = name;
         updateRewardsNotifyDot();
+        updateConnectionsNotifyDot();
         $$("[data-screen]").forEach((screen) => screen.classList.toggle("active", screen.dataset.screen === name));
         const current = $(`[data-screen="${name}"]`);
         if (current) current.scrollTop = 0;
@@ -983,6 +1075,8 @@
         if (name === "engine") renderEngine();
         if (name === "rewards") renderRewards();
         if (name === "history") renderHistory();
+        if (name === "connections") renderConnections();
+        if (name === "chatThread") renderChatThread();
       }
 
       function toast(message) {
@@ -1196,6 +1290,172 @@
         const drop = selectedDrop();
         const count = state.squadCount || 1;
         $("#checkinSubtitle").textContent = `${count}/${drop.maxPeople} squad members present`;
+      }
+
+      function friendName(id) { return state.directory.find((person) => person.id === id)?.name || "Someone"; }
+      function friendInitial(id) { return friendName(id).slice(0, 1).toUpperCase(); }
+      function pendingRequestIds() { return Object.entries(state.connectionStatus).filter(([, status]) => status === "pending_incoming").map(([id]) => id); }
+      function connectedFriendIds() { return Object.entries(state.connectionStatus).filter(([, status]) => status === "connected").map(([id]) => id); }
+
+      function updateConnectionsNotifyDot() {
+        const count = pendingRequestIds().length;
+        const dot = $("#connectionsNotifyDot");
+        if (!dot) return;
+        dot.hidden = count <= 0;
+        dot.textContent = count > 9 ? "9+" : count;
+      }
+
+      function connectionActionLabel(status) {
+        switch (status) {
+          case "connected": return "Friends";
+          case "pending_outgoing": return "Requested";
+          default: return "Add";
+        }
+      }
+
+      function personRowHtml(id, { meta = "" } = {}) {
+        const status = state.connectionStatus[id] || "none";
+        const disabled = status !== "none";
+        return `
+          <div class="person-row" data-person-id="${id}">
+            <span class="person-avatar">${friendInitial(id)}</span>
+            <span class="person-copy">
+              <span class="person-name">${friendName(id)}</span>
+              ${meta ? `<span class="person-meta">${meta}</span>` : ""}
+            </span>
+            <button class="person-action" type="button" data-add-friend="${id}" ${disabled ? "disabled" : ""}>${connectionActionLabel(status)}</button>
+          </div>
+        `;
+      }
+
+      function switchConnectionsTab(tab) {
+        state.connectionsTab = tab;
+        $("#connectionsTabFriends").classList.toggle("active", tab === "friends");
+        $("#connectionsTabChat").classList.toggle("active", tab === "chat");
+        $("#connectionsFriendsPanel").hidden = tab !== "friends";
+        $("#connectionsChatPanel").hidden = tab !== "chat";
+        renderConnections();
+      }
+
+      function renderConnections() {
+        updateConnectionsNotifyDot();
+        if (state.connectionsTab === "friends") renderConnectionsFriendsTab();
+        else renderConnectionsChatTab();
+      }
+
+      function renderConnectionsFriendsTab() {
+        const query = state.connectionsSearchQuery.trim().toLowerCase();
+        const results = $("#connectionsSearchResults");
+        if (!query) {
+          results.innerHTML = "";
+        } else {
+          const matches = state.directory.filter((person) => person.name.toLowerCase().includes(query));
+          results.innerHTML = matches.length
+            ? `<div class="section-row"><h2>Results</h2></div>${matches.map((person) => personRowHtml(person.id)).join("")}`
+            : '<div class="empty">No one found.</div>';
+        }
+
+        const incomingIds = pendingRequestIds();
+        $("#connectionsRequestsSection").hidden = incomingIds.length === 0;
+        $("#connectionsRequestsList").innerHTML = incomingIds.map((id) => `
+          <div class="person-row" data-person-id="${id}">
+            <span class="person-avatar">${friendInitial(id)}</span>
+            <span class="person-copy"><span class="person-name">${friendName(id)}</span></span>
+            <span class="person-actions-inline">
+              <button class="person-action" type="button" data-respond-request="${id}" data-accept="true">Accept</button>
+              <button class="person-action secondary" type="button" data-respond-request="${id}" data-accept="false">Decline</button>
+            </span>
+          </div>
+        `).join("");
+
+        const recentList = $("#connectionsRecentList");
+        recentList.innerHTML = state.recentSquadmates.length
+          ? state.recentSquadmates.map((entry) => personRowHtml(entry.id, { meta: `Met at ${entry.metVia}` })).join("")
+          : '<div class="empty">Join a squad to start meeting people.</div>';
+
+        $$("[data-add-friend]").forEach((button) => button.addEventListener("click", () => sendFriendRequest(button.dataset.addFriend)));
+        $$("[data-respond-request]").forEach((button) => button.addEventListener("click", () => respondToRequest(button.dataset.respondRequest, button.dataset.accept === "true")));
+      }
+
+      function renderConnectionsChatTab() {
+        const list = $("#connectionsChatList");
+        const connectedIds = connectedFriendIds();
+        list.innerHTML = connectedIds.length
+          ? connectedIds.map((id) => {
+              const thread = state.chats[id] || [];
+              const last = thread[thread.length - 1];
+              const preview = last ? (last.from === "me" ? `You: ${last.text}` : last.text) : "Say hello";
+              return `
+                <button class="person-row clickable" type="button" data-open-chat="${id}">
+                  <span class="person-avatar">${friendInitial(id)}</span>
+                  <span class="person-copy">
+                    <span class="person-name">${friendName(id)}</span>
+                    <span class="person-meta">${preview}</span>
+                  </span>
+                  <span class="person-action-hint">›</span>
+                </button>
+              `;
+            }).join("")
+          : '<div class="empty">No chats yet. Add a friend to start one.</div>';
+        $$("[data-open-chat]").forEach((button) => button.addEventListener("click", () => openChatThread(button.dataset.openChat)));
+      }
+
+      function sendFriendRequest(id) {
+        state.connectionStatus[id] = "pending_outgoing";
+        addEvent("connection.request_received", `${friendName(id)} notified`);
+        toast(`Friend request sent to ${friendName(id)}.`);
+        renderConnections();
+      }
+
+      function respondToRequest(id, accept) {
+        if (accept) {
+          state.connectionStatus[id] = "connected";
+          if (!state.chats[id]) state.chats[id] = [];
+          addEvent("connection.request_accepted", `${friendName(id)} is now a connection`);
+          toast(`You and ${friendName(id)} are now connected.`);
+        } else {
+          delete state.connectionStatus[id];
+          toast(`Declined ${friendName(id)}'s request.`);
+        }
+        renderConnections();
+      }
+
+      function openChatThread(id) {
+        state.activeConnectionId = id;
+        showScreen("chatThread");
+      }
+
+      function renderChatThread() {
+        const id = state.activeConnectionId;
+        if (!id) return;
+        $("#chatThreadTitle").textContent = friendName(id);
+        const thread = state.chats[id] || [];
+        const container = $("#chatMessages");
+        container.innerHTML = thread.length
+          ? thread.map((message) => `
+              <div class="chat-bubble-row ${message.from === "me" ? "mine" : ""}">
+                <span class="chat-bubble">${message.text}</span>
+              </div>
+            `).join("")
+          : '<div class="empty">Say hello 👋</div>';
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function sendChatMessage() {
+        const id = state.activeConnectionId;
+        const input = $("#chatInput");
+        const text = input.value.trim();
+        if (!text || !id) return;
+        state.chats[id] = state.chats[id] || [];
+        state.chats[id].push({ from: "me", text, at: Date.now() });
+        input.value = "";
+        renderChatThread();
+        addEvent("chat.message_sent", `to ${friendName(id)}`);
+        window.setTimeout(() => {
+          if (state.activeConnectionId !== id) return;
+          state.chats[id].push({ from: "them", text: "👍", at: Date.now() });
+          if (state.screen === "chatThread") renderChatThread();
+        }, 900);
       }
 
       const POWERUP_LABELS = {
@@ -1605,6 +1865,11 @@
       $("#findAnotherDrop").addEventListener("click", () => { state.squadCount = 0; state.squadMaxPeopleBonus = 0; state.selectedDropId = null; showScreen("discover"); });
       $("#openHistory").addEventListener("click", () => showScreen("history"));
       $("#signOut").addEventListener("click", () => { stopTrackingDemo(); state.distance = 850; state.revealed.clear(); state.squadCount = 0; state.squadMaxPeopleBonus = 0; state.history = []; showScreen("auth"); });
+      $("#openConnections").addEventListener("click", () => showScreen("connections"));
+      $$('[data-connections-tab]').forEach((button) => button.addEventListener("click", () => switchConnectionsTab(button.dataset.connectionsTab)));
+      $("#connectionsSearch").addEventListener("input", (event) => { state.connectionsSearchQuery = event.target.value; renderConnectionsFriendsTab(); });
+      $("#chatSend").addEventListener("click", sendChatMessage);
+      $("#chatInput").addEventListener("keydown", (event) => { if (event.key === "Enter") sendChatMessage(); });
       $("#openRewards").addEventListener("click", () => { $("#rewardsBack").dataset.back = "profile"; showScreen("rewards"); });
       $("#openRewardsQuick").addEventListener("click", () => { $("#rewardsBack").dataset.back = "discover"; showScreen("rewards"); });
       $("#claimChallenge").addEventListener("click", claimWeeklyChallenge);
@@ -1641,7 +1906,7 @@
       }
       $("#guidedDemo").addEventListener("click", guidedDemo);
       $("#runEngineDemo").addEventListener("click", guidedDemo);
-      renderProfile(); renderSquad(); renderEngine(); updateRewardsNotifyDot();
+      renderProfile(); renderSquad(); renderEngine(); updateRewardsNotifyDot(); updateConnectionsNotifyDot();
     </script>
   </body>
 </html>

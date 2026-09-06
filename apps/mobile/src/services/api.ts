@@ -2,10 +2,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 import type {
+  ConnectionSummary,
+  Conversation,
   DropSnapshot,
   GroupSnapshot,
+  Message,
+  RecentSquadmate,
   TokenResponse,
   UserProfile,
+  UserSearchResult,
 } from "../types";
 
 const fallbackHost = Platform.OS === "android" ? "10.0.2.2" : "localhost";
@@ -90,4 +95,27 @@ export const api = {
     request<GroupSnapshot>(`/groups/${groupId}/join`, { method: "POST" }),
   leaveGroup: (groupId: string) =>
     request<GroupSnapshot | null>(`/groups/${groupId}/leave`, { method: "POST" }),
+  searchUsers: (query: string) =>
+    request<UserSearchResult[]>(`/connections/search?q=${encodeURIComponent(query)}`),
+  getRecentSquadmates: () => request<RecentSquadmate[]>("/connections/recent-squadmates"),
+  getIncomingRequests: () => request<ConnectionSummary[]>("/connections/requests"),
+  sendConnectionRequest: (addresseeId: string) =>
+    request<ConnectionSummary>("/connections/requests", {
+      method: "POST",
+      body: JSON.stringify({ addressee_id: addresseeId }),
+    }),
+  respondToRequest: (connectionId: string, accept: boolean) =>
+    request<ConnectionSummary>(`/connections/requests/${connectionId}/respond`, {
+      method: "POST",
+      body: JSON.stringify({ accept }),
+    }),
+  getConnections: () => request<ConnectionSummary[]>("/connections"),
+  getConversations: () => request<Conversation[]>("/chat/conversations"),
+  getMessages: (connectionId: string) =>
+    request<Message[]>(`/chat/conversations/${connectionId}/messages`),
+  sendMessage: (connectionId: string, body: string) =>
+    request<Message>(`/chat/conversations/${connectionId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    }),
 };
